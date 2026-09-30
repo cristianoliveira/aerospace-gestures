@@ -15,6 +15,22 @@ final class CommandRunnerTests: XCTestCase {
     wait(for: [completed], timeout: 3)
   }
 
+  func testChildOutputIsNotIncludedInCompletionMessage() {
+    let completed = expectation(description: "child output remains discarded")
+    let runner = CommandRunner()
+    let command = "/bin/sh -c 'printf secret-stdout; printf secret-stderr >&2'"
+
+    XCTAssertTrue(
+      runner.run(["/bin/sh", "-c", "printf secret-stdout; printf secret-stderr >&2"]) { message in
+        XCTAssertEqual(message, "Command exited with status 0")
+        XCTAssertFalse(message.contains("secret-stdout"))
+        XCTAssertFalse(message.contains("secret-stderr"))
+        XCTAssertFalse(message.contains(command))
+        completed.fulfill()
+      })
+    wait(for: [completed], timeout: 3)
+  }
+
   func testReportsNonzeroExitStatus() {
     let completed = expectation(description: "nonzero exit reported")
     let runner = CommandRunner()

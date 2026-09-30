@@ -13,7 +13,9 @@ func fail(_ message: String) -> Never {
   exit(1)
 }
 
-func loadConfiguration(at url: URL) -> Configuration {
+func loadConfiguration(
+  at url: URL, startupDiagnostics: StartupDiagnosticStore? = nil
+) -> Configuration {
   do {
     let configuration = try ConfigurationFile.load(at: url)
     try ConfigurationDecision.validateExecutables(in: configuration) {
@@ -22,10 +24,13 @@ func loadConfiguration(at url: URL) -> Configuration {
     return configuration
   } catch let error as ConfigurationFileError {
     if case .cannotRead = error, !FileManager.default.fileExists(atPath: url.path) {
+      try? startupDiagnostics?.record(.configurationValidationFailed)
       fail(CLIConfigurationFailure.missing(at: url))
     }
+    try? startupDiagnostics?.record(.configurationValidationFailed)
     fail("\(error)")
   } catch {
+    try? startupDiagnostics?.record(.configurationValidationFailed)
     fail(CLIConfigurationFailure.invalid(at: url, reason: error))
   }
 }
@@ -41,6 +46,14 @@ do {
 } catch {
   fail("\(error)")
 }
+let managedStartupDiagnostics: StartupDiagnosticStore? =
+  ProcessInfo.processInfo.environment["AEROSPACE_GESTURES_MANAGED"] == "1"
+  ? StartupDiagnosticStore(
+    fileURL: environment.homeDirectory
+      .appendingPathComponent("Library/Application Support/aerospace-gestures", isDirectory: true)
+      .appendingPathComponent("startup-diagnostic.log"),
+    rootURL: environment.homeDirectory)
+  : nil
 
 switch request {
 case .help(let topic):
@@ -101,7 +114,8 @@ case .listen:
   configuration = nil
 case .run(let configurationURL, let isDryRun):
   dryRun = isDryRun
-  configuration = loadConfiguration(at: configurationURL)
+  configuration = loadConfiguration(
+    at: configurationURL, startupDiagnostics: managedStartupDiagnostics)
 case .help, .initialize, .check, .service:
   fatalError("Handled CLI request unexpectedly reached device startup")
 }
@@ -116,6 +130,7 @@ do {
     under: environment.homeDirectory,
     waitForContention: ProcessInfo.processInfo.environment["AEROSPACE_GESTURES_MANAGED"] == "1")
 } catch {
+  try? managedStartupDiagnostics?.record(.listenerLockUnavailable)
   fail(String(describing: error))
 }
 
@@ -154,7 +169,12 @@ let onFrame: (UInt, [Contact]) -> Void = { device, contacts in
   }
 }
 
-if let error = MultitouchInput.start(onFrame: onFrame) { fail(error) }
+if let error = MultitouchInput.start(onFrame: onFrame) {
+  let diagnostic = StartupDiagnostic.inputInitializationFailure(for: error)
+  try? managedStartupDiagnostics?.record(diagnostic)
+  fail(error)
+}
+try? managedStartupDiagnostics?.clear()
 print("Listening. Private API is experimental; system gestures are NOT suppressed. Ctrl-C to stop.")
 fflush(stdout)
 DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
@@ -165,15 +185,15 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
     fflush(stdout)
   }
 }
+let shutdown = ListenerShutdown(
+  stopInput: { MultitouchInput.stop() },
+  stopCommands: { completion in runner.stop(completion: completion) })
 var signals: [DispatchSourceSignal] = []
 for number in [SIGINT, SIGTERM] {
   signal(number, SIG_IGN)
   let source = DispatchSource.makeSignalSource(signal: number, queue: .main)
   source.setEventHandler {
-    MultitouchInput.stop()
-    runner.stop {
-      exit(0)
-    }
+    shutdown.stop { exit(0) }
   }
   source.resume()
   signals.append(source)

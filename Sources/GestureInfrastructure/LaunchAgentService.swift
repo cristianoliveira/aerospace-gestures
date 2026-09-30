@@ -46,6 +46,11 @@ public struct LaunchAgentPaths {
       .appendingPathComponent("Library/Application Support/aerospace-gestures", isDirectory: true)
       .appendingPathComponent("service-operation.lock")
   }
+  public var startupDiagnosticURL: URL {
+    homeDirectory
+      .appendingPathComponent("Library/Application Support/aerospace-gestures", isDirectory: true)
+      .appendingPathComponent("startup-diagnostic.log")
+  }
 }
 
 public struct ExternalProcessResult: Equatable {
@@ -125,22 +130,31 @@ public enum ServiceLaunchState: Equatable {
   case unknown(String)
 }
 
+public enum StartupDiagnosticState: Equatable {
+  case none
+  case recorded(StartupDiagnostic)
+  case unavailable
+}
+
 public struct ServiceStatus: Equatable, CustomStringConvertible {
   public let installation: ServiceInstallationState
   public let launchd: ServiceLaunchState
   public let configurationURL: URL
   public let managedPlistURL: URL
+  public let startupDiagnostic: StartupDiagnosticState
 
   public init(
     installation: ServiceInstallationState,
     launchd: ServiceLaunchState,
     configurationURL: URL,
-    managedPlistURL: URL
+    managedPlistURL: URL,
+    startupDiagnostic: StartupDiagnosticState = .none
   ) {
     self.installation = installation
     self.launchd = launchd
     self.configurationURL = configurationURL
     self.managedPlistURL = managedPlistURL
+    self.startupDiagnostic = startupDiagnostic
   }
 
   public var description: String {
@@ -170,12 +184,23 @@ public struct ServiceStatus: Equatable, CustomStringConvertible {
     let ownershipWarning: String
     switch (installation, launchd) {
     case (.absent, .running), (.absent, .loaded), (.foreign, .running), (.foreign, .loaded):
-      ownershipWarning = "\nWarning: launchd has an entry without a verified owned plist; no mutation attempted."
+      ownershipWarning =
+        "\nWarning: launchd has an entry without a verified owned plist; no mutation attempted."
     case (.owned, .running(_, _, let path)) where !pointsToManagedPlist(path),
       (.owned, .loaded(_, _, _, let path)) where !pointsToManagedPlist(path):
-      ownershipWarning = "\nWarning: loaded job does not point to the managed plist; no mutation attempted."
+      ownershipWarning =
+        "\nWarning: loaded job does not point to the managed plist; no mutation attempted."
     default:
       ownershipWarning = ""
+    }
+
+    let diagnosticDescription: String
+    switch startupDiagnostic {
+    case .none: diagnosticDescription = "none"
+    case .recorded(let diagnostic):
+      diagnosticDescription = "\(diagnostic.description) (details withheld)"
+    case .unavailable:
+      diagnosticDescription = "unavailable (invalid or inaccessible; details withheld)"
     }
 
     return """
@@ -183,7 +208,8 @@ public struct ServiceStatus: Equatable, CustomStringConvertible {
       LaunchAgent: \(launchdDescription)\(ownershipWarning)
       Managed plist: \(managedPlistURL.path)
       Configuration: \(configurationURL.path)
-      Logs: persistent logging disabled (stdout/stderr: /dev/null; retained bytes: 0)
+      Logs: stdout/stderr discarded (/dev/null; retained bytes: 0)
+      Last startup diagnostic: \(diagnosticDescription) (one private record, max \(StartupDiagnosticStore.maximumBytes) bytes)
       Trackpad responsiveness: unverified; process state does not prove frame delivery.
       """
   }
@@ -210,7 +236,8 @@ public enum LaunchAgentServiceError: Error, CustomStringConvertible {
 
   public var description: String {
     switch self {
-    case .invalidExecutable(let url): return "Stable executable is missing or not executable: \(url.path)"
+    case .invalidExecutable(let url):
+      return "Stable executable is missing or not executable: \(url.path)"
     case .invalidConfiguration(let url, let reason):
       return "Invalid configuration at \(url.path): \(reason)"
     case .foreignPlist(let url):
@@ -220,7 +247,8 @@ public enum LaunchAgentServiceError: Error, CustomStringConvertible {
     case .plistWrite(let url, let reason):
       return "Cannot update LaunchAgent plist at \(url.path): \(reason)"
     case .launchctl(let reason): return "launchctl failed: \(reason)"
-    case .rollback(let reason): return "LaunchAgent operation failed and rollback was incomplete: \(reason)"
+    case .rollback(let reason):
+      return "LaunchAgent operation failed and rollback was incomplete: \(reason)"
     case .alreadyRunningConflict:
       return "Another aerospace-gestures listener already holds the instance lock"
     }
@@ -258,7 +286,9 @@ public final class LaunchAgentService {
     try validate(executableURL: paths.executableURL, configurationURL: paths.configurationURL)
     let newData = try makePlist(configurationURL: paths.configurationURL)
     let existing = try readInstallation()
-    guard existing.state != .foreign else { throw LaunchAgentServiceError.foreignPlist(paths.plistURL) }
+    guard existing.state != .foreign else {
+      throw LaunchAgentServiceError.foreignPlist(paths.plistURL)
+    }
 
     let loaded = try launchdState()
     let wasLoaded = try isLoaded(loaded)
@@ -422,11 +452,26 @@ public final class LaunchAgentService {
     } catch {
       state = .unknown(String(describing: error))
     }
-    let configuration = installation.data.flatMap { try? configurationURL(from: $0) }
+    let configuration =
+      installation.data.flatMap { try? configurationURL(from: $0) }
       ?? paths.configurationURL
+    let startupDiagnostic: StartupDiagnosticState
+    do {
+      let record = try StartupDiagnosticStore(
+        fileURL: paths.startupDiagnosticURL, rootURL: paths.homeDirectory,
+        expectedUID: paths.filesystemUID
+      ).read()
+      startupDiagnostic = record.map(StartupDiagnosticState.recorded) ?? .none
+    } catch StartupDiagnosticStoreError.directoryMissing
+      where installation.state != .owned
+    {
+      startupDiagnostic = .none
+    } catch {
+      startupDiagnostic = .unavailable
+    }
     return ServiceStatus(
       installation: installation.state, launchd: state, configurationURL: configuration,
-      managedPlistURL: paths.plistURL)
+      managedPlistURL: paths.plistURL, startupDiagnostic: startupDiagnostic)
   }
 
   private func withOperationLock<T>(_ operation: () throws -> T) throws -> T {
@@ -449,7 +494,8 @@ public final class LaunchAgentService {
     } catch let error as LaunchAgentServiceError {
       throw error
     } catch {
-      throw LaunchAgentServiceError.invalidConfiguration(configurationURL, String(describing: error))
+      throw LaunchAgentServiceError.invalidConfiguration(
+        configurationURL, String(describing: error))
     }
   }
 
@@ -521,8 +567,9 @@ public final class LaunchAgentService {
   }
 
   private func configurationURL(from data: Data) throws -> URL {
-    guard let properties = try? PropertyListSerialization.propertyList(
-      from: data, options: [], format: nil) as? [String: Any],
+    guard
+      let properties = try? PropertyListSerialization.propertyList(
+        from: data, options: [], format: nil) as? [String: Any],
       let arguments = properties["ProgramArguments"] as? [String], arguments.count == 3,
       arguments[2].hasPrefix("/")
     else { throw LaunchAgentServiceError.foreignPlist(paths.plistURL) }
@@ -557,7 +604,8 @@ public final class LaunchAgentService {
         guard let separator = line.range(of: " = ") else { return nil }
         return (
           String(line[..<separator.lowerBound]).trimmingCharacters(in: .whitespaces),
-          String(line[separator.upperBound...]).trimmingCharacters(in: .whitespaces))
+          String(line[separator.upperBound...]).trimmingCharacters(in: .whitespaces)
+        )
       }, uniquingKeysWith: { first, _ in first })
     guard let state = fields["state"] else {
       return .unknown("launchctl print did not report a state")
@@ -618,7 +666,8 @@ public final class LaunchAgentService {
       arguments: ["kickstart", "\(paths.domain)/\(LaunchAgentPaths.label)"])
     guard result.status == 0 else {
       throw LaunchAgentServiceError.launchctl(
-        "kickstart failed (\(result.status)): \(result.stderr.trimmingCharacters(in: .whitespacesAndNewlines))")
+        "kickstart failed (\(result.status)): \(result.stderr.trimmingCharacters(in: .whitespacesAndNewlines))"
+      )
     }
   }
 

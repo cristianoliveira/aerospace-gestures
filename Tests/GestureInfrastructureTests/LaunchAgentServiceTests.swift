@@ -67,9 +67,10 @@ final class LaunchAgentServiceTests: XCTestCase {
     let callsAfterFirstInstall = fixture.runner.calls.count
 
     XCTAssertEqual(try fixture.service.install(), .alreadyInstalled)
-    XCTAssertFalse(fixture.runner.calls.dropFirst(callsAfterFirstInstall).contains {
-      $0.first == "bootstrap" || $0.first == "bootout"
-    })
+    XCTAssertFalse(
+      fixture.runner.calls.dropFirst(callsAfterFirstInstall).contains {
+        $0.first == "bootstrap" || $0.first == "bootout"
+      })
   }
 
   func testInstallRefusesForeignAndMalformedPlistsWithoutChangingThem() throws {
@@ -82,8 +83,9 @@ final class LaunchAgentServiceTests: XCTestCase {
 
       XCTAssertThrowsError(try fixture.service.install())
       XCTAssertEqual(try Data(contentsOf: fixture.paths.plistURL), contents)
-      XCTAssertFalse(FileManager.default.fileExists(
-        atPath: fixture.paths.operationLockURL.deletingLastPathComponent().path))
+      XCTAssertFalse(
+        FileManager.default.fileExists(
+          atPath: fixture.paths.operationLockURL.deletingLastPathComponent().path))
       XCTAssertTrue(fixture.runner.calls.isEmpty)
     }
   }
@@ -96,7 +98,8 @@ final class LaunchAgentServiceTests: XCTestCase {
     let target = fixture.root.appendingPathComponent("foreign.plist")
     let contents = try foreignPlist()
     try contents.write(to: target)
-    try FileManager.default.createSymbolicLink(at: fixture.paths.plistURL, withDestinationURL: target)
+    try FileManager.default.createSymbolicLink(
+      at: fixture.paths.plistURL, withDestinationURL: target)
 
     XCTAssertThrowsError(try fixture.service.install())
     XCTAssertEqual(try Data(contentsOf: target), contents)
@@ -113,16 +116,18 @@ final class LaunchAgentServiceTests: XCTestCase {
 
     XCTAssertThrowsError(try fixture.service.install())
     XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.paths.plistURL.path))
-    XCTAssertFalse(FileManager.default.fileExists(
-      atPath: fixture.paths.operationLockURL.deletingLastPathComponent().path))
+    XCTAssertFalse(
+      FileManager.default.fileExists(
+        atPath: fixture.paths.operationLockURL.deletingLastPathComponent().path))
     XCTAssertTrue(fixture.runner.calls.isEmpty)
 
     try fixture.makeExecutable()
     try FileManager.default.removeItem(at: fixture.paths.configurationURL)
     XCTAssertThrowsError(try fixture.service.install())
     XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.paths.plistURL.path))
-    XCTAssertFalse(FileManager.default.fileExists(
-      atPath: fixture.paths.operationLockURL.deletingLastPathComponent().path))
+    XCTAssertFalse(
+      FileManager.default.fileExists(
+        atPath: fixture.paths.operationLockURL.deletingLastPathComponent().path))
     XCTAssertTrue(fixture.runner.calls.isEmpty)
   }
 
@@ -146,13 +151,15 @@ final class LaunchAgentServiceTests: XCTestCase {
     XCTAssertThrowsError(try updatedService.install())
     XCTAssertEqual(try Data(contentsOf: fixture.paths.plistURL), originalPlist)
     XCTAssertTrue(fixture.runner.isLoaded)
-    XCTAssertEqual(fixture.runner.calls.suffix(5), [
-      ["print", fixture.paths.serviceTarget],
-      ["bootout", fixture.paths.serviceTarget],
-      ["bootstrap", fixture.paths.domain, fixture.paths.plistURL.path],
-      ["print", fixture.paths.serviceTarget],
-      ["bootstrap", fixture.paths.domain, fixture.paths.plistURL.path],
-    ])
+    XCTAssertEqual(
+      fixture.runner.calls.suffix(5),
+      [
+        ["print", fixture.paths.serviceTarget],
+        ["bootout", fixture.paths.serviceTarget],
+        ["bootstrap", fixture.paths.domain, fixture.paths.plistURL.path],
+        ["print", fixture.paths.serviceTarget],
+        ["bootstrap", fixture.paths.domain, fixture.paths.plistURL.path],
+      ])
   }
 
   func testFailedFirstInstallRemovesOnlyItsNewPlist() throws {
@@ -282,13 +289,90 @@ final class LaunchAgentServiceTests: XCTestCase {
       running.launchd,
       .running(pid: 4321, lastExitCode: nil, plistPath: fixture.paths.plistURL.standardizedFileURL))
     XCTAssertTrue(running.description.contains(fixture.paths.configurationURL.path))
-    XCTAssertTrue(running.description.contains("stdout/stderr: /dev/null"))
+    XCTAssertTrue(running.description.contains("stdout/stderr discarded (/dev/null"))
+    XCTAssertTrue(running.description.contains("Last startup diagnostic: none"))
     XCTAssertTrue(running.description.contains("Trackpad responsiveness: unverified"))
 
     XCTAssertEqual(try fixture.service.stop(), .stopped)
     let stopped = try fixture.service.status()
     XCTAssertEqual(stopped.installation, .owned)
     XCTAssertEqual(stopped.launchd, .notLoaded)
+  }
+
+  func testRestartUsesConfigurationPathCapturedAtInstall() throws {
+    let fixture = try ServiceFixture()
+    defer { fixture.remove() }
+    XCTAssertEqual(try fixture.service.install(), .installed)
+    let alternateConfig = fixture.root.appendingPathComponent("changed default.json")
+    try Data("invalid config".utf8).write(to: alternateConfig)
+    let changedDefaultPaths = LaunchAgentPaths(
+      homeDirectory: fixture.paths.homeDirectory,
+      executableURL: fixture.paths.executableURL,
+      configurationURL: alternateConfig,
+      uid: fixture.paths.uid,
+      launchctlURL: fixture.paths.launchctlURL)
+    let service = LaunchAgentService(paths: changedDefaultPaths, processRunner: fixture.runner)
+
+    XCTAssertEqual(try service.restart(), .restarted)
+
+    let plist = try XCTUnwrap(
+      PropertyListSerialization.propertyList(
+        from: Data(contentsOf: fixture.paths.plistURL), options: [], format: nil)
+        as? [String: Any])
+    XCTAssertEqual(
+      (plist["ProgramArguments"] as? [String])?.last, fixture.paths.configurationURL.path)
+    XCTAssertNotEqual((plist["ProgramArguments"] as? [String])?.last, alternateConfig.path)
+  }
+
+  func testStatusReportsLastExitAndSanitizedStartupDiagnostic() throws {
+    let fixture = try ServiceFixture()
+    defer { fixture.remove() }
+    XCTAssertEqual(try fixture.service.install(), .installed)
+    fixture.runner.isRunning = false
+    fixture.runner.lastExitCode = 1
+    try StartupDiagnosticStore(
+      fileURL: fixture.paths.startupDiagnosticURL, rootURL: fixture.paths.homeDirectory
+    )
+    .record(.inputInitializationFailed)
+
+    let status = try fixture.service.status()
+
+    XCTAssertEqual(
+      status.launchd,
+      .loaded(
+        state: "waiting", pid: nil, lastExitCode: 1,
+        plistPath: fixture.paths.plistURL.standardizedFileURL))
+    XCTAssertTrue(status.description.contains("last exit status: 1"))
+    XCTAssertEqual(status.startupDiagnostic, .recorded(.inputInitializationFailed))
+    XCTAssertTrue(status.description.contains("input initialization failed (details withheld)"))
+    XCTAssertFalse(status.description.contains("secret"))
+  }
+
+  func testStatusDistinguishesUnavailableDiagnosticFromNoRecord() throws {
+    let fixture = try ServiceFixture()
+    defer { fixture.remove() }
+    XCTAssertEqual(try fixture.service.install(), .installed)
+    try Data("unrecognized".utf8).write(to: fixture.paths.startupDiagnosticURL)
+    try FileManager.default.setAttributes(
+      [.posixPermissions: 0o600], ofItemAtPath: fixture.paths.startupDiagnosticURL.path)
+
+    let status = try fixture.service.status()
+
+    XCTAssertEqual(status.startupDiagnostic, .unavailable)
+    XCTAssertTrue(status.description.contains("Last startup diagnostic: unavailable"))
+  }
+
+  func testStatusReportsUnavailableForUntrustedDiagnosticDirectory() throws {
+    let fixture = try ServiceFixture()
+    defer { fixture.remove() }
+    XCTAssertEqual(try fixture.service.install(), .installed)
+    try FileManager.default.setAttributes(
+      [.posixPermissions: 0o777],
+      ofItemAtPath: fixture.paths.startupDiagnosticURL.deletingLastPathComponent().path)
+
+    let status = try fixture.service.status()
+
+    XCTAssertEqual(status.startupDiagnostic, .unavailable)
   }
 
   func testStatusReportsUnownedLoadedRegistrationWithoutCallingItInstalled() throws {
@@ -355,7 +439,8 @@ final class LaunchAgentServiceTests: XCTestCase {
     XCTAssertEqual(try fixture.service.install(), .installed)
     let plistBefore = try Data(contentsOf: fixture.paths.plistURL)
     fixture.runner.loadedPlistURL = URL(fileURLWithPath: "/tmp/foreign.plist")
-    XCTAssertTrue(try fixture.service.status().description.contains("does not point to the managed plist"))
+    XCTAssertTrue(
+      try fixture.service.status().description.contains("does not point to the managed plist"))
 
     XCTAssertThrowsError(try fixture.service.stop())
 
@@ -373,7 +458,8 @@ final class LaunchAgentServiceTests: XCTestCase {
       let unsafeDirectory: URL
       switch component {
       case "home": unsafeDirectory = fixture.paths.homeDirectory
-      case "Library": unsafeDirectory = fixture.paths.homeDirectory.appendingPathComponent("Library")
+      case "Library":
+        unsafeDirectory = fixture.paths.homeDirectory.appendingPathComponent("Library")
       default: unsafeDirectory = fixture.paths.launchAgentsDirectory
       }
       try FileManager.default.setAttributes(
@@ -428,7 +514,8 @@ final class LaunchAgentServiceTests: XCTestCase {
       uid: fixture.paths.uid,
       filesystemUID: fixture.paths.filesystemUID + 1,
       launchctlURL: fixture.paths.launchctlURL)
-    let wrongOwnerService = LaunchAgentService(paths: wrongOwnerPaths, processRunner: fixture.runner)
+    let wrongOwnerService = LaunchAgentService(
+      paths: wrongOwnerPaths, processRunner: fixture.runner)
     let callsBefore = fixture.runner.calls
 
     XCTAssertThrowsError(try wrongOwnerService.uninstall())
@@ -507,7 +594,8 @@ private final class ServiceFixture {
     try FileManager.default.createDirectory(
       at: paths.executableURL.deletingLastPathComponent(), withIntermediateDirectories: true)
     try script.write(to: paths.executableURL)
-    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: paths.executableURL.path)
+    try FileManager.default.setAttributes(
+      [.posixPermissions: 0o755], ofItemAtPath: paths.executableURL.path)
   }
 
   func writeConfiguration(at url: URL) throws {
@@ -530,6 +618,7 @@ private final class FakeLaunchctlRunner: ExternalProcessRunning {
   var calls: [[String]] = []
   var isLoaded = false
   var isRunning = false
+  var lastExitCode: Int32?
   var failNextBootstrap = false
   var bootstrapFailuresRemaining = 0
   var failNextBootout = false
@@ -550,9 +639,12 @@ private final class FakeLaunchctlRunner: ExternalProcessRunning {
           status: 113, stdout: "", stderr: "Could not find service \"\(arguments[1])\"")
       }
       let processFields = isRunning ? "state = running\npid = 4321\n" : "state = waiting\n"
+      let exitCode = lastExitCode.map { String($0) } ?? "(never exited)"
       return ExternalProcessResult(
         status: 0,
-        stdout: "\(processFields)last exit code = (never exited)\npath = \(loadedPlistURL?.path ?? "")\n", stderr: "")
+        stdout:
+          "\(processFields)last exit code = \(exitCode)\npath = \(loadedPlistURL?.path ?? "")\n",
+        stderr: "")
     case "bootstrap":
       if failNextBootstrap || bootstrapFailuresRemaining > 0 {
         failNextBootstrap = false
@@ -560,7 +652,8 @@ private final class FakeLaunchctlRunner: ExternalProcessRunning {
         return ExternalProcessResult(status: 5, stdout: "", stderr: "injected bootstrap failure")
       }
       guard !isLoaded else {
-        return ExternalProcessResult(status: 113, stdout: "", stderr: "service already bootstrapped")
+        return ExternalProcessResult(
+          status: 113, stdout: "", stderr: "service already bootstrapped")
       }
       let plistURL = URL(fileURLWithPath: arguments[2])
       loadedPlistURL = plistURL
