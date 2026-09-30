@@ -74,6 +74,15 @@ public final class GestureActionPolicy {
     return token.generation == generation
   }
 
+  /// Invalidates work queued against the previous config without changing pause state.
+  public func invalidateFramesForConfigurationReload() {
+    lock.lock()
+    defer { lock.unlock() }
+    guard mode == .run else { return }
+    generation &+= 1
+    devicesRequiringLift.formUnion(activeDevices)
+  }
+
   public func mayDispatch(_ gesture: Gesture, from token: GestureFrameToken) -> Bool {
     lock.lock()
     defer { lock.unlock() }

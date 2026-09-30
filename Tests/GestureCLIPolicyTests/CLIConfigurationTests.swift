@@ -97,6 +97,10 @@ final class CLIConfigurationTests: XCTestCase {
       XCTAssertTrue(text.contains("aerospace-gestures init"))
       XCTAssertTrue(text.contains("aerospace-gestures check <config.json>"))
     }
+    let runHelp = CLIHelp.text(for: .run, defaultConfigurationURL: defaultURL)
+    XCTAssertTrue(runHelp.contains("Reload configuration"))
+    XCTAssertTrue(runHelp.contains("without restarting input"))
+
     let serviceHelp = CLIHelp.text(for: .service, defaultConfigurationURL: defaultURL)
     for term in ["LaunchAgent", "Library/LaunchAgents", "Input Monitoring/TCC", "/dev/null"] {
       XCTAssertTrue(serviceHelp.localizedCaseInsensitiveContains(term))
@@ -112,7 +116,8 @@ final class CLIConfigurationTests: XCTestCase {
     ]
 
     for (argument, action) in commands {
-      XCTAssertEqual(try CLIRequest.parse(["service", argument], in: environment), .service(action))
+      XCTAssertEqual(
+        try CLIRequest.parse(["service", argument], in: environment), .service(action))
     }
     XCTAssertEqual(try CLIRequest.parse(["service", "--help"], in: environment), .help(.service))
     XCTAssertThrowsError(try CLIRequest.parse(["service"], in: environment))

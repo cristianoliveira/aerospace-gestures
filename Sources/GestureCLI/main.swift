@@ -108,15 +108,18 @@ case .listen, .run:
 }
 
 let dryRun: Bool
+let configurationURL: URL?
 let configuration: Configuration?
 switch request {
 case .listen:
   dryRun = true
+  configurationURL = nil
   configuration = nil
-case .run(let configurationURL, let isDryRun):
+case .run(let url, let isDryRun):
   dryRun = isDryRun
+  configurationURL = url
   configuration = loadConfiguration(
-    at: configurationURL, startupDiagnostics: managedStartupDiagnostics)
+    at: url, startupDiagnostics: managedStartupDiagnostics)
 case .help, .initialize, .check, .service:
   fatalError("Handled CLI request unexpectedly reached device startup")
 }
@@ -129,6 +132,26 @@ case .help, .initialize, .check, .service:
   fatalError("Handled CLI request unexpectedly reached device startup")
 }
 let actionPolicy = GestureActionPolicy(mode: executionMode)
+let reloadPolicy = ConfigurationReloadPolicy(
+  initialConfiguration: configuration, mode: executionMode)
+let reloadAdapter: ConfigurationReloadAdapter?
+if executionMode == .run, let configurationURL {
+  let currentExecutableURL = URL(
+    fileURLWithPath: CommandLine.arguments[0], relativeTo: environment.currentDirectory
+  ).standardizedFileURL
+  let sourceResolver = ConfigurationReloadSourceResolver(
+    nixManaged: environment.values[ConfigurationReloadSourceResolver.nixManagedEnvironmentKey]
+      == "1",
+    fallbackURL: configurationURL,
+    currentExecutableURL: currentExecutableURL)
+  reloadAdapter = ConfigurationReloadAdapter(sourceResolver: sourceResolver) { configuration in
+    try ConfigurationDecision.validateExecutables(in: configuration) {
+      FileManager.default.isExecutableFile(atPath: $0)
+    }
+  }
+} else {
+  reloadAdapter = nil
+}
 
 let lockURL = environment.homeDirectory
   .appendingPathComponent("Library/Application Support/aerospace-gestures", isDirectory: true)
@@ -160,7 +183,10 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
       print("Receiving trackpad frames")
       fflush(stdout)
     }
-    var detector = detectors[device] ?? SwipeDetector(threshold: configuration?.threshold ?? 0.15)
+    let activeConfiguration = reloadPolicy.activeConfiguration
+    var detector =
+      detectors[device]
+      ?? SwipeDetector(threshold: activeConfiguration?.threshold ?? 0.15)
     let gesture = detector.update(contacts)
     detectors[device] = detector
     guard let gesture else { return }
@@ -170,7 +196,7 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
     fflush(stdout)
     guard
       let binding = CommandDecision.binding(
-        for: gesture, in: configuration?.bindings ?? [], dryRun: dryRun),
+        for: gesture, in: activeConfiguration?.bindings ?? [], dryRun: dryRun),
       actionPolicy.mayDispatch(gesture, from: frameToken)
     else { return }
     if !runner.run(
@@ -218,7 +244,15 @@ for number in [SIGINT, SIGTERM] {
 withExtendedLifetime(listenerLock) {
   if actionPolicy.showsMenuBarControl {
     MainActor.assumeIsolated {
-      runMenuBarApplication(actionPolicy: actionPolicy)
+      guard let reloadAdapter else { fatalError("Normal run requires a config reload adapter") }
+      runMenuBarApplication(
+        actionPolicy: actionPolicy,
+        reloadPolicy: reloadPolicy,
+        reloadAdapter: reloadAdapter,
+        onSuccessfulReload: {
+          actionPolicy.invalidateFramesForConfigurationReload()
+          detectors.removeAll()
+        })
     }
   } else {
     dispatchMain()
@@ -226,12 +260,21 @@ withExtendedLifetime(listenerLock) {
 }
 
 @MainActor
-func runMenuBarApplication(actionPolicy: GestureActionPolicy) {
+func runMenuBarApplication(
+  actionPolicy: GestureActionPolicy,
+  reloadPolicy: ConfigurationReloadPolicy,
+  reloadAdapter: ConfigurationReloadAdapter,
+  onSuccessfulReload: @escaping () -> Void
+) {
   let application = NSApplication.shared
   guard application.setActivationPolicy(.accessory) else {
     fail("Cannot configure the menu-bar action control")
   }
-  let menuBarControl = MenuBarControl(actionPolicy: actionPolicy)
+  let menuBarControl = MenuBarControl(
+    actionPolicy: actionPolicy,
+    reloadPolicy: reloadPolicy,
+    reloadAdapter: reloadAdapter,
+    onSuccessfulReload: onSuccessfulReload)
   withExtendedLifetime(menuBarControl) {
     application.run()
   }

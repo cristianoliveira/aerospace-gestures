@@ -36,7 +36,29 @@ final class GestureActionFlowTests: XCTestCase {
     XCTAssertEqual(dispatched, [Gesture(fingers: 3, direction: .left)])
   }
 
-  func testPauseDoesNotCancelAnAlreadyRunningCommand() throws {
+  func testReloadInvalidatesQueuedFramesPreservesPauseAndRequiresLift() {
+    let policy = GestureActionPolicy(mode: .run)
+    _ = policy.captureFrame(device: 1, contactCount: 3)
+    policy.setActionsEnabled(false)
+    let queuedWhilePaused = policy.captureFrame(device: 1, contactCount: 3)
+
+    policy.invalidateFramesForConfigurationReload()
+
+    XCTAssertEqual(policy.state, .paused)
+    XCTAssertFalse(policy.isCurrent(queuedWhilePaused))
+    XCTAssertFalse(
+      policy.mayDispatch(Gesture(fingers: 3, direction: .down), from: queuedWhilePaused))
+
+    policy.setActionsEnabled(true)
+    let heldAfterResume = policy.captureFrame(device: 1, contactCount: 3)
+    XCTAssertFalse(policy.mayDispatch(Gesture(fingers: 3, direction: .down), from: heldAfterResume))
+
+    _ = policy.captureFrame(device: 1, contactCount: 0)
+    let freshAfterLift = policy.captureFrame(device: 1, contactCount: 3)
+    XCTAssertTrue(policy.mayDispatch(Gesture(fingers: 3, direction: .down), from: freshAfterLift))
+  }
+
+  func testPauseAndReloadDoNotCancelAnAlreadyRunningCommand() throws {
     let directory = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString, isDirectory: true)
     defer { try? FileManager.default.removeItem(at: directory) }
@@ -69,6 +91,15 @@ final class GestureActionFlowTests: XCTestCase {
     policy.setActionsEnabled(false)
     XCTAssertEqual(policy.state, .paused)
     XCTAssertFalse(FileManager.default.fileExists(atPath: finished.path))
+
+    let original = try Configuration.load(Data(#"{"bindings":[]}"#.utf8))
+    let replacement = try Configuration.load(
+      Data(#"{"threshold":0.3,"bindings":[]}"#.utf8))
+    let reloadPolicy = ConfigurationReloadPolicy(initialConfiguration: original, mode: .run)
+    let reload = try XCTUnwrap(reloadPolicy.beginReload())
+    XCTAssertTrue(reloadPolicy.completeReload(reload, with: .success(replacement)))
+    policy.invalidateFramesForConfigurationReload()
+
     try Data().write(to: release)
     wait(for: [commandFinished], timeout: 3)
 

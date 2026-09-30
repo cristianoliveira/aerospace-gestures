@@ -62,7 +62,7 @@ public enum CLIHelp {
       usage = "Usage: \(command) run [config.json] [--dry-run]"
       example = "\(command) run --dry-run"
       description =
-        "Normal run starts enabled with a menu-bar action toggle; pausing keeps listening but blocks new commands. --dry-run observes only and never enables command execution."
+        "Normal run starts enabled with a menu-bar action toggle and Reload configuration; pausing keeps listening but blocks new commands. Reload validates before swapping without restarting input. --dry-run observes only and never enables command execution."
     case .service:
       usage = "Usage: \(command) service <install|status|start|stop|restart|uninstall>"
       example = "\(command) service status"

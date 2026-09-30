@@ -1,6 +1,6 @@
 import Foundation
 
-public enum Direction: String, Codable { case left, right, up, down }
+public enum Direction: String, Codable, Sendable { case left, right, up, down }
 
 public struct Gesture: Equatable, Hashable {
   public let fingers: Int
@@ -71,14 +71,14 @@ public struct SwipeDetector {
   }
 }
 
-public struct Binding: Decodable {
+public struct Binding: Decodable, Sendable {
   public let fingers: Int
   public let direction: Direction
   public let command: [String]
   public var gesture: Gesture { Gesture(fingers: fingers, direction: direction) }
 }
 
-public struct Configuration: Decodable {
+public struct Configuration: Decodable, Sendable {
   public let threshold: Double
   public let bindings: [Binding]
 
