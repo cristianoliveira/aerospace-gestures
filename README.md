@@ -76,7 +76,7 @@ A normal `run` starts enabled and adds a small accessory menu-bar control. Choos
 
 The menu and accessibility label distinguish **Actions enabled** from **Actions paused — listener active**; the icon is not a hardware-health indicator. The same process owns the status item in foreground and LaunchAgent modes—there is no second listener, IPC process, or Quit menu action. Normal run requests accessory activation (no Dock icon) without an app bundle.
 
-Menu-bar acceptance is pending; no service or trackpad test was performed. When separately approved, verify: (1) normal run shows one accessible enabled item; three-finger down launches the configured popup; (2) while paused, the same swipe remains visible in the terminal but launches nothing; (3) enabling actions and lifting before a fresh swipe launches exactly one popup; (4) listen/dry-run never show an enabling item or execute commands; (5) under LaunchAgent with Terminal closed there is one status item and no Dock icon, toggling does not restart the job, stop removes the item, start restores it enabled, and restart resets the session state.
+Menu-bar acceptance was manually verified by the user on macOS 26.7 arm64 using a test-owned release binary, isolated popup configuration, and per-user LaunchAgent; the test job was then stopped and uninstalled. The user confirmed the enabled/paused labels and icon, one popup for an enabled three-finger-down swipe, no popup while paused, one popup after enabling and lifting before a fresh swipe, no Dock icon, and persistence with Terminal closed. Paused-state frame logging was not directly observed because LaunchAgent stdout/stderr are discarded. No TCC changes were made. Login/logout, crash recovery, binary replacement/TCC identity, reconnect, sleep/wake, and other OS/hardware combinations remain unverified.
 
 ## Install the binary
 
@@ -166,4 +166,4 @@ make check
 - `Sources/GestureCLI`: CLI composition and event wiring; listen/dry-run are safe first steps.
 - See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for dependency boundaries, configuration, and test strategy.
 
-Manual acceptance: test each bound direction in another focused app; confirm one event per swipe, no event for two fingers/pinch, rearming after lift, and no conflicting system action. Then test with the harmless example before enabling AeroSpace commands.
+Manual acceptance covered the default three-finger-down popup only; test additional bound directions, two-finger/pinch rejection, and conflicting system actions separately before enabling AeroSpace commands.
