@@ -61,9 +61,35 @@ case .check(let configurationURL):
   let configuration = loadConfiguration(at: configurationURL)
   print("Configuration valid: \(configuration.bindings.count) bindings")
   exit(0)
-case .listen:
-  break
-case .run:
+case .service(let action):
+  let executableURL = environment.homeDirectory
+    .appendingPathComponent(".local/bin/aerospace-gestures")
+  let paths = LaunchAgentPaths(
+    homeDirectory: environment.homeDirectory,
+    executableURL: executableURL,
+    configurationURL: ConfigurationPath.resolve(explicitPath: nil, in: environment),
+    uid: getuid())
+  let service = LaunchAgentService(paths: paths)
+  do {
+    if action == .status {
+      print(try service.status())
+      exit(0)
+    }
+    let result: ServiceOperationResult
+    switch action {
+    case .install: result = try service.install()
+    case .start: result = try service.start()
+    case .stop: result = try service.stop()
+    case .restart: result = try service.restart()
+    case .uninstall: result = try service.uninstall()
+    case .status: fatalError("service status is handled above")
+    }
+    print(serviceMessage(for: result))
+    exit(0)
+  } catch {
+    fail(String(describing: error))
+  }
+case .listen, .run:
   break
 }
 
@@ -76,8 +102,21 @@ case .listen:
 case .run(let configurationURL, let isDryRun):
   dryRun = isDryRun
   configuration = loadConfiguration(at: configurationURL)
-case .help, .initialize, .check:
+case .help, .initialize, .check, .service:
   fatalError("Handled CLI request unexpectedly reached device startup")
+}
+
+let lockURL = environment.homeDirectory
+  .appendingPathComponent("Library/Application Support/aerospace-gestures", isDirectory: true)
+  .appendingPathComponent("listener.lock")
+let listenerLock: InstanceLock
+do {
+  listenerLock = try InstanceLock.acquire(
+    at: lockURL,
+    under: environment.homeDirectory,
+    waitForContention: ProcessInfo.processInfo.environment["AEROSPACE_GESTURES_MANAGED"] == "1")
+} catch {
+  fail(String(describing: error))
 }
 
 let runner = CommandRunner()
@@ -139,4 +178,21 @@ for number in [SIGINT, SIGTERM] {
   source.resume()
   signals.append(source)
 }
-dispatchMain()
+withExtendedLifetime(listenerLock) {
+  dispatchMain()
+}
+
+func serviceMessage(for result: ServiceOperationResult) -> String {
+  switch result {
+  case .installed: return "Installed and started the per-user LaunchAgent."
+  case .updated: return "Updated and restarted the per-user LaunchAgent."
+  case .alreadyInstalled: return "LaunchAgent is already installed and running."
+  case .started: return "Started or activated the per-user LaunchAgent."
+  case .alreadyRunning: return "LaunchAgent is already running; no change made."
+  case .stopped: return "Stopped the per-user LaunchAgent; login startup remains enabled."
+  case .alreadyStopped: return "LaunchAgent is already stopped."
+  case .restarted: return "Restarted the per-user LaunchAgent."
+  case .uninstalled: return "Uninstalled the per-user LaunchAgent; binary/config were preserved."
+  case .notInstalled: return "LaunchAgent is not installed; no change made."
+  }
+}

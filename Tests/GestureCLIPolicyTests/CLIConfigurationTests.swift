@@ -89,7 +89,7 @@ final class CLIConfigurationTests: XCTestCase {
       values: [:], homeDirectory: home, currentDirectory: currentDirectory)
     let defaultURL = ConfigurationPath.resolve(explicitPath: nil, in: environment)
 
-    for topic in [CLIHelpTopic.root, .initialize, .check, .run, .listen] {
+    for topic in [CLIHelpTopic.root, .initialize, .check, .run, .listen, .service] {
       let text = CLIHelp.text(for: topic, defaultConfigurationURL: defaultURL)
       XCTAssertTrue(text.contains(defaultURL.path))
       XCTAssertTrue(text.contains("Prerequisites:"))
@@ -97,6 +97,27 @@ final class CLIConfigurationTests: XCTestCase {
       XCTAssertTrue(text.contains("aerospace-gestures init"))
       XCTAssertTrue(text.contains("aerospace-gestures check <config.json>"))
     }
+    let serviceHelp = CLIHelp.text(for: .service, defaultConfigurationURL: defaultURL)
+    for term in ["LaunchAgent", "Library/LaunchAgents", "Input Monitoring/TCC", "/dev/null"] {
+      XCTAssertTrue(serviceHelp.localizedCaseInsensitiveContains(term))
+    }
+  }
+
+  func testServiceLifecycleArgumentsAreParsedWithoutStartingDevices() throws {
+    let environment = CLIEnvironment(
+      values: [:], homeDirectory: home, currentDirectory: currentDirectory)
+    let commands: [(String, CLIServiceAction)] = [
+      ("install", .install), ("status", .status), ("start", .start),
+      ("stop", .stop), ("restart", .restart), ("uninstall", .uninstall),
+    ]
+
+    for (argument, action) in commands {
+      XCTAssertEqual(try CLIRequest.parse(["service", argument], in: environment), .service(action))
+    }
+    XCTAssertEqual(try CLIRequest.parse(["service", "--help"], in: environment), .help(.service))
+    XCTAssertThrowsError(try CLIRequest.parse(["service"], in: environment))
+    XCTAssertThrowsError(try CLIRequest.parse(["service", "start", "extra"], in: environment))
+    XCTAssertThrowsError(try CLIRequest.parse(["service", "reload"], in: environment))
   }
 
   func testSubcommandHelpAndInvalidArgumentsAreParsedWithoutStartingDevices() throws {

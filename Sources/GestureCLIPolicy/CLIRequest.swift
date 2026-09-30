@@ -19,6 +19,7 @@ public enum CLIHelpTopic: Equatable {
   case check
   case run
   case listen
+  case service
 }
 
 public enum CLIHelp {
@@ -35,11 +36,13 @@ public enum CLIHelp {
           \(command) listen
           \(command) check [config.json]
           \(command) run [config.json] [--dry-run]
+          \(command) service <install|status|start|stop|restart|uninstall>
         """
       example = "\(command) init && \(command) check && \(command) run --dry-run"
       description = """
         init creates a safe three-finger-down popup config and never overwrites a file or symlink.
         check validates configuration and executable paths without starting devices or commands.
+        service manages this user's GUI LaunchAgent; it never grants permissions or builds the binary.
         """
     case .initialize:
       usage = "Usage: \(command) init [config.json]"
@@ -60,6 +63,17 @@ public enum CLIHelp {
       example = "\(command) run --dry-run"
       description =
         "Requires macOS 13+ and a multitouch trackpad. --dry-run observes but never executes commands."
+    case .service:
+      usage = "Usage: \(command) service <install|status|start|stop|restart|uninstall>"
+      example = "\(command) service status"
+      description = """
+        Manages the per-user GUI LaunchAgent at ~/Library/LaunchAgents/com.aerospace-gestures.plist.
+        install requires a prebuilt executable at ~/.local/bin/aerospace-gestures and a valid config.
+        install never builds software or changes Input Monitoring/TCC permissions.
+        stop retains the plist; uninstall removes only the owned plist and preserves binary/config.
+        Persistent logs are disabled; launchd stdout/stderr are /dev/null (zero retained bytes).
+        status reports launchd registration/process state, not trackpad responsiveness.
+        """
     }
 
     return """
@@ -77,12 +91,22 @@ public enum CLIHelp {
   }
 }
 
+public enum CLIServiceAction: String, Equatable {
+  case install
+  case status
+  case start
+  case stop
+  case restart
+  case uninstall
+}
+
 public enum CLIRequest: Equatable {
   case help(CLIHelpTopic)
   case listen
   case initialize(configuration: URL)
   case check(configuration: URL)
   case run(configuration: URL, dryRun: Bool)
+  case service(CLIServiceAction)
 
   public static func parse(_ arguments: [String], in environment: CLIEnvironment) throws
     -> CLIRequest
@@ -97,6 +121,7 @@ public enum CLIRequest: Equatable {
       case "check": return .help(.check)
       case "run": return .help(.run)
       case "listen": return .help(.listen)
+      case "service": return .help(.service)
       default: throw CLIArgumentError.unknownCommand(command)
       }
     }
@@ -131,6 +156,12 @@ public enum CLIRequest: Equatable {
       return .run(
         configuration: ConfigurationPath.resolve(explicitPath: paths.first, in: environment),
         dryRun: dryRun)
+    case "service":
+      guard options.count == 1, let action = CLIServiceAction(rawValue: options[0]) else {
+        throw CLIArgumentError.invalidArguments(
+          "Expected service install|status|start|stop|restart|uninstall")
+      }
+      return .service(action)
     default:
       throw CLIArgumentError.unknownCommand(command)
     }

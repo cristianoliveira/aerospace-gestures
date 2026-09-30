@@ -79,7 +79,25 @@ cp .build/release/aerospace-gestures "$HOME/.local/bin/"
 "$HOME/.local/bin/aerospace-gestures" --help
 ```
 
-No login item or service is installed automatically. Keep the process running in a terminal for now.
+No login item or service is installed automatically. You can keep the process running in a terminal or explicitly enable the per-user LaunchAgent below.
+
+## Optional per-user service
+
+Build and copy the executable first; service commands never build or replace it. Initialize and validate the configuration before installation:
+
+```sh
+swift build -c release
+mkdir -p "$HOME/.local/bin"
+cp .build/release/aerospace-gestures "$HOME/.local/bin/"
+"$HOME/.local/bin/aerospace-gestures" init # only if your config is absent
+"$HOME/.local/bin/aerospace-gestures" check
+"$HOME/.local/bin/aerospace-gestures" service install
+"$HOME/.local/bin/aerospace-gestures" service status
+```
+
+The service is a per-user GUI LaunchAgent at `~/Library/LaunchAgents/com.aerospace-gestures.plist`. `install` captures the current default config path and starts login startup; reinstall after changing `XDG_CONFIG_HOME`. `stop` unloads it for this login but retains the plist; `start` loads it again; `restart` validates the captured config before reloading; `uninstall` removes only the managed plist and preserves the executable/config. `service status` reports plist ownership, launchd state/PID/last exit status, config path, and that trackpad responsiveness is unverified. The service and foreground `run`/`listen` share a kernel lock to prevent duplicate listeners.
+
+The LaunchAgent waits for the foreground listener to release the shared lock, so a startup race does not create a KeepAlive retry loop; foreground `run`/`listen` still fail immediately on contention. The service does not sign the binary or change Input Monitoring/TCC permissions. Persistent logs are deliberately disabled to guarantee bounded retention and avoid recording user command data; LaunchAgent stdout/stderr go to `/dev/null`, and status reports zero retained log bytes. Launchd state and last exit status are available through `service status`, but detailed startup logs are not retained.
 
 ## Behavior and limits
 
@@ -89,8 +107,8 @@ No login item or service is installed automatically. Keep the process running in
 - Each device has independent recognition state. Devices are enumerated at startup; restart after reconnecting a trackpad.
 - Only one child command runs at a time. Gestures while busy are dropped, not queued.
 - Child commands receive a termination signal after five seconds, then SIGKILL one second later if still running. Ctrl-C stops input and applies the same bounded termination to an active child before the CLI exits. This bounds the direct child, not subprocess trees; commands must not daemonize.
-- No taps, holds, gesture suppression, automatic startup, or App Store/sandbox support.
-- Private device callbacks and physical recognition have no automated hardware coverage. Startup was smoke-tested on an Intel macOS 26 host; Apple Silicon and other OS versions remain unverified.
+- No taps, holds, gesture suppression, automatic startup by default, or App Store/sandbox support.
+- Private device callbacks and physical recognition have no automated hardware coverage. A three-finger popup was manually confirmed on Intel and arm64 macOS 26; other OS versions and stable TCC identity across binary replacement remain unverified.
 
 ## Development
 
@@ -101,7 +119,7 @@ make check
 ```
 
 - `Sources/GestureCore`: deterministic swipe recognition and configuration validation.
-- `Sources/GestureInfrastructure`: configuration file loading, exclusive initialization, and bounded command execution.
+- `Sources/GestureInfrastructure`: configuration file loading, exclusive initialization, bounded command execution, LaunchAgent lifecycle, and listener locking.
 - `Sources/MultitouchBridge` and `Sources/MultitouchInput`: isolated private ABI and copied contact frames.
 - `Sources/GestureCLIPolicy`: testable CLI argument/path and gesture-to-binding decisions.
 - `Sources/GestureCLI`: CLI composition and event wiring; listen/dry-run are safe first steps.
