@@ -90,8 +90,10 @@ No login item or service is installed automatically. Keep the process running in
 
 ## Development
 
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the canonical workflow, hooks, gate, and recovery steps.
+
 ```sh
-swift test --enable-code-coverage
+make check
 ```
 
 - `Sources/GestureCore`: deterministic swipe recognition and configuration validation.
