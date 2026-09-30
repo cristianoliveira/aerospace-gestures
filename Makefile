@@ -1,10 +1,16 @@
-.PHONY: check test format format-check coverage hooks-install hooks-check
+.PHONY: check test install format format-check coverage hooks-install hooks-check
 
 check:
 	@./scripts/check.sh
 
 test:
 	swift test
+	@./scripts/test-install.sh
+
+# First install only; an existing binary is never replaced or restarted.
+install:
+	swift build -c release
+	@./scripts/install-binary.sh .build/release/aerospace-gestures "$(HOME)/.local/bin"
 
 format:
 	xcrun swift-format format --in-place --recursive Sources Tests

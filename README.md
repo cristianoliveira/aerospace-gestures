@@ -81,22 +81,18 @@ Menu-bar acceptance was manually verified by the user on macOS 26.7 arm64 using 
 ## Install the binary
 
 ```sh
-swift build -c release
-mkdir -p "$HOME/.local/bin"
-cp -n .build/release/aerospace-gestures "$HOME/.local/bin/"
+make install
 "$HOME/.local/bin/aerospace-gestures" --help
 ```
 
-No login item or service is installed automatically. You can keep the process running in a terminal or explicitly enable the per-user LaunchAgent below. This repository does not publish a signed installer; the commands below build and install a local release binary. Use the stable `~/.local/bin/aerospace-gestures` path for the service. The copy commands are for first install only; use the update procedure below before replacing an existing binary.
+`make install` builds the release executable and installs it at `~/.local/bin/aerospace-gestures` only if absent. It refuses to replace an existing binary or symlink and does not start/restart a service. No login item or service is installed automatically. This repository does not publish a signed installer; use the update procedure below before replacing an existing binary. If you declare a Nix-managed LaunchAgent, install the binary before activating it and do not also run `service install` for the same job.
 
 ## Optional per-user service
 
-Build and copy the executable first; service commands never build or replace it. These copy commands are for first install only. Initialize and validate the configuration before installation:
+Install the executable first; service commands never build or replace it. `make install` is for first install only. Initialize and validate the configuration before service installation:
 
 ```sh
-swift build -c release
-mkdir -p "$HOME/.local/bin"
-cp -n .build/release/aerospace-gestures "$HOME/.local/bin/"
+make install
 "$HOME/.local/bin/aerospace-gestures" init # only if your config is absent
 "$HOME/.local/bin/aerospace-gestures" check
 "$HOME/.local/bin/aerospace-gestures" service install
