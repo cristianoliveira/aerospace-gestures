@@ -2,6 +2,22 @@
 
 Map three-, four-, or five-finger macOS trackpad swipes to commands. Experimental Swift CLI; no third-party packages or network access.
 
+## Install
+
+From this repo (requires Swift 5.9+):
+
+```sh
+make install
+```
+
+This installs `~/.local/bin/aerospace-gestures`; add `~/.local/bin` to your `PATH`. It will not replace an existing binary.
+
+Homebrew (tap not published yet):
+
+```sh
+brew install cristianoliveira/aerospace-gestures/aerospace-gestures
+```
+
 ## Try it
 
 Requires macOS 13+, a multitouch trackpad, and Swift 5.9+.
@@ -30,6 +46,16 @@ Run the CLI with that file:
 swift run aerospace-gestures check ./config.json
 swift run aerospace-gestures run ./config.json
 ```
+
+## Uninstall
+
+For a Homebrew installation:
+
+```sh
+brew uninstall aerospace-gestures
+```
+
+For a repo installation, stop any managed service before deleting `~/.local/bin/aerospace-gestures` (see [Usage](docs/USAGE.md)).
 
 This uses Apple's private `MultitouchSupport` framework. It does not suppress system gestures, and macOS may require Input Monitoring permission for your terminal. Do not use sudo.
 
