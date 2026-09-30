@@ -1,7 +1,7 @@
 ---
 id: TASK-0003
 title: Add per-user service lifecycle commands
-status: todo
+status: doing
 depends_on: [TASK-0002]
 priority: normal
 tags: [macos, service, cli]
