@@ -135,7 +135,7 @@ public struct ConfigurationReloadSourceResolver: Sendable {
     }
   }
 
-  private func validateRegularFile(_ url: URL, requireNonWritable: Bool) throws {
+  func validateRegularFile(_ url: URL, requireNonWritable: Bool) throws {
     let information = try fileInformation(at: url)
     let writableMask = mode_t(S_IWUSR | S_IWGRP | S_IWOTH)
     guard

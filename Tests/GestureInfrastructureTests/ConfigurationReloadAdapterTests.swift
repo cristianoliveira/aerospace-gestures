@@ -1,8 +1,8 @@
 import Darwin
 import Foundation
 import GestureCore
-import GestureInfrastructure
 import XCTest
+@testable import GestureInfrastructure
 
 final class ConfigurationReloadAdapterTests: XCTestCase {
   func testManualRunKeepsItsExplicitConfigurationPath() throws {
@@ -40,6 +40,50 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
     try fixture.pointStableConfiguration(to: second)
 
     XCTAssertEqual(try adapter.load().bindings.first?.command, ["/bin/echo", "new"])
+  }
+
+  func testMissingManagedPlistIsRejected() throws {
+    let fixture = try Fixture()
+    defer { fixture.remove() }
+
+    XCTAssertThrowsError(try fixture.resolver(nixManaged: true).resolve()) { error in
+      XCTAssertTrue(String(describing: error).contains("Untrusted managed configuration path"))
+    }
+  }
+
+  func testMalformedManagedPlistIsRejected() throws {
+    let fixture = try Fixture()
+    defer { fixture.remove() }
+    try Data("not a property list".utf8).write(to: fixture.plistURL)
+    try FileManager.default.setAttributes(
+      [.posixPermissions: 0o444], ofItemAtPath: fixture.plistURL.path)
+
+    XCTAssertThrowsError(try fixture.resolver(nixManaged: true).resolve()) { error in
+      XCTAssertTrue(String(describing: error).contains("valid managed LaunchAgent plist"))
+    }
+  }
+
+  func testWritableManagedPlistIsRejected() throws {
+    let fixture = try Fixture()
+    defer { fixture.remove() }
+    try fixture.installManagedPlist(permissions: 0o644)
+
+    XCTAssertThrowsError(try fixture.resolver(nixManaged: true).resolve()) { error in
+      XCTAssertTrue(String(describing: error).contains("file must be regular"))
+    }
+  }
+
+  func testManagedPlistOwnedByUnexpectedUIDIsRejected() throws {
+    let fixture = try Fixture()
+    defer { fixture.remove() }
+    try fixture.installManagedPlist()
+    let resolver = fixture.resolver(nixManaged: true, trustedOwnerUID: getuid() + 1)
+
+    XCTAssertThrowsError(
+      try resolver.validateRegularFile(fixture.plistURL, requireNonWritable: true)
+    ) { error in
+      XCTAssertTrue(String(describing: error).contains("file must be regular"))
+    }
   }
 
   func testInvalidManagedPlistIsRejectedWithoutFallingBack() throws {
@@ -171,18 +215,21 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
         storeDirectoryURL: storeDirectoryURL)
     }
 
-    func resolver(nixManaged: Bool) -> ConfigurationReloadSourceResolver {
+    func resolver(
+      nixManaged: Bool, trustedOwnerUID: uid_t = getuid()
+    ) -> ConfigurationReloadSourceResolver {
       ConfigurationReloadSourceResolver(
         nixManaged: nixManaged,
         fallbackURL: root.appendingPathComponent("manual/config.json"),
         currentExecutableURL: executableURL,
         paths: sourcePaths,
-        trustedOwnerUID: getuid())
+        trustedOwnerUID: trustedOwnerUID)
     }
 
     func installManagedPlist(
       label: String = "com.aerospace-gestures", executablePath: String? = nil,
-      nixManagedMarker: String? = "1", programArguments: [String]? = nil
+      nixManagedMarker: String? = "1", programArguments: [String]? = nil,
+      permissions: Int = 0o444
     ) throws {
       let arguments =
         programArguments
@@ -199,7 +246,8 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
         try FileManager.default.removeItem(at: plistURL)
       }
       try data.write(to: plistURL)
-      try FileManager.default.setAttributes([.posixPermissions: 0o444], ofItemAtPath: plistURL.path)
+      try FileManager.default.setAttributes(
+        [.posixPermissions: permissions], ofItemAtPath: plistURL.path)
     }
 
     func writeStoreConfiguration(_ argument: String, permissions: Int = 0o444) throws -> URL {
