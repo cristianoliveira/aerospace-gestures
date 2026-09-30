@@ -1,7 +1,7 @@
 ---
 id: TASK-0006
 title: Add executable quality gates and engineering guardrails
-status: todo
+status: doing
 depends_on: [TASK-0005]
 priority: high
 tags: [guardrails, tooling, ci]
