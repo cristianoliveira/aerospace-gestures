@@ -16,6 +16,20 @@ final class GestureCoreTests: XCTestCase {
         XCTAssertEqual(detector.update(points(x: 0.4)), Gesture(fingers: 3, direction: .left))
     }
 
+    func testThreeFingerDownSwipeEmitsOnceAndRearmsAfterLift() {
+        var detector = SwipeDetector(threshold: 0.15)
+        let expected = Gesture(fingers: 3, direction: .down)
+
+        XCTAssertNil(detector.update(points(x: 0.5, y: 0.8)))
+        XCTAssertNil(detector.update(points(x: 0.5, y: 0.75)))
+        XCTAssertEqual(detector.update(points(x: 0.5, y: 0.5)), expected)
+        XCTAssertNil(detector.update(points(x: 0.5, y: 0.2)))
+
+        XCTAssertNil(detector.update([]))
+        XCTAssertNil(detector.update(points(x: 0.5, y: 0.8)))
+        XCTAssertEqual(detector.update(points(x: 0.5, y: 0.5)), expected)
+    }
+
     func testFourFingerVerticalSwipeAndSmallMovement() {
         var detector = SwipeDetector(threshold: 0.15)
         XCTAssertNil(detector.update(points(4, x: 0.5, y: 0.2)))

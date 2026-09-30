@@ -4,6 +4,18 @@ Small experimental macOS CLI: map three-, four-, or five-finger trackpad swipes 
 
 **Not a supported macOS gesture API.** This uses the private `MultitouchSupport` framework. Its ABI may change or crash on future macOS releases. It observes touches; it does **not** suppress system gestures. Real swipe behavior must be verified on your trackpad.
 
+## First experiment: three fingers down → popup
+
+```sh
+swift run aerospace-gestures run config.probe.json
+```
+
+Move three fingers down the trackpad. A dialog should say **“It's hooked!”**, then close after three seconds (or click OK). Lift all fingers before trying again. Ctrl-C in the terminal stops the listener.
+
+Only three-finger down has an action in this configuration. Other detected gestures may appear in the terminal but do nothing. No AeroSpace setup is needed. The popup uses a dialog rather than a notification banner, so it does not depend on notification settings; it may take focus.
+
+If macOS also opens App Exposé, disable its conflicting gesture in **System Settings → Trackpad → More Gestures**. If no popup appears, use the listen-only steps below to check whether touch events arrive.
+
 ## Try safely
 
 Requires macOS 13+, a multitouch trackpad, and a Swift 5.9+ toolchain (Xcode Command Line Tools: `xcode-select --install`).
