@@ -1,0 +1,89 @@
+# aerospace-gestures
+
+Small experimental macOS CLI: map three-, four-, or five-finger trackpad swipes to commands. Swift, a small C bridge, no third-party packages, no GUI or network access.
+
+**Not a supported macOS gesture API.** This uses the private `MultitouchSupport` framework. Its ABI may change or crash on future macOS releases. It observes touches; it does **not** suppress system gestures. Real swipe behavior must be verified on your trackpad.
+
+## Try safely
+
+Requires macOS 13+, a multitouch trackpad, and a Swift 5.9+ toolchain (Xcode Command Line Tools: `xcode-select --install`).
+
+```sh
+swift run aerospace-gestures listen
+```
+
+Swipe with three or four fingers while another application is focused. You should see `Receiving trackpad frames`, followed by direction events. Direction describes physical finger motion, independent of Natural Scrolling. Ctrl-C stops the process. Listen mode never runs commands.
+
+If no frames arrive, check **System Settings → Privacy & Security → Input Monitoring** for your terminal, then restart the process. Permission requirements can vary with macOS; this tool does not bypass them. Do not use sudo.
+
+Disable conflicting actions in **System Settings → Trackpad → More Gestures**, including Spaces/Mission Control gestures. Also check Accessibility's three-finger dragging setting. The helper does not change your settings.
+
+## Configure commands
+
+```sh
+cp config.example.json config.json
+swift run aerospace-gestures check config.json
+swift run aerospace-gestures run config.json --dry-run
+swift run aerospace-gestures run config.json
+```
+
+The example runs only `/bin/echo`; child output is discarded. Successful execution appears as `Command exited with status 0`.
+
+For AeroSpace, find its absolute path:
+
+```sh
+command -v aerospace
+```
+
+Replace a binding with your path, for example:
+
+```json
+{
+  "fingers": 3,
+  "direction": "left",
+  "command": ["/opt/homebrew/bin/aerospace", "workspace", "next"]
+}
+```
+
+Configuration:
+
+- `fingers`: 3, 4, or 5.
+- `direction`: `left`, `right`, `up`, or `down`.
+- `command`: executable's absolute path followed by separate arguments. No shell expansion, pipes, or redirection. For more complex actions, invoke your own executable script.
+- `threshold`: optional, defaults to `0.15`, allowed range `0.02`–`0.8`. Measured as normalized trackpad displacement, not pixels. Lower values are more sensitive.
+
+Configuration is loaded once; restart after editing. Duplicate bindings are rejected. Only use configuration/scripts you trust: commands run with your account's permissions.
+
+## Install the binary
+
+```sh
+swift build -c release
+mkdir -p "$HOME/.local/bin"
+cp .build/release/aerospace-gestures "$HOME/.local/bin/"
+"$HOME/.local/bin/aerospace-gestures" --help
+```
+
+No login item or service is installed automatically. Keep the process running in a terminal for now.
+
+## Behavior and limits
+
+- One action per contact sequence, rearmed after all fingers lift.
+- All fingers must move in the same direction; small movements and ambiguous diagonals are ignored.
+- Changing finger identities/count resets the movement origin before recognition.
+- Each device has independent recognition state. Devices are enumerated at startup; restart after reconnecting a trackpad.
+- Only one child command runs at a time. Gestures while busy are dropped, not queued.
+- Child commands receive a termination signal after five seconds, then SIGKILL one second later if still running. This bounds the direct child, not subprocess trees; commands must not daemonize. Ctrl-C requests child termination.
+- No taps, holds, gesture suppression, automatic startup, or App Store/sandbox support.
+- Private device callbacks and physical recognition have no automated hardware coverage. Startup was smoke-tested on an Intel macOS 26 host; Apple Silicon and other OS versions remain unverified.
+
+## Development
+
+```sh
+swift test --filter GestureCoreTests --enable-code-coverage
+```
+
+- `Sources/GestureCore`: deterministic swipe recognition, configuration validation, bounded command execution.
+- `Sources/MultitouchBridge`: isolated reverse-engineered private ABI and callback lifecycle.
+- `Sources/GestureCLI`: CLI and event wiring; listen/dry-run are safe first steps.
+
+Manual acceptance: test each bound direction in another focused app; confirm one event per swipe, no event for two fingers/pinch, rearming after lift, and no conflicting system action. Then test with the harmless example before enabling AeroSpace commands.
