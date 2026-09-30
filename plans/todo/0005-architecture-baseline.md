@@ -1,7 +1,7 @@
 ---
 id: TASK-0005
 title: Establish small Swift architecture boundaries
-status: todo
+status: doing
 depends_on: []
 priority: high
 tags: [architecture, foundation]
