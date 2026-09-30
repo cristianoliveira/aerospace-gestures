@@ -31,4 +31,4 @@ Successful service startup alone does not prove reliable login recovery, bounded
 
 ## Out of scope
 
-GUI, hot reload, gesture suppression, taps/holds, system-wide daemon, automatic permission changes, general command scheduling, and package distribution/signing infrastructure. Revisit signing only if TASK-0002 proves it necessary.
+Settings GUI, hot reload, gesture suppression, taps/holds, system-wide daemon, automatic permission changes, general command scheduling, and package distribution/signing infrastructure. The small menu-bar debugging control is tracked separately in TASK-0007. Revisit signing only if TASK-0002 proves it necessary.
