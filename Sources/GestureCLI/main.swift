@@ -1,7 +1,9 @@
 import Foundation
 import Darwin
 import GestureCore
-import MultitouchBridge
+import GestureInfrastructure
+import GestureCLIPolicy
+import MultitouchInput
 
 let help = """
 Usage:
@@ -71,12 +73,7 @@ let runner = CommandRunner()
 var detectors: [UInt: SwipeDetector] = [:]
 var receivedFrame = false
 
-let callback: AGFrameCallback = { device, raw, count in
-    // Copy before returning: the framework owns callback memory.
-    let contacts: [Contact] = (0..<Int(count)).map { index in
-        let point = raw![index]
-        return Contact(id: Int(point.id), x: Double(point.x), y: Double(point.y))
-    }
+let onFrame: (UInt, [Contact]) -> Void = { device, contacts in
     DispatchQueue.main.async {
         if !receivedFrame {
             receivedFrame = true
@@ -87,12 +84,12 @@ let callback: AGFrameCallback = { device, raw, count in
         detectors[device] = detector
         guard let gesture else { return }
         log("\(gesture.fingers)-finger \(gesture.direction.rawValue)\(dryRun ? " (listen only)" : "")")
-        guard !dryRun, let binding = configuration?.bindings.first(where: { $0.gesture == gesture }) else { return }
+        guard let binding = CommandDecision.binding(for: gesture, in: configuration?.bindings ?? [], dryRun: dryRun) else { return }
         if !runner.run(binding.command, completion: log) { log("Command not started (busy or launch failed)") }
     }
 }
 
-if let error = AGStart(callback) { fail(String(cString: error)) }
+if let error = MultitouchInput.start(onFrame: onFrame) { fail(error) }
 log("Listening. Private API is experimental; system gestures are NOT suppressed. Ctrl-C to stop.")
 DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
     if !receivedFrame {
@@ -104,7 +101,7 @@ for number in [SIGINT, SIGTERM] {
     signal(number, SIG_IGN)
     let source = DispatchSource.makeSignalSource(signal: number, queue: .main)
     source.setEventHandler {
-        AGStop()
+        MultitouchInput.stop()
         runner.stop()
         exit(0)
     }

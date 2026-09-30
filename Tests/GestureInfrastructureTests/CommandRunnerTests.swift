@@ -1,5 +1,5 @@
 import XCTest
-@testable import GestureCore
+@testable import GestureInfrastructure
 
 final class CommandRunnerTests: XCTestCase {
     func testPassesArgumentsLiterallyWithoutShellExpansion() {
@@ -34,6 +34,29 @@ final class CommandRunnerTests: XCTestCase {
             completed.fulfill()
         })
         XCTAssertFalse(runner.run(["/usr/bin/true"]) { _ in XCTFail("Busy command must not run") })
+        wait(for: [completed], timeout: 3)
+    }
+
+    func testStopTerminatesActiveCommand() {
+        let completed = expectation(description: "active command stopped")
+        let runner = CommandRunner(timeout: 30)
+        XCTAssertTrue(runner.run(["/bin/sleep", "30"]) { message in
+            XCTAssertNotEqual(message, "Command exited with status 0")
+            completed.fulfill()
+        })
+
+        runner.stop()
+        wait(for: [completed], timeout: 3)
+    }
+
+    func testTimeoutEscalatesWhenCommandIgnoresTermination() {
+        let completed = expectation(description: "unresponsive command killed")
+        let runner = CommandRunner(timeout: 0.05)
+        XCTAssertTrue(runner.run(["/bin/sh", "-c", "trap '' TERM; exec /bin/sleep 30"]) { message in
+            XCTAssertNotEqual(message, "Command exited with status 0")
+            completed.fulfill()
+        })
+
         wait(for: [completed], timeout: 3)
     }
 }

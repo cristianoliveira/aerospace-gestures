@@ -1,5 +1,6 @@
 import Foundation
 import Darwin
+import GestureCore
 
 /// Main-thread runner. One child at a time; busy gestures are dropped, never queued.
 public final class CommandRunner {

@@ -1,0 +1,44 @@
+# Architecture
+
+## Package boundaries
+
+```text
+GestureCLI ──▶ GestureInfrastructure ──▶ GestureCore
+     │
+     ├───────▶ GestureCore
+     ├───────▶ GestureCLIPolicy ──▶ GestureCore
+     └───────▶ MultitouchInput ──▶ GestureCore
+                              └──▶ MultitouchBridge (private C ABI)
+```
+
+SwiftPM enforces these edges: `GestureCore` has no target dependencies; infrastructure depends only on core; the C bridge is imported only by the macOS input adapter; the CLI composes the modules. There is no generic shared library or service layer.
+
+- **GestureCore**: immutable contact/gesture values, deterministic swipe recognition, and JSON configuration decoding/validation. It performs no process, device, filesystem, or mutable-global effects.
+- **GestureInfrastructure**: `CommandRunner`, the single-child process effect. It preserves literal argv execution, busy rejection, output redaction, timeout escalation, and stop behavior.
+- **GestureCLIPolicy**: pure gesture-to-binding selection; dry-run/listen suppress executable binding selection. Tested without starting devices.
+- **MultitouchBridge**: isolated reverse-engineered `MultitouchSupport` C ABI and callback lifecycle.
+- **MultitouchInput**: adapts the C callback into copied `[Contact]` values. The framework owns raw callback storage; the adapter copies it before returning. Recognition state and dispatch serialization remain in the CLI's main-queue callback.
+- **GestureCLI**: argument/configuration handling, executable checks, user-facing messages, per-device detector state, and lifecycle composition. It delegates gesture-to-binding decisions to `GestureCLIPolicy` and process effects to `GestureInfrastructure`; startup remains outside unit-test coverage.
+
+## Execution flow
+
+The CLI validates command arguments and loads configuration before starting input. The input adapter copies each frame and calls the consumer; the CLI serializes processing on the main queue, updates one `SwipeDetector` per device, delegates binding selection to `GestureCLIPolicy`, and starts the runner only when execution is enabled. Signal handling stops input and requests child termination.
+
+## Configuration
+
+Canonical schema (threshold is optional; default `0.15`):
+
+```json
+{
+  "threshold": 0.15,
+  "bindings": [
+    { "fingers": 3, "direction": "down", "command": ["/bin/echo", "hello"] }
+  ]
+}
+```
+
+Threshold must be finite and in `0.02...0.8`; finger count must be 3, 4, or 5; commands are non-empty argv arrays with an absolute executable and no NUL bytes; gesture bindings must be unique. The CLI additionally verifies executable permissions. Configuration is loaded once.
+
+## Testing and risks
+
+`GestureCoreTests` exercise recognition and configuration without hardware. `GestureInfrastructureTests` exercise literal argv, launch failure recovery, busy rejection, timeout escalation, and stop without launchctl. `GestureCLIPolicyTests` exercise binding selection and dry-run suppression without starting devices. The private ABI, callback lifecycle, physical recognition, and macOS version compatibility require manual hardware checks; unit tests make no compatibility claim. The proven three-finger popup is the manual smoke test. No default configuration or launchd/service behavior is implemented by this architecture baseline.

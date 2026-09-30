@@ -91,11 +91,14 @@ No login item or service is installed automatically. Keep the process running in
 ## Development
 
 ```sh
-swift test --filter GestureCoreTests --enable-code-coverage
+swift test --enable-code-coverage
 ```
 
-- `Sources/GestureCore`: deterministic swipe recognition, configuration validation, bounded command execution.
-- `Sources/MultitouchBridge`: isolated reverse-engineered private ABI and callback lifecycle.
-- `Sources/GestureCLI`: CLI and event wiring; listen/dry-run are safe first steps.
+- `Sources/GestureCore`: deterministic swipe recognition and configuration validation.
+- `Sources/GestureInfrastructure`: bounded command execution.
+- `Sources/MultitouchBridge` and `Sources/MultitouchInput`: isolated private ABI and copied contact frames.
+- `Sources/GestureCLIPolicy`: pure gesture-to-binding decisions, including dry-run suppression.
+- `Sources/GestureCLI`: CLI composition and event wiring; listen/dry-run are safe first steps.
+- See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for dependency boundaries, configuration, and test strategy.
 
 Manual acceptance: test each bound direction in another focused app; confirm one event per swipe, no event for two fingers/pinch, rearming after lift, and no conflicting system action. Then test with the harmless example before enabling AeroSpace commands.
