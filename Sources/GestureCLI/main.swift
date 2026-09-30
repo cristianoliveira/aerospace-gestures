@@ -1,3 +1,4 @@
+import AppKit
 import Darwin
 import Foundation
 import GestureCLIPolicy
@@ -120,6 +121,15 @@ case .help, .initialize, .check, .service:
   fatalError("Handled CLI request unexpectedly reached device startup")
 }
 
+let executionMode: GestureExecutionMode
+switch request {
+case .listen: executionMode = .listen
+case .run(_, let isDryRun): executionMode = isDryRun ? .dryRun : .run
+case .help, .initialize, .check, .service:
+  fatalError("Handled CLI request unexpectedly reached device startup")
+}
+let actionPolicy = GestureActionPolicy(mode: executionMode)
+
 let lockURL = environment.homeDirectory
   .appendingPathComponent("Library/Application Support/aerospace-gestures", isDirectory: true)
   .appendingPathComponent("listener.lock")
@@ -138,8 +148,13 @@ let runner = CommandRunner()
 var detectors: [UInt: SwipeDetector] = [:]
 var receivedFrame = false
 
-let onFrame: (UInt, [Contact]) -> Void = { device, contacts in
+let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
+  let frameToken = actionPolicy.captureFrame(device: device, contactCount: contacts.count)
   DispatchQueue.main.async {
+    guard actionPolicy.isCurrent(frameToken) else {
+      if contacts.isEmpty { detectors.removeValue(forKey: device) }
+      return
+    }
     if !receivedFrame {
       receivedFrame = true
       print("Receiving trackpad frames")
@@ -149,12 +164,14 @@ let onFrame: (UInt, [Contact]) -> Void = { device, contacts in
     let gesture = detector.update(contacts)
     detectors[device] = detector
     guard let gesture else { return }
-    print(
-      "\(gesture.fingers)-finger \(gesture.direction.rawValue)\(dryRun ? " (listen only)" : "")")
+    let actionContext =
+      dryRun ? " (listen only)" : actionPolicy.state == .paused ? " (actions paused)" : ""
+    print("\(gesture.fingers)-finger \(gesture.direction.rawValue)\(actionContext)")
     fflush(stdout)
     guard
       let binding = CommandDecision.binding(
-        for: gesture, in: configuration?.bindings ?? [], dryRun: dryRun)
+        for: gesture, in: configuration?.bindings ?? [], dryRun: dryRun),
+      actionPolicy.mayDispatch(gesture, from: frameToken)
     else { return }
     if !runner.run(
       binding.command,
@@ -199,7 +216,25 @@ for number in [SIGINT, SIGTERM] {
   signals.append(source)
 }
 withExtendedLifetime(listenerLock) {
-  dispatchMain()
+  if actionPolicy.showsMenuBarControl {
+    MainActor.assumeIsolated {
+      runMenuBarApplication(actionPolicy: actionPolicy)
+    }
+  } else {
+    dispatchMain()
+  }
+}
+
+@MainActor
+func runMenuBarApplication(actionPolicy: GestureActionPolicy) {
+  let application = NSApplication.shared
+  guard application.setActivationPolicy(.accessory) else {
+    fail("Cannot configure the menu-bar action control")
+  }
+  let menuBarControl = MenuBarControl(actionPolicy: actionPolicy)
+  withExtendedLifetime(menuBarControl) {
+    application.run()
+  }
 }
 
 func serviceMessage(for result: ServiceOperationResult) -> String {

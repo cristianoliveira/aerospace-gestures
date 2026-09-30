@@ -13,7 +13,7 @@ public enum MultitouchInput {
     },
     stopBridge: { AGStop() })
 
-  public static func start(onFrame: @escaping (UInt, [Contact]) -> Void) -> String? {
+  public static func start(onFrame: @escaping (UInt, UInt32, [Contact]) -> Void) -> String? {
     controller.start(onFrame: onFrame)
   }
 
@@ -21,12 +21,12 @@ public enum MultitouchInput {
     controller.stop()
   }
 
-  private static let receiveFrame: AGFrameCallback = { device, raw, count in
+  private static let receiveFrame: AGFrameCallback = { device, frame, raw, count in
     let contacts = (0..<Int(count)).map { index -> Contact in
       let point = raw![index]
       return Contact(id: Int(point.id), x: Double(point.x), y: Double(point.y))
     }
-    controller.receive(device: UInt(device), contacts: contacts)
+    controller.receive(device: UInt(device), frame: frame, contacts: contacts)
   }
 }
 
@@ -34,14 +34,17 @@ final class MultitouchInputController {
   private let startBridge: () -> String?
   private let stopBridge: () -> Void
   private let handlerLock = NSLock()
-  private var frameHandler: ((UInt, [Contact]) -> Void)?
+  // Keep sequence validation and handler submission atomic across concurrent callbacks.
+  private let frameDeliveryLock = NSLock()
+  private var frameHandler: ((UInt, UInt32, [Contact]) -> Void)?
+  private var lastFrameByDevice: [UInt: UInt32] = [:]
 
   init(startBridge: @escaping () -> String?, stopBridge: @escaping () -> Void) {
     self.startBridge = startBridge
     self.stopBridge = stopBridge
   }
 
-  func start(onFrame: @escaping (UInt, [Contact]) -> Void) -> String? {
+  func start(onFrame: @escaping (UInt, UInt32, [Contact]) -> Void) -> String? {
     handlerLock.lock()
     guard frameHandler == nil else {
       handlerLock.unlock()
@@ -49,6 +52,10 @@ final class MultitouchInputController {
     }
     frameHandler = onFrame
     handlerLock.unlock()
+
+    frameDeliveryLock.lock()
+    lastFrameByDevice.removeAll(keepingCapacity: true)
+    frameDeliveryLock.unlock()
 
     guard let error = startBridge() else { return nil }
     clearHandler()
@@ -60,11 +67,25 @@ final class MultitouchInputController {
     stopBridge()
   }
 
-  func receive(device: UInt, contacts: [Contact]) {
+  func receive(device: UInt, frame: UInt32, contacts: [Contact]) {
     handlerLock.lock()
     let handler = frameHandler
     handlerLock.unlock()
-    handler?(device, contacts)
+    guard let handler else { return }
+
+    frameDeliveryLock.lock()
+    defer { frameDeliveryLock.unlock() }
+    if let previousFrame = lastFrameByDevice[device], !Self.isNewer(frame, than: previousFrame) {
+      return
+    }
+    lastFrameByDevice[device] = frame
+    handler(device, frame, contacts)
+  }
+
+  private static func isNewer(_ frame: UInt32, than previousFrame: UInt32) -> Bool {
+    // Unsigned subtraction handles wrap; the half-range test rejects stale frames.
+    let distance = frame &- previousFrame
+    return distance > 0 && distance < 0x8000_0000
   }
 
   private func clearHandler() {

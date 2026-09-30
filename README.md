@@ -1,6 +1,6 @@
 # aerospace-gestures
 
-Small experimental macOS CLI: map three-, four-, or five-finger trackpad swipes to commands. Swift, a small C bridge, no third-party packages, no GUI or network access.
+Small experimental macOS CLI: map three-, four-, or five-finger trackpad swipes to commands. Swift, a small C bridge, an optional native menu-bar action toggle for normal run, no third-party packages or network access.
 
 **Not a supported macOS gesture API.** This uses the private `MultitouchSupport` framework. Its ABI may change or crash on future macOS releases. It observes touches; it does **not** suppress system gestures. Real swipe behavior must be verified on your trackpad.
 
@@ -69,6 +69,14 @@ Configuration:
 - `threshold`: optional, defaults to `0.15`, allowed range `0.02`–`0.8`. Measured as normalized trackpad displacement, not pixels. Lower values are more sensitive.
 
 Configuration is loaded once; restart after editing. Duplicate bindings are rejected. Only use configuration/scripts you trust: commands run with your account's permissions.
+
+## Pause command actions
+
+A normal `run` starts enabled and adds a small accessory menu-bar control. Choose **Disable actions** to keep listening, recognizing, and logging gestures while suppressing new command launches; an already-running command is not cancelled. Gestures seen while paused and callbacks queued before a toggle are dropped. After enabling actions again, each trackpad must report all fingers lifted before a fresh gesture can launch a command. The setting is session-only and resets to enabled on restart. `listen` and `run --dry-run` never show an enabling control and can never launch configured commands.
+
+The menu and accessibility label distinguish **Actions enabled** from **Actions paused — listener active**; the icon is not a hardware-health indicator. The same process owns the status item in foreground and LaunchAgent modes—there is no second listener, IPC process, or Quit menu action. Normal run requests accessory activation (no Dock icon) without an app bundle.
+
+Menu-bar acceptance is pending; no service or trackpad test was performed. When separately approved, verify: (1) normal run shows one accessible enabled item; three-finger down launches the configured popup; (2) while paused, the same swipe remains visible in the terminal but launches nothing; (3) enabling actions and lifting before a fresh swipe launches exactly one popup; (4) listen/dry-run never show an enabling item or execute commands; (5) under LaunchAgent with Terminal closed there is one status item and no Dock icon, toggling does not restart the job, stop removes the item, start restores it enabled, and restart resets the session state.
 
 ## Install the binary
 

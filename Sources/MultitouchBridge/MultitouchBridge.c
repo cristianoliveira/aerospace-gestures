@@ -34,7 +34,6 @@ static void (*stopDevice)(void *);
 
 static int onFrame(void *device, MTTouch *touches, int count, double timestamp, int frame) {
     (void)timestamp;
-    (void)frame;
     if (count < 0 || count > 32 || (count && !touches)) return 0;
     AGContact contacts[32];
     int active = 0;
@@ -46,7 +45,7 @@ static int onFrame(void *device, MTTouch *touches, int count, double timestamp, 
         if (!isfinite(x) || !isfinite(y) || x < 0 || x > 1 || y < 0 || y > 1) return 0;
         contacts[active++] = (AGContact){touches[i].identifier, x, y};
     }
-    receive((uintptr_t)device, contacts, active);
+    receive((uintptr_t)device, (uint32_t)frame, contacts, active);
     return 0;
 }
 

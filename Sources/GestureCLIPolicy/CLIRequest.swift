@@ -53,7 +53,7 @@ public enum CLIHelp {
       usage = "Usage: \(command) listen"
       example = "\(command) listen"
       description =
-        "Observes gestures without executing commands; requires macOS 13+ and a multitouch trackpad."
+        "Observes gestures without executing commands or showing an action toggle; requires macOS 13+ and a multitouch trackpad."
     case .check:
       usage = "Usage: \(command) check [config.json]"
       example = "\(command) check /path/to/config.json"
@@ -62,7 +62,7 @@ public enum CLIHelp {
       usage = "Usage: \(command) run [config.json] [--dry-run]"
       example = "\(command) run --dry-run"
       description =
-        "Requires macOS 13+ and a multitouch trackpad. --dry-run observes but never executes commands."
+        "Normal run starts enabled with a menu-bar action toggle; pausing keeps listening but blocks new commands. --dry-run observes only and never enables command execution."
     case .service:
       usage = "Usage: \(command) service <install|status|start|stop|restart|uninstall>"
       example = "\(command) service status"
