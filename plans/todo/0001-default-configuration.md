@@ -2,7 +2,7 @@
 id: TASK-0001
 title: Add default configuration and safe initialization
 status: todo
-depends_on: []
+depends_on: [TASK-0006]
 priority: high
 tags: [configuration, cli]
 ---
