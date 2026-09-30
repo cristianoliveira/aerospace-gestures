@@ -14,6 +14,7 @@ let package = Package(
         .executableTarget(name: "GestureCLI", dependencies: ["GestureCore", "GestureInfrastructure", "GestureCLIPolicy", "MultitouchInput"]),
         .testTarget(name: "GestureCoreTests", dependencies: ["GestureCore"]),
         .testTarget(name: "GestureInfrastructureTests", dependencies: ["GestureInfrastructure"]),
-        .testTarget(name: "GestureCLIPolicyTests", dependencies: ["GestureCLIPolicy", "GestureCore", "GestureInfrastructure"])
+        .testTarget(name: "GestureCLIPolicyTests", dependencies: ["GestureCLIPolicy", "GestureCore", "GestureInfrastructure"]),
+        .testTarget(name: "MultitouchInputTests", dependencies: ["MultitouchInput", "GestureCore"])
     ]
 )

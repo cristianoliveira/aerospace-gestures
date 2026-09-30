@@ -88,7 +88,7 @@ No login item or service is installed automatically. Keep the process running in
 - Changing finger identities/count resets the movement origin before recognition.
 - Each device has independent recognition state. Devices are enumerated at startup; restart after reconnecting a trackpad.
 - Only one child command runs at a time. Gestures while busy are dropped, not queued.
-- Child commands receive a termination signal after five seconds, then SIGKILL one second later if still running. This bounds the direct child, not subprocess trees; commands must not daemonize. Ctrl-C requests child termination.
+- Child commands receive a termination signal after five seconds, then SIGKILL one second later if still running. Ctrl-C stops input and applies the same bounded termination to an active child before the CLI exits. This bounds the direct child, not subprocess trees; commands must not daemonize.
 - No taps, holds, gesture suppression, automatic startup, or App Store/sandbox support.
 - Private device callbacks and physical recognition have no automated hardware coverage. Startup was smoke-tested on an Intel macOS 26 host; Apple Silicon and other OS versions remain unverified.
 

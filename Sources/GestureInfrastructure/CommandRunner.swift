@@ -5,6 +5,7 @@ import GestureCore
 /// Main-thread runner. One child at a time; busy gestures are dropped, never queued.
 public final class CommandRunner {
   private var active: Process?
+  private var stopCompletion: (() -> Void)?
   private let timeout: TimeInterval
   public init(timeout: TimeInterval = 5) { self.timeout = timeout }
 
@@ -24,9 +25,12 @@ public final class CommandRunner {
     child.standardError = FileHandle.nullDevice
     child.terminationHandler = { [weak self] process in
       DispatchQueue.main.async {
-        guard self?.active === process else { return }
-        self?.active = nil
+        guard let self, self.active === process else { return }
+        self.active = nil
         completion("Command exited with status \(process.terminationStatus)")
+        let stopCompletion = self.stopCompletion
+        self.stopCompletion = nil
+        stopCompletion?()
       }
     }
     do {
@@ -38,17 +42,25 @@ public final class CommandRunner {
     }
     DispatchQueue.main.asyncAfter(deadline: .now() + timeout) { [weak self, weak child] in
       guard let child, self?.active === child, child.isRunning else { return }
-      child.terminate()
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak child] in
-        guard let child, child.isRunning else { return }
-        kill(child.processIdentifier, SIGKILL)
-      }
+      self?.terminate(child)
     }
     return true
   }
 
-  public func stop() {
-    guard let active, active.isRunning else { return }
-    active.terminate()
+  public func stop(completion: @escaping () -> Void = {}) {
+    guard let active, active.isRunning else {
+      completion()
+      return
+    }
+    stopCompletion = completion
+    terminate(active)
+  }
+
+  private func terminate(_ child: Process) {
+    child.terminate()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self, weak child] in
+      guard let child, self?.active === child, child.isRunning else { return }
+      kill(child.processIdentifier, SIGKILL)
+    }
   }
 }

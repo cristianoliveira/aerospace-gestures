@@ -132,8 +132,9 @@ for number in [SIGINT, SIGTERM] {
   let source = DispatchSource.makeSignalSource(signal: number, queue: .main)
   source.setEventHandler {
     MultitouchInput.stop()
-    runner.stop()
-    exit(0)
+    runner.stop {
+      exit(0)
+    }
   }
   source.resume()
   signals.append(source)
