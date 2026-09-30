@@ -7,12 +7,14 @@ Small experimental macOS CLI: map three-, four-, or five-finger trackpad swipes 
 ## First experiment: three fingers down → popup
 
 ```sh
-swift run aerospace-gestures run config.probe.json
+swift run aerospace-gestures init # first-time setup only; refuses an existing file
+swift run aerospace-gestures check
+swift run aerospace-gestures run
 ```
 
 Move three fingers down the trackpad. A dialog should say **“It's hooked!”**, then close after three seconds (or click OK). Lift all fingers before trying again. Ctrl-C in the terminal stops the listener.
 
-Only three-finger down has an action in this configuration. Other detected gestures may appear in the terminal but do nothing. No AeroSpace setup is needed. The popup uses a dialog rather than a notification banner, so it does not depend on notification settings; it may take focus.
+The default configuration binds only three-finger down; other detected gestures may appear in the terminal but do nothing. `init` creates the file only when absent and never overwrites an existing file or symlink. No AeroSpace setup is needed. The popup uses a dialog rather than a notification banner, so it does not depend on notification settings; it may take focus.
 
 If macOS also opens App Exposé, disable its conflicting gesture in **System Settings → Trackpad → More Gestures**. If no popup appears, use the listen-only steps below to check whether touch events arrive.
 
@@ -33,13 +35,15 @@ Disable conflicting actions in **System Settings → Trackpad → More Gestures*
 ## Configure commands
 
 ```sh
-cp config.example.json config.json
-swift run aerospace-gestures check config.json
-swift run aerospace-gestures run config.json --dry-run
-swift run aerospace-gestures run config.json
+swift run aerospace-gestures init # first-time setup only
+swift run aerospace-gestures check
+swift run aerospace-gestures run --dry-run
+swift run aerospace-gestures run
 ```
 
-The example runs only `/bin/echo`; child output is discarded. Successful execution appears as `Command exited with status 0`.
+The default path is `$XDG_CONFIG_HOME/aerospace-gestures/config.json` when `XDG_CONFIG_HOME` is an absolute nonempty path; otherwise it is `~/.config/aerospace-gestures/config.json`. Pass a path to `init`, `check`, or `run` to override it; relative paths are resolved from the current working directory. `run` and `listen` never create configuration implicitly. Use `check <path>` to validate a file without starting trackpad input.
+
+The default init example runs `/usr/bin/osascript` to show the proven popup; child output is discarded. For a harmless command-only sample, see `config.example.json` (which uses `/bin/echo`). Successful execution appears as `Command exited with status 0`.
 
 For AeroSpace, find its absolute path:
 
@@ -97,9 +101,9 @@ make check
 ```
 
 - `Sources/GestureCore`: deterministic swipe recognition and configuration validation.
-- `Sources/GestureInfrastructure`: bounded command execution.
+- `Sources/GestureInfrastructure`: configuration file loading, exclusive initialization, and bounded command execution.
 - `Sources/MultitouchBridge` and `Sources/MultitouchInput`: isolated private ABI and copied contact frames.
-- `Sources/GestureCLIPolicy`: pure gesture-to-binding decisions, including dry-run suppression.
+- `Sources/GestureCLIPolicy`: testable CLI argument/path and gesture-to-binding decisions.
 - `Sources/GestureCLI`: CLI composition and event wiring; listen/dry-run are safe first steps.
 - See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for dependency boundaries, configuration, and test strategy.
 
