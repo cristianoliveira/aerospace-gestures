@@ -1,7 +1,7 @@
 ---
 id: TASK-0007
 title: Add menu-bar enable and disable control for debugging
-status: doing
+status: done
 depends_on: [TASK-0003]
 priority: normal
 tags: [macos, debugging, ui]
