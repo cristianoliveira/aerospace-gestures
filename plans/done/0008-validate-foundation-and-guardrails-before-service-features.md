@@ -1,7 +1,7 @@
 ---
 id: TASK-0008
 title: Validate foundation and guardrails before service features
-status: doing
+status: done
 depends_on: []
 priority: high
 tags: [architecture, foundation, guardrails]
