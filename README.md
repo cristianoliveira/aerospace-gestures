@@ -12,7 +12,7 @@ make install
 
 This installs `~/.local/bin/aerospace-gestures`; add `~/.local/bin` to your `PATH`. It will not replace an existing binary.
 
-Homebrew (after the formula is published to the tap):
+Or from Homebrew:
 
 ```sh
 brew install cristianoliveira/tap/aerospace-gestures
