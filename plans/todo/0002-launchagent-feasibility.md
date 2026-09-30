@@ -2,7 +2,7 @@
 id: TASK-0002
 title: Prove gesture capture through a LaunchAgent
 status: todo
-depends_on: [TASK-0001]
+depends_on: [TASK-0001, TASK-0008]
 priority: high
 tags: [macos, service, feasibility]
 ---
