@@ -1,7 +1,7 @@
 ---
 id: TASK-0001
 title: Add default configuration and safe initialization
-status: doing
+status: done
 depends_on: [TASK-0006]
 priority: high
 tags: [configuration, cli]
