@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Gesture A</title>
+  <desc id="desc">An open letter A has a sweeping rightward arrow for its crossbar.</desc>
+  <g stroke="currentColor" stroke-width="17" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M49 209L125 43L201 209"/>
+    <path d="M61 162H131Q160 162 182 140L215 107"/>
+    <path d="M180 107H215V142"/>
+  </g>
+</svg>

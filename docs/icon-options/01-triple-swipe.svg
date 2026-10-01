@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Triple Swipe</title>
+  <desc id="desc">Three rounded touch trails sweep right together, with an arrow on the leading trail.</desc>
+  <g stroke="currentColor" stroke-width="17" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M55 83H105Q141 83 161 59L181 39"/>
+    <path d="M55 136H111Q147 136 171 112L214 69"/>
+    <path d="M179 69H214V104"/>
+    <path d="M55 189H115Q151 189 176 164L199 141"/>
+  </g>
+</svg>

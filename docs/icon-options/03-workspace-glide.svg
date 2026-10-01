@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Workspace Glide</title>
+  <desc id="desc">Two offset window tiles are connected by a rightward movement arrow.</desc>
+  <g stroke="currentColor" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M107 77V57Q107 43 121 43H204Q218 43 218 57V139Q218 153 204 153H183"/>
+    <path d="M149 177V199Q149 213 135 213H52Q38 213 38 199V117Q38 103 52 103H74"/>
+    <path d="M87 128H167M141 102L167 128L141 154"/>
+  </g>
+</svg>
