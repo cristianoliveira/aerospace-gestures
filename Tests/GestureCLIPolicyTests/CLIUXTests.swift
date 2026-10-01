@@ -17,10 +17,9 @@ final class CLIUXTests: XCTestCase {
   }
 
   func testVersionConstantMatchesTheCurrentDevelopmentLine() {
-    // Independent expected value for unreleased CLI work. Before tagging, the
-    // release workflow requires dropping `-dev` so the packaged binary exactly
-    // matches the real tag.
-    XCTAssertEqual(CLIVersion.current, "0.3.0-dev")
+    // Independent release expectation; the workflow also checks the packaged
+    // binary's version against the pushed tag.
+    XCTAssertEqual(CLIVersion.current, "0.2.1")
   }
 
   // MARK: help routing

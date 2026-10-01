@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.2.1
+
+- Redesigned CLI help with discoverable commands, focused examples and service actions (`aerospace-gestures help <command>` or `<command> --help`).
+- Added `aerospace-gestures --version` and `aerospace-gestures version`.
+- Unknown commands and options now explain the error and point to the relevant help command; option-like arguments are no longer mistaken for config paths.
+- Configuration remains TOML-only; no config change is needed when upgrading from v0.2.0.
+
 ## v0.2.0
 
 **Breaking: configuration is TOML-only.** JSON configuration files are rejected; there is no migration or automatic conversion. Re-create your config from `aerospace-gestures init` (TOML popup example) or convert it by hand — see the [v0.2.0 usage guide](https://github.com/cristianoliveira/aerospace-gestures/blob/v0.2.0/docs/USAGE.md) for the schema.

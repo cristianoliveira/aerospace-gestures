@@ -9,9 +9,9 @@ cd "$root"
 
 swift build >/dev/null 2>&1
 bin="$(swift build --show-bin-path)/aerospace-gestures"
-# Independent expected version for current unreleased CLI work. Before tagging,
-# remove `-dev`; the release workflow checks the packaged binary against the tag.
-version="0.3.0-dev"
+# Independent expected version for the planned v0.2.1 release. The release
+# workflow also checks the packaged binary against the pushed tag.
+version="0.2.1"
 
 failures=0
 expect_stdout() { # description expected_substring command...
