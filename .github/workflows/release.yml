@@ -138,6 +138,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Check out release tag for changelog extraction
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: false
+
       - name: Download release archives
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -149,6 +155,11 @@ jobs:
         working-directory: dist
         run: sha256sum aerospace-gestures-*.tar.gz > SHA256SUMS
 
+      - name: Extract changelog section for the release tag
+        run: |
+          scripts/extract-release-notes.sh "$GITHUB_REF_NAME" CHANGELOG.md > dist/release-notes.md
+          echo "Release notes:"; cat dist/release-notes.md
+
       - name: Publish release assets
         env:
           GH_REPO: ${{ github.repository }}
@@ -159,4 +170,5 @@ jobs:
             dist/SHA256SUMS \
             --repo "$GH_REPO" \
             --verify-tag \
+            --notes "$(cat dist/release-notes.md)" \
             --generate-notes
