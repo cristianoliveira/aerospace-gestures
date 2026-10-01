@@ -40,13 +40,16 @@ expect_error() { # description expected_stderr_substring command...
   fi
 }
 
-expect_exact_error() { # description exact_stderr command...
+expect_usage_failure() { # description expected_help command...
   local description=$1 expected=$2
   shift 2
-  local err status
-  err="$("$@" 2>&1 >/dev/null)" && status=0 || status=$?
-  if [[ $status -eq 0 || "$err" != "$expected" ]]; then
-    printf 'FAIL: %s (status %s, stderr %q)\n' "$description" "$status" "$err"
+  local err_file out err status
+  err_file="$(mktemp)"
+  out="$("$@" 2>"$err_file")" && status=0 || status=$?
+  err="$(<"$err_file")"
+  rm -f "$err_file"
+  if [[ $status -eq 0 || -n "$out" || "$err" != "$expected" ]]; then
+    printf 'FAIL: %s (status %s, stdout %q, stderr %q)\n' "$description" "$status" "$out" "$err"
     failures=$((failures + 1))
   else
     printf 'ok: %s\n' "$description"
@@ -66,24 +69,32 @@ expect_stdout "help help is navigable" "Usage: aerospace-gestures help" "$bin" h
 expect_stdout "help --help is navigable" "Usage: aerospace-gestures help" "$bin" help --help
 expect_stdout "service action help returns safe group help" "Actions:" "$bin" service status --help
 
-expect_error "unknown command fails on stderr with available commands" "Available commands" "$bin" bogus
-expect_error "unknown command with a flag still fails" "Unknown command" "$bin" bogus --version
-expect_exact_error "unknown check option prints one relevant hint" \
-  "Error: Unknown option '--faster' for check. Run aerospace-gestures check --help for usage and recovery steps." \
-  "$bin" check --faster
-expect_error "unknown option is not treated as a config path" "Unknown option '--dry-run' for check" "$bin" check --dry-run
-expect_error "unknown short option is rejected for init" "Unknown option '-x' for init" "$bin" init -x
-expect_error "service rejects unknown options" "Unknown option '--quiet' for service" "$bin" service --quiet
+root_help="$("$bin" --help)"
+init_help="$("$bin" init --help)"
+check_help="$("$bin" check --help)"
+run_help="$("$bin" run --help)"
+listen_help="$("$bin" listen --help)"
+service_help="$("$bin" service --help)"
+help_help="$("$bin" help --help)"
+version_help="$("$bin" version --help)"
 
-error_output="$("$bin" check --dry-run 2>&1 >/dev/null || true)"
-hint="Run aerospace-gestures check --help for usage and recovery steps."
-remainder="${error_output#*"$hint"}"
-if [[ "$error_output" != *"$hint"* || "$remainder" == *"$hint"* ]]; then
-  printf 'FAIL: parse errors must print the recovery hint exactly once\n'
-  failures=$((failures + 1))
-else
-  printf 'ok: parse errors print the recovery hint exactly once\n'
-fi
+expect_usage_failure "unknown -v root option prints only root help" "$root_help" "$bin" -v
+expect_usage_failure "unknown root command prints only root help" "$root_help" "$bin" bogus
+expect_usage_failure "unknown root command with flag prints only root help" "$root_help" "$bin" bogus --version
+expect_usage_failure "unknown init option prints only init help" "$init_help" "$bin" init -x
+expect_usage_failure "unknown check option prints only check help" "$check_help" "$bin" check --faster
+expect_usage_failure "unknown run option prints only run help" "$run_help" "$bin" run --faster
+expect_usage_failure "listen argument prints only listen help" "$listen_help" "$bin" listen extra
+expect_usage_failure "unknown service action prints only service help" "$service_help" "$bin" service nope
+expect_usage_failure "unknown help topic prints only help help" "$help_help" "$bin" help bogus
+expect_usage_failure "unknown version option prints only version help" "$version_help" "$bin" version --faster
+
+missing_configuration="$(mktemp -d)/missing.toml"
+expect_error "runtime config failure keeps diagnostics" "Error: Cannot load configuration" \
+  "$bin" check "$missing_configuration"
+expect_error "runtime config failure keeps root recovery guidance" \
+  "Run aerospace-gestures --help for usage and recovery steps." \
+  "$bin" check "$missing_configuration"
 
 if ((failures)); then
   printf '%d failure(s)\n' "$failures"

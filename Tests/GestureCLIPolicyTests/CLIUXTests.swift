@@ -52,15 +52,12 @@ final class CLIUXTests: XCTestCase {
     }
   }
 
-  func testHelpWithUnknownCommandThrowsUnknownCommandHint() throws {
-    XCTAssertThrowsError(try CLIRequest.parse(["help", "bogus"], in: environment)) { error in
-      XCTAssertTrue(String(describing: error).contains("Unknown command: bogus"))
-      XCTAssertTrue(String(describing: error).contains("Available commands"))
-    }
+  func testHelpWithUnknownTopicUsesFocusedHelpTopic() {
+    assertParseError(["help", "bogus"], topic: .help)
   }
 
-  func testHelpRejectsExtraArguments() {
-    XCTAssertThrowsError(try CLIRequest.parse(["help", "check", "extra"], in: environment))
+  func testHelpRejectsExtraArgumentsWithFocusedHelpTopic() {
+    assertParseError(["help", "check", "extra"], topic: .help)
   }
 
   // MARK: options are never mistaken for a config path
@@ -152,28 +149,23 @@ final class CLIUXTests: XCTestCase {
     XCTAssertTrue(text.contains("Private MultitouchSupport API is experimental"))
   }
 
-  func testUnknownCommandErrorListsCommandsAndRootHelpOnce() {
-    let description = String(describing: CLIArgumentError.unknownCommand("bogus"))
-    XCTAssertTrue(description.contains("Available commands"))
-    XCTAssertTrue(description.contains("version"))
-    XCTAssertEqual(description.components(separatedBy: "Run aerospace-gestures --help").count, 2)
+  func testUnknownRootCommandsAndOptionsUseRootHelpTopic() {
+    assertParseError(["bogus"], topic: .root)
+    assertParseError(["-v"], topic: .root)
   }
 
-  func testParseErrorsIncludeOneRelevantPerCommandHint() {
-    let cases: [([String], String)] = [
-      (["check", "--faster"], "aerospace-gestures check --help"),
-      (["run", "--faster"], "aerospace-gestures run --help"),
-      (["service", "--faster"], "aerospace-gestures service --help"),
-      (["version", "--faster"], "aerospace-gestures version --help"),
-      (["listen", "extra"], "aerospace-gestures listen --help"),
-      (["help", "check", "extra"], "aerospace-gestures help --help"),
+  func testKnownCommandParseErrorsCarryFocusedHelpTopic() {
+    let cases: [([String], CLIHelpTopic)] = [
+      (["init", "--faster"], .initialize),
+      (["check", "--faster"], .check),
+      (["run", "--faster"], .run),
+      (["service", "nope"], .service),
+      (["version", "--faster"], .version),
+      (["listen", "extra"], .listen),
+      (["help", "check", "extra"], .help),
     ]
-    for (arguments, hint) in cases {
-      XCTAssertThrowsError(try CLIRequest.parse(arguments, in: environment)) { error in
-        let description = String(describing: error)
-        XCTAssertTrue(description.contains(hint), "missing relevant hint for \(arguments)")
-        XCTAssertEqual(description.components(separatedBy: hint).count, 2)
-      }
+    for (arguments, topic) in cases {
+      assertParseError(arguments, topic: topic)
     }
   }
 
@@ -183,6 +175,19 @@ final class CLIUXTests: XCTestCase {
       defaultConfigurationURL: URL(fileURLWithPath: "/tmp/default/config.toml"))
     for nextHeading in ["Available Commands:", "Flags:", "Examples:"] {
       XCTAssertTrue(text.contains("\n\n\(nextHeading)"), "missing space before \(nextHeading)")
+    }
+  }
+
+  private func assertParseError(
+    _ arguments: [String], topic expectedTopic: CLIHelpTopic,
+    file: StaticString = #filePath, line: UInt = #line
+  ) {
+    XCTAssertThrowsError(try CLIRequest.parse(arguments, in: environment), file: file, line: line) {
+      error in
+      guard let error = error as? CLIArgumentError else {
+        return XCTFail("expected CLIArgumentError, got \(error)", file: file, line: line)
+      }
+      XCTAssertEqual(error.topic, expectedTopic, file: file, line: line)
     }
   }
 }

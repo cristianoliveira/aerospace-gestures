@@ -33,7 +33,9 @@ public enum CLIHelpTopic: Equatable {
     case "service": self = .service
     case "help": self = .help
     case "version": self = .version
-    default: throw CLIArgumentError.unknownCommand(name)
+    default:
+      throw CLIArgumentError.invalidArguments(
+        "Unknown help topic: \(name)", topic: .help)
     }
   }
 }
@@ -215,7 +217,7 @@ public enum CLIRequest: Equatable {
       guard arguments.count <= 2 else {
         throw usageError(
           "Expected help [command]. Available commands: \(CLIHelp.knownCommands)",
-          command: "help")
+          topic: .help)
       }
       guard arguments.count == 2 else { return .help(.root) }
       if arguments[1] == "--help" || arguments[1] == "-h" { return .help(.help) }
@@ -224,39 +226,39 @@ public enum CLIRequest: Equatable {
 
     let options = Array(arguments.dropFirst())
     if command == "version" {
-      let (flags, positionals) = try parseOptions(options, for: command)
+      let (flags, positionals) = try parseOptions(options, for: command, topic: .version)
       if flags.contains("--help") || flags.contains("-h") { return .help(.version) }
       guard positionals.isEmpty else {
-        throw usageError("version takes no arguments", command: command)
+        throw usageError("version takes no arguments", topic: .version)
       }
       return .version
     }
 
     switch command {
     case "listen":
-      let (flags, positionals) = try parseOptions(options, for: command)
+      let (flags, positionals) = try parseOptions(options, for: command, topic: .listen)
       if flags.contains("--help") || flags.contains("-h") { return .help(.listen) }
       guard positionals.isEmpty, flags.isEmpty else {
-        throw usageError("listen takes no arguments", command: command)
+        throw usageError("listen takes no arguments", topic: .listen)
       }
       return .listen
     case "init", "check":
-      let (flags, positionals) = try parseOptions(options, for: command)
-      if flags.contains("--help") || flags.contains("-h") {
-        return .help(command == "init" ? .initialize : .check)
-      }
+      let topic = command == "init" ? CLIHelpTopic.initialize : .check
+      let (flags, positionals) = try parseOptions(options, for: command, topic: topic)
+      if flags.contains("--help") || flags.contains("-h") { return .help(topic) }
       guard positionals.count <= 1 else {
-        throw usageError("Expected \(command) [config.toml]", command: command)
+        throw usageError("Expected \(command) [config.toml]", topic: topic)
       }
       let configuration = ConfigurationPath.resolve(
         explicitPath: positionals.first, in: environment)
       return command == "init" ? .initialize(configuration: configuration) : .check(
         configuration: configuration)
     case "run":
-      let (flags, positionals) = try parseOptions(options, for: command, extraAllowed: ["--dry-run"])
+      let (flags, positionals) = try parseOptions(
+        options, for: command, topic: .run, extraAllowed: ["--dry-run"])
       if flags.contains("--help") || flags.contains("-h") { return .help(.run) }
       guard positionals.count <= 1 else {
-        throw usageError("Expected run [config.toml] [--dry-run]", command: command)
+        throw usageError("Expected run [config.toml] [--dry-run]", topic: .run)
       }
       return .run(
         configuration: ConfigurationPath.resolve(explicitPath: positionals.first, in: environment),
@@ -264,12 +266,12 @@ public enum CLIRequest: Equatable {
     case "service":
       if options.contains("--help") || options.contains("-h") { return .help(.service) }
       if let stray = options.first(where: { $0.hasPrefix("-") }) {
-        throw usageError("Unknown option '\(stray)' for service", command: command)
+        throw usageError("Unknown option '\(stray)' for service", topic: .service)
       }
       guard options.count == 1, let action = CLIServiceAction(rawValue: options[0]) else {
         throw usageError(
           "Expected service install|status|start|stop|restart|uninstall",
-          command: command)
+          topic: .service)
       }
       return .service(action)
     default:
@@ -280,7 +282,8 @@ public enum CLIRequest: Equatable {
   /// Splits options into flags and positionals so a dash-prefixed token is never
   /// mistaken for a config path. Unrecognized options fail closed with a hint.
   private static func parseOptions(
-    _ options: [String], for command: String, extraAllowed: Set<String> = []
+    _ options: [String], for command: String, topic: CLIHelpTopic,
+    extraAllowed: Set<String> = []
   ) throws -> (flags: Set<String>, positionals: [String]) {
     let allowed = Set(["--help", "-h"]).union(extraAllowed)
     var flags = Set<String>()
@@ -291,16 +294,17 @@ public enum CLIRequest: Equatable {
         continue
       }
       guard allowed.contains(option) else {
-        throw usageError("Unknown option '\(option)' for \(command)", command: command)
+        throw usageError("Unknown option '\(option)' for \(command)", topic: topic)
       }
       flags.insert(option)
     }
     return (flags, positionals)
   }
 
-  private static func usageError(_ message: String, command: String) -> CLIArgumentError {
-    .invalidArguments(
-      "\(message). Run aerospace-gestures \(command) --help for usage and recovery steps.")
+  private static func usageError(
+    _ message: String, topic: CLIHelpTopic
+  ) -> CLIArgumentError {
+    .invalidArguments(message, topic: topic)
   }
 }
 
@@ -353,16 +357,19 @@ public enum ConfigurationDecision {
 
 public enum CLIArgumentError: Error, CustomStringConvertible {
   case unknownCommand(String)
-  case invalidArguments(String)
+  case invalidArguments(String, topic: CLIHelpTopic)
+
+  public var topic: CLIHelpTopic {
+    switch self {
+    case .unknownCommand: return .root
+    case .invalidArguments(_, let topic): return topic
+    }
+  }
 
   public var description: String {
     switch self {
-    case .unknownCommand(let command):
-      return
-        "Unknown command: \(command)."
-        + " Available commands: \(CLIHelp.knownCommands)."
-        + " Run aerospace-gestures --help for usage and recovery steps."
-    case .invalidArguments(let message): return message
+    case .unknownCommand(let command): return "Unknown command: \(command)"
+    case .invalidArguments(let message, _): return message
     }
   }
 }

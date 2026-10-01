@@ -14,10 +14,11 @@ func fail(_ message: String) -> Never {
   exit(1)
 }
 
-func fail(_ error: CLIArgumentError) -> Never {
-  // Parser errors already carry the most relevant command-specific recovery
-  // hint. Printing them directly prevents an extra, less useful root hint.
-  FileHandle.standardError.write(Data("Error: \(error)\n".utf8))
+func failWithUsage(_ error: CLIArgumentError, in environment: CLIEnvironment) -> Never {
+  let text = CLIHelp.text(
+    for: error.topic,
+    defaultConfigurationURL: ConfigurationPath.resolve(explicitPath: nil, in: environment))
+  FileHandle.standardError.write(Data("\(text)\n".utf8))
   exit(1)
 }
 
@@ -52,7 +53,7 @@ let request: CLIRequest
 do {
   request = try CLIRequest.parse(Array(CommandLine.arguments.dropFirst()), in: environment)
 } catch let error as CLIArgumentError {
-  fail(error)
+  failWithUsage(error, in: environment)
 } catch {
   fail("\(error)")
 }
