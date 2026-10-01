@@ -43,7 +43,7 @@ swift run aerospace-gestures run
 
 The default path is `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` when `XDG_CONFIG_HOME` is an absolute nonempty path; otherwise it is `~/.config/aerospace-gestures/config.toml`. Pass a path to `init`, `check`, or `run` to override it; relative paths are resolved from the current working directory. `run` and `listen` never create configuration implicitly. Use `check <path>` to validate a file without starting trackpad input.
 
-The default init example runs `/usr/bin/osascript` to show the proven popup; child output is discarded. For a harmless command-only sample, see [`config.example.toml`](../config.example.toml) (which uses `/bin/echo`). Successful execution appears as `Command exited with status 0`. AeroSpace's `exec-and-forget` is its own configuration directive, not an executable for this app.
+The default init example runs `/usr/bin/osascript` to show the proven popup; child output is discarded; the same popup is tracked as [`config.probe.toml`](../config.probe.toml). For a harmless command-only sample, see [`config.example.toml`](../config.example.toml) (which uses `/bin/echo`). Successful execution appears as `Command exited with status 0`. AeroSpace's `exec-and-forget` is its own configuration directive, not an executable for this app.
 
 For AeroSpace, find its absolute path:
 
