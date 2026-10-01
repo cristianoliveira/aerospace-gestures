@@ -41,9 +41,9 @@ swift run aerospace-gestures run --dry-run
 swift run aerospace-gestures run
 ```
 
-The default path is `$XDG_CONFIG_HOME/aerospace-gestures/config.json` when `XDG_CONFIG_HOME` is an absolute nonempty path; otherwise it is `~/.config/aerospace-gestures/config.json`. Pass a path to `init`, `check`, or `run` to override it; relative paths are resolved from the current working directory. `run` and `listen` never create configuration implicitly. Use `check <path>` to validate a file without starting trackpad input.
+The default path is `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` when `XDG_CONFIG_HOME` is an absolute nonempty path; otherwise it is `~/.config/aerospace-gestures/config.toml`. Pass a path to `init`, `check`, or `run` to override it; relative paths are resolved from the current working directory. `run` and `listen` never create configuration implicitly. Use `check <path>` to validate a file without starting trackpad input.
 
-The default init example runs `/usr/bin/osascript` to show the proven popup; child output is discarded. For a harmless command-only sample, see [`config.example.json`](../config.example.json) (which uses `/bin/echo`). Successful execution appears as `Command exited with status 0`. AeroSpace's `exec-and-forget` is its own configuration directive, not an executable for this app.
+The default init example runs `/usr/bin/osascript` to show the proven popup; child output is discarded. For a harmless command-only sample, see [`config.example.toml`](../config.example.toml) (which uses `/bin/echo`). Successful execution appears as `Command exited with status 0`. AeroSpace's `exec-and-forget` is its own configuration directive, not an executable for this app.
 
 For AeroSpace, find its absolute path:
 
@@ -53,12 +53,11 @@ command -v aerospace
 
 Replace a binding with your path, for example:
 
-```json
-{
-  "fingers": 3,
-  "direction": "left",
-  "command": ["/opt/homebrew/bin/aerospace", "focus", "left"]
-}
+```toml
+[[bindings]]
+fingers = 3
+direction = "left"
+command = ["/opt/homebrew/bin/aerospace", "focus", "left"]
 ```
 
 Configuration:
@@ -68,7 +67,7 @@ Configuration:
 - `command`: executable's absolute path followed by separate arguments. No shell expansion, pipes, or redirection. For more complex actions, invoke your own executable script. The child receives `/dev/null` as stdin, stdout, and stderr; test commands with stdin closed and pass `--no-stdin` if the tool supports it. Only the exit status appears in gesture logs.
 - `threshold`: optional, defaults to `0.15`, allowed range `0.02`–`0.8`. Measured as normalized trackpad displacement, not pixels. Lower values are more sensitive.
 
-Configuration is loaded at startup. In normal `run`, choose **Reload configuration** from the menu to read and validate the active file without restarting the input listener. A successful swap preserves pause state and running commands, discards queued old-config frames, and requires active fingers to lift before dispatch; a failure keeps the previous config and shows an error in the menu. For a Nix-managed LaunchAgent marked with `AEROSPACE_GESTURES_NIX_MANAGED=1`, reload rereads the trusted root-owned plist and stable `/etc/aerospace-gestures/config.json` symlink on each request, so a rebuilt store config is picked up without changing plist argv. Foreground/manual runs keep their original config path. Listen and dry-run have no reload control. Duplicate bindings are rejected. Only use configuration/scripts you trust: commands run with your account's permissions.
+Configuration is loaded at startup. In normal `run`, choose **Reload configuration** from the menu to read and validate the active file without restarting the input listener. A successful swap preserves pause state and running commands, discards queued old-config frames, and requires active fingers to lift before dispatch; a failure keeps the previous config and shows an error in the menu. For a Nix-managed LaunchAgent marked with `AEROSPACE_GESTURES_NIX_MANAGED=1`, reload rereads the trusted root-owned plist and stable `/etc/aerospace-gestures/config.toml` symlink on each request, so a rebuilt store config is picked up without changing plist argv. Foreground/manual runs keep their original config path. Listen and dry-run have no reload control. Duplicate bindings are rejected. Only use configuration/scripts you trust: commands run with your account's permissions.
 
 ## Pause command actions
 

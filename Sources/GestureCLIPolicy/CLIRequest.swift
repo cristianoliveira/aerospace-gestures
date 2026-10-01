@@ -32,10 +32,10 @@ public enum CLIHelp {
     case .root:
       usage = """
         Usage:
-          \(command) init [config.json]
+          \(command) init [config.toml]
           \(command) listen
-          \(command) check [config.json]
-          \(command) run [config.json] [--dry-run]
+          \(command) check [config.toml]
+          \(command) run [config.toml] [--dry-run]
           \(command) service <install|status|start|stop|restart|uninstall>
         """
       example = "\(command) init && \(command) check && \(command) run --dry-run"
@@ -45,7 +45,7 @@ public enum CLIHelp {
         service manages this user's GUI LaunchAgent; it never grants permissions or builds the binary.
         """
     case .initialize:
-      usage = "Usage: \(command) init [config.json]"
+      usage = "Usage: \(command) init [config.toml]"
       example = "\(command) init"
       description =
         "Creates the popup example exclusively. Existing files and symlinks are preserved."
@@ -55,11 +55,11 @@ public enum CLIHelp {
       description =
         "Observes gestures without executing commands or showing an action toggle; requires macOS 13+ and a multitouch trackpad."
     case .check:
-      usage = "Usage: \(command) check [config.json]"
-      example = "\(command) check /path/to/config.json"
-      description = "Validates JSON and executable paths without starting devices or commands."
+      usage = "Usage: \(command) check [config.toml]"
+      example = "\(command) check /path/to/config.toml"
+      description = "Validates TOML and executable paths without starting devices or commands."
     case .run:
-      usage = "Usage: \(command) run [config.json] [--dry-run]"
+      usage = "Usage: \(command) run [config.toml] [--dry-run]"
       example = "\(command) run --dry-run"
       description =
         "Normal run starts enabled with a menu-bar action toggle and Reload configuration; pausing keeps listening but blocks new commands. Reload validates before swapping without restarting input. --dry-run observes only and never enables command execution."
@@ -83,8 +83,8 @@ public enum CLIHelp {
       \(description)
       Prerequisites: macOS 13+ and a multitouch trackpad for listen/run; init/check need no device. Swift 5.9+ to build.
       If the default file is missing, create it with `\(command) init`.
-      To validate a file: `\(command) check <config.json>`.
-      If init reports that a file exists, inspect it with check or choose another path with `\(command) init <config.json>`.
+      To validate a file: `\(command) check <config.toml>`.
+      If init reports that a file exists, inspect it with check or choose another path with `\(command) init <config.toml>`.
       Example: `\(example)`
       Private MultitouchSupport API is experimental and system gestures are not suppressed.
       """
@@ -134,14 +134,14 @@ public enum CLIRequest: Equatable {
       return .listen
     case "init":
       guard options.count <= 1 else {
-        throw CLIArgumentError.invalidArguments("Expected init [config.json]")
+        throw CLIArgumentError.invalidArguments("Expected init [config.toml]")
       }
       return .initialize(
         configuration: ConfigurationPath.resolve(
           explicitPath: options.first, in: environment))
     case "check":
       guard options.count <= 1 else {
-        throw CLIArgumentError.invalidArguments("Expected check [config.json]")
+        throw CLIArgumentError.invalidArguments("Expected check [config.toml]")
       }
       return .check(
         configuration: ConfigurationPath.resolve(
@@ -151,7 +151,7 @@ public enum CLIRequest: Equatable {
       let dryRun = paths.last == "--dry-run"
       if dryRun { paths.removeLast() }
       guard paths.count <= 1 else {
-        throw CLIArgumentError.invalidArguments("Expected run [config.json] [--dry-run]")
+        throw CLIArgumentError.invalidArguments("Expected run [config.toml] [--dry-run]")
       }
       return .run(
         configuration: ConfigurationPath.resolve(explicitPath: paths.first, in: environment),
@@ -186,7 +186,7 @@ public enum ConfigurationPath {
     return
       configRoot
       .appendingPathComponent("aerospace-gestures", isDirectory: true)
-      .appendingPathComponent("config.json")
+      .appendingPathComponent("config.toml")
       .standardizedFileURL
   }
 }

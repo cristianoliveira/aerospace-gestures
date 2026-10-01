@@ -1,4 +1,5 @@
 import Foundation
+import TOMLKit
 
 public enum Direction: String, Codable, Sendable { case left, right, up, down }
 
@@ -90,7 +91,19 @@ public struct Configuration: Decodable, Sendable {
   }
 
   public static func load(_ data: Data) throws -> Configuration {
-    let config = try JSONDecoder().decode(Configuration.self, from: data)
+    guard let toml = String(data: data, encoding: .utf8) else {
+      throw ConfigurationError.invalid("configuration must be valid UTF-8")
+    }
+
+    let config: Configuration
+    do {
+      config = try TOMLDecoder().decode(Configuration.self, from: toml)
+    } catch let error as TOMLParseError {
+      let position = error.source.begin
+      throw ConfigurationError.invalid(
+        "invalid TOML at line \(position.line), column \(position.column): \(error.description)")
+    }
+
     guard config.threshold.isFinite, (0.02...0.8).contains(config.threshold) else {
       throw ConfigurationError.invalid("threshold must be between 0.02 and 0.8")
     }

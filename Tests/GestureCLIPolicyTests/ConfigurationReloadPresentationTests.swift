@@ -13,12 +13,12 @@ final class ConfigurationReloadPresentationTests: XCTestCase {
   func testSuccessAndFailureHaveVisibleMenuFeedback() {
     let success = ConfigurationReloadPresentation(state: .succeeded, canReload: true)
     let failure = ConfigurationReloadPresentation(
-      state: .failed("invalid JSON"), canReload: true)
+      state: .failed("invalid TOML"), canReload: true)
 
     XCTAssertTrue(success.reloadIsEnabled)
     XCTAssertEqual(success.feedbackMessage, "Configuration reloaded")
     XCTAssertTrue(failure.reloadIsEnabled)
-    XCTAssertEqual(failure.feedbackMessage, "Reload failed: invalid JSON")
+    XCTAssertEqual(failure.feedbackMessage, "Reload failed: invalid TOML")
   }
 
   func testSafeModesHideReloadFeedbackAndDisableReload() {

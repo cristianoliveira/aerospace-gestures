@@ -1,0 +1,21 @@
+threshold = 0.15
+
+[[bindings]]
+fingers = 3
+direction = "left"
+command = ["/bin/echo", "three-finger left"]
+
+[[bindings]]
+fingers = 3
+direction = "right"
+command = ["/bin/echo", "three-finger right"]
+
+[[bindings]]
+fingers = 4
+direction = "up"
+command = ["/bin/echo", "four-finger up"]
+
+[[bindings]]
+fingers = 4
+direction = "down"
+command = ["/bin/echo", "four-finger down"]

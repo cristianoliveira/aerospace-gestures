@@ -11,7 +11,7 @@ public struct ConfigurationReloadSourcePaths: Sendable {
     launchAgentPlistURL: URL = URL(
       fileURLWithPath: "/Library/LaunchAgents/com.aerospace-gestures.plist"),
     managedConfigurationURL: URL = URL(
-      fileURLWithPath: "/etc/aerospace-gestures/config.json"),
+      fileURLWithPath: "/etc/aerospace-gestures/config.toml"),
     storeDirectoryURL: URL = URL(fileURLWithPath: "/nix/store", isDirectory: true)
   ) {
     self.launchAgentPlistURL = launchAgentPlistURL.standardizedFileURL
@@ -114,11 +114,11 @@ public struct ConfigurationReloadSourceResolver: Sendable {
       ? paths.storeDirectoryURL.path : paths.storeDirectoryURL.path + "/"
     guard
       resolvedURL.path.hasPrefix(storePath),
-      resolvedURL.lastPathComponent.hasSuffix("-aerospace-gestures.json")
+      resolvedURL.lastPathComponent.hasSuffix("-aerospace-gestures.toml")
     else {
       throw ConfigurationReloadSourceError.unsafeConfigurationPath(
         configurationURL,
-        "target must be an aerospace-gestures JSON file under the trusted Nix store")
+        "target must be an aerospace-gestures TOML file under the trusted Nix store")
     }
     try validateRegularFile(resolvedURL, requireNonWritable: true)
   }

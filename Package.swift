@@ -5,8 +5,14 @@ let package = Package(
     name: "aerospace-gestures",
     platforms: [.macOS(.v13)],
     products: [.executable(name: "aerospace-gestures", targets: ["GestureCLI"])],
+    dependencies: [
+        .package(url: "https://github.com/LebJe/TOMLKit.git", exact: "0.6.0")
+    ],
     targets: [
-        .target(name: "GestureCore"),
+        .target(
+            name: "GestureCore",
+            dependencies: [.product(name: "TOMLKit", package: "TOMLKit")]
+        ),
         .target(name: "GestureInfrastructure", dependencies: ["GestureCore"]),
         .target(name: "GestureCLIPolicy", dependencies: ["GestureCore"]),
         .target(name: "MultitouchBridge", linkerSettings: [.linkedFramework("CoreFoundation")]),

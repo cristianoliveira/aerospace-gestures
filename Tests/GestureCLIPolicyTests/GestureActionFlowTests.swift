@@ -92,9 +92,9 @@ final class GestureActionFlowTests: XCTestCase {
     XCTAssertEqual(policy.state, .paused)
     XCTAssertFalse(FileManager.default.fileExists(atPath: finished.path))
 
-    let original = try Configuration.load(Data(#"{"bindings":[]}"#.utf8))
+    let original = try Configuration.load(Data("bindings = []".utf8))
     let replacement = try Configuration.load(
-      Data(#"{"threshold":0.3,"bindings":[]}"#.utf8))
+      Data("threshold = 0.3\nbindings = []".utf8))
     let reloadPolicy = ConfigurationReloadPolicy(initialConfiguration: original, mode: .run)
     let reload = try XCTUnwrap(reloadPolicy.beginReload())
     XCTAssertTrue(reloadPolicy.completeReload(reload, with: .success(replacement)))

@@ -10,7 +10,7 @@ final class CLIConfigurationTests: XCTestCase {
   private let currentDirectory = URL(fileURLWithPath: "/tmp/work tree", isDirectory: true)
 
   func testExplicitAbsolutePathTakesPrecedenceOverExistingDefault() throws {
-    let explicit = URL(fileURLWithPath: "/tmp/explicit config.json")
+    let explicit = URL(fileURLWithPath: "/tmp/explicit config.toml")
     let environment = CLIEnvironment(
       values: ["XDG_CONFIG_HOME": "/tmp/xdg"], homeDirectory: home,
       currentDirectory: currentDirectory)
@@ -26,13 +26,13 @@ final class CLIConfigurationTests: XCTestCase {
       currentDirectory: currentDirectory)
 
     let request = try CLIRequest.parse(
-      ["run", "relative config.json", "--dry-run"], in: environment)
+      ["run", "relative config.toml", "--dry-run"], in: environment)
 
     XCTAssertEqual(
       request,
       .run(
         configuration: URL(
-          fileURLWithPath: "relative config.json", relativeTo: currentDirectory
+          fileURLWithPath: "relative config.toml", relativeTo: currentDirectory
         ).standardizedFileURL,
         dryRun: true))
   }
@@ -46,7 +46,7 @@ final class CLIConfigurationTests: XCTestCase {
 
     XCTAssertEqual(
       request,
-      .check(configuration: URL(fileURLWithPath: "/tmp/config root/aerospace-gestures/config.json"))
+      .check(configuration: URL(fileURLWithPath: "/tmp/config root/aerospace-gestures/config.toml"))
     )
   }
 
@@ -62,7 +62,7 @@ final class CLIConfigurationTests: XCTestCase {
         request,
         .check(
           configuration: URL(
-            fileURLWithPath: ".config/aerospace-gestures/config.json", relativeTo: home
+            fileURLWithPath: ".config/aerospace-gestures/config.toml", relativeTo: home
           )
           .standardizedFileURL))
     }
@@ -78,7 +78,7 @@ final class CLIConfigurationTests: XCTestCase {
       request,
       .run(
         configuration: URL(
-          fileURLWithPath: ".config/aerospace-gestures/config.json", relativeTo: home
+          fileURLWithPath: ".config/aerospace-gestures/config.toml", relativeTo: home
         )
         .standardizedFileURL,
         dryRun: true))
@@ -95,7 +95,7 @@ final class CLIConfigurationTests: XCTestCase {
       XCTAssertTrue(text.contains("Prerequisites:"))
       XCTAssertTrue(text.contains("Example:"))
       XCTAssertTrue(text.contains("aerospace-gestures init"))
-      XCTAssertTrue(text.contains("aerospace-gestures check <config.json>"))
+      XCTAssertTrue(text.contains("aerospace-gestures check <config.toml>"))
     }
     let runHelp = CLIHelp.text(for: .run, defaultConfigurationURL: defaultURL)
     XCTAssertTrue(runHelp.contains("Reload configuration"))
@@ -134,14 +134,18 @@ final class CLIConfigurationTests: XCTestCase {
     XCTAssertThrowsError(try CLIRequest.parse(["check", "one", "two"], in: environment))
     XCTAssertThrowsError(try CLIRequest.parse(["unknown"], in: environment))
     XCTAssertThrowsError(
-      try CLIRequest.parse(["run", "config.json", "--unknown"], in: environment))
+      try CLIRequest.parse(["run", "config.toml", "--unknown"], in: environment))
   }
 
   func testExecutableValidationUsesInjectedCheckAndDoesNotRunCommands() throws {
     let configuration = try Configuration.load(
       Data(
-        #"{"bindings":[{"fingers":3,"direction":"down","command":["/path with spaces/popup"]}]}"#
-          .utf8))
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "down"
+        command = ["/path with spaces/popup"]
+        """.utf8))
     var checked: [String] = []
 
     try ConfigurationDecision.validateExecutables(in: configuration) { path in
@@ -154,7 +158,13 @@ final class CLIConfigurationTests: XCTestCase {
 
   func testExecutableValidationReportsMissingCommand() throws {
     let configuration = try Configuration.load(
-      Data(#"{"bindings":[{"fingers":3,"direction":"down","command":["/missing/popup"]}]}"#.utf8))
+      Data(
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "down"
+        command = ["/missing/popup"]
+        """.utf8))
 
     XCTAssertThrowsError(
       try ConfigurationDecision.validateExecutables(in: configuration) { _ in false }
@@ -171,8 +181,8 @@ final class CLIConfigurationTests: XCTestCase {
     let defaultPath =
       xdg
       .appendingPathComponent("aerospace-gestures", isDirectory: true)
-      .appendingPathComponent("config.json")
-    let explicitPath = directory.appendingPathComponent("missing config.json")
+      .appendingPathComponent("config.toml")
+    let explicitPath = directory.appendingPathComponent("missing config.toml")
     try FileManager.default.createDirectory(
       at: defaultPath.deletingLastPathComponent(), withIntermediateDirectories: true)
     try Data(ConfigurationFile.defaultContents.utf8).write(to: defaultPath)
@@ -199,8 +209,8 @@ final class CLIConfigurationTests: XCTestCase {
       .appendingPathComponent(UUID().uuidString, isDirectory: true)
     defer { try? FileManager.default.removeItem(at: directory) }
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    let invalidPath = directory.appendingPathComponent("bad config.json")
-    try Data("not json".utf8).write(to: invalidPath)
+    let invalidPath = directory.appendingPathComponent("bad config.toml")
+    try Data("[[bindings]".utf8).write(to: invalidPath)
 
     XCTAssertThrowsError(try ConfigurationFile.load(at: invalidPath)) { error in
       XCTAssertTrue(
@@ -239,7 +249,7 @@ final class CLIConfigurationTests: XCTestCase {
     let blocker = directory.appendingPathComponent("not a directory")
     let original = Data("preserve".utf8)
     try original.write(to: blocker)
-    let destination = blocker.appendingPathComponent("config.json")
+    let destination = blocker.appendingPathComponent("config.toml")
 
     XCTAssertThrowsError(try ConfigurationFile.initializeDefault(at: destination)) { error in
       XCTAssertTrue(String(describing: error).contains(blocker.path))
@@ -252,8 +262,8 @@ final class CLIConfigurationTests: XCTestCase {
       .appendingPathComponent(UUID().uuidString, isDirectory: true)
     defer { try? FileManager.default.removeItem(at: directory) }
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    let target = directory.appendingPathComponent("existing.json")
-    let destination = directory.appendingPathComponent("config.json")
+    let target = directory.appendingPathComponent("existing.toml")
+    let destination = directory.appendingPathComponent("config.toml")
     let original = Data("keep this".utf8)
     try original.write(to: target)
     try FileManager.default.createSymbolicLink(at: destination, withDestinationURL: target)

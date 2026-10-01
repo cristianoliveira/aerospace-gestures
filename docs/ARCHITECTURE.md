@@ -9,12 +9,13 @@ GestureCLI ──▶ GestureInfrastructure ──▶ GestureCore
      ├───────▶ GestureCLIPolicy ──▶ GestureCore
      └───────▶ MultitouchInput ──▶ GestureCore
                               └──▶ MultitouchBridge (private C ABI)
+GestureCore ──▶ TOMLKit ──▶ vendored toml++ 3.4.0 (C++17)
 ```
 
-SwiftPM enforces these edges: `GestureCore` has no target dependencies; infrastructure depends only on core; the C bridge is imported only by the macOS input adapter; the CLI composes the modules. There is no generic shared library or generalized service framework.
+SwiftPM enforces these edges: `GestureCore` depends on `TOMLKit` only for decoding and validation, and remains side-effect-free; infrastructure depends on core; the C bridge is imported only by the macOS input adapter; the CLI composes the modules. `TOMLKit` vendors the MIT-licensed toml++ 3.4.0 parser and compiles it as C++17. There is no generic shared library or generalized service framework.
 
-- **GestureCore**: immutable contact/gesture values, deterministic swipe recognition, and JSON configuration decoding/validation. It performs no process, device, filesystem, or mutable-global effects.
-- **GestureInfrastructure**: command/configuration file I/O, per-user LaunchAgent lifecycle, a kernel advisory listener lock, bounded startup diagnostics, and listener shutdown ordering. `ConfigurationReloadAdapter` resolves the source afresh, reads the candidate, and runs injected validation before it returns. Nix mode trusts only the root-owned managed plist, exact argv/marker, stable `/etc/aerospace-gestures/config.json` symlink, and non-writable root-owned JSON target under `/nix/store`; manual mode uses its startup path. LaunchAgent operations inject paths, UID, and process runner; tests use temporary homes and a fake launchctl runner.
+- **GestureCore**: immutable contact/gesture values, deterministic swipe recognition, and TOML configuration decoding/validation. It performs no process, device, filesystem, or mutable-global effects.
+- **GestureInfrastructure**: command/configuration file I/O, per-user LaunchAgent lifecycle, a kernel advisory listener lock, bounded startup diagnostics, and listener shutdown ordering. `ConfigurationReloadAdapter` resolves the source afresh, reads the candidate, and runs injected validation before it returns. Nix mode trusts only the root-owned managed plist, exact argv/marker, stable `/etc/aerospace-gestures/config.toml` symlink, and non-writable root-owned TOML target under `/nix/store`; manual mode uses its startup path. LaunchAgent operations inject paths, UID, and process runner; tests use temporary homes and a fake launchctl runner.
 - **GestureCLIPolicy**: pure CLI argument parsing, config path resolution, executable-path decisions, gesture-to-binding selection, thread-safe action-pause policy, and configuration-reload policy/presentation. Reload accepts one request at a time and atomically swaps only a fully loaded/validated config; failures retain the previous snapshot. Run can pause new command launches; listen/dry-run remain non-executing and have no enable/reload control. Frame-generation tokens reject callbacks queued across a toggle or successful reload, and active devices must lift before dispatch resumes. Tested without AppKit or devices.
 - **MultitouchBridge**: isolated reverse-engineered `MultitouchSupport` C ABI and callback lifecycle.
 - **MultitouchInput**: adapts the C callback into copied `[Contact]` values and carries its per-device frame sequence into Swift. A wrap-aware sequence gate serializes handler delivery and rejects duplicate or older frames before they can reach the CLI; the framework owns raw callback storage, which the adapter copies before returning. Repeated start is rejected without replacing the active handler; callback work already in flight may finish after stop. Recognition state and dispatch serialization remain in the CLI's main-queue callback.
@@ -27,17 +28,17 @@ The input adapter copies each frame, rejects out-of-order per-device sequence nu
 
 ## Configuration
 
-The default file is `$XDG_CONFIG_HOME/aerospace-gestures/config.json` when XDG_CONFIG_HOME is nonempty and absolute; otherwise it is `~/.config/aerospace-gestures/config.json`. `init` creates the popup example exclusively. Explicit config paths override the default; relative paths resolve against the caller's current directory. `check` validates without starting devices, and run/listen never create config implicitly. Normal run loads at startup and can reload explicitly from its active source; an invalid replacement leaves the prior immutable config in use.
+The default file is `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` when XDG_CONFIG_HOME is nonempty and absolute; otherwise it is `~/.config/aerospace-gestures/config.toml`. `init` creates the popup example exclusively. Explicit config paths override the default; relative paths resolve against the caller's current directory. `check` validates without starting devices, and run/listen never create config implicitly. Normal run loads at startup and can reload explicitly from its active source; an invalid replacement leaves the prior immutable config in use.
 
 Canonical schema (threshold is optional; default `0.15`):
 
-```json
-{
-  "threshold": 0.15,
-  "bindings": [
-    { "fingers": 3, "direction": "down", "command": ["/bin/echo", "hello"] }
-  ]
-}
+```toml
+threshold = 0.15
+
+[[bindings]]
+fingers = 3
+direction = "down"
+command = ["/bin/echo", "hello"]
 ```
 
 Threshold must be finite and in `0.02...0.8`; finger count must be 3, 4, or 5; commands are non-empty argv arrays with an absolute executable and no NUL bytes; gesture bindings must be unique. The CLI additionally verifies executable permissions. Normal run reloads on request; configuration is replaced only after a complete load and executable validation.

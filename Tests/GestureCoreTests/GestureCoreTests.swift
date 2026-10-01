@@ -81,22 +81,68 @@ final class GestureCoreTests: XCTestCase {
     XCTAssertEqual(detector.update(points(x: 0.5)), Gesture(fingers: 3, direction: .left))
   }
 
-  func testConfigurationRejectsUnsafeOrAmbiguousBindings() throws {
+    func testConfigurationRejectsUnsafeOrAmbiguousBindings() throws {
     let invalid = [
-      #"{"threshold":0,"bindings":[]}"#,
-      #"{"bindings":[{"fingers":2,"direction":"left","command":["/bin/echo"]}]}"#,
-      #"{"bindings":[{"fingers":3,"direction":"left","command":[]}]}"#,
-      #"{"bindings":[{"fingers":3,"direction":"left","command":["echo"]}]}"#,
-      #"{"bindings":[{"fingers":3,"direction":"left","command":["/bin/echo"]},{"fingers":3,"direction":"left","command":["/bin/ls"]}]}"#,
+      "threshold = 0\nbindings = []",
+      """
+      [[bindings]]
+      fingers = 2
+      direction = "left"
+      command = ["/bin/echo"]
+      """,
+      """
+      [[bindings]]
+      fingers = 3
+      direction = "left"
+      command = []
+      """,
+      """
+      [[bindings]]
+      fingers = 3
+      direction = "left"
+      command = ["echo"]
+      """,
+      """
+      [[bindings]]
+      fingers = 3
+      direction = "left"
+      command = ["/bin/echo"]
+
+      [[bindings]]
+      fingers = 3
+      direction = "left"
+      command = ["/bin/ls"]
+      """,
     ]
-    for json in invalid {
-      XCTAssertThrowsError(try Configuration.load(Data(json.utf8)))
+    for toml in invalid {
+      XCTAssertThrowsError(try Configuration.load(Data(toml.utf8)))
     }
+
     let config = try Configuration.load(
       Data(
-        #"{"bindings":[{"fingers":3,"direction":"left","command":["/bin/echo","hello; not a shell"]}]}"#
-          .utf8))
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        command = ["/bin/echo", "hello; not a shell"]
+        """.utf8))
     XCTAssertEqual(config.threshold, 0.15)
     XCTAssertEqual(config.bindings[0].command, ["/bin/echo", "hello; not a shell"])
   }
+
+  func testConfigurationRejectsMalformedTOMLAndLegacyJSON() {
+    XCTAssertThrowsError(try Configuration.load(Data("[[bindings]\n".utf8))) { error in
+      XCTAssertTrue(String(describing: error).contains("invalid TOML at line"))
+    }
+    XCTAssertThrowsError(
+      try Configuration.load(
+        Data(#"{"bindings":[{"fingers":3,"direction":"left","command":["/bin/echo"]}]}"#.utf8)))
+  }
+
+  func testConfigurationRejectsInvalidUTF8() {
+    XCTAssertThrowsError(try Configuration.load(Data([0xFF]))) { error in
+      XCTAssertTrue(String(describing: error).contains("valid UTF-8"))
+    }
+  }
+
 }

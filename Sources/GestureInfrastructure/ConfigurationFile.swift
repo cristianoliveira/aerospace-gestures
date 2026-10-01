@@ -4,20 +4,16 @@ import GestureCore
 
 public enum ConfigurationFile {
   public static let defaultContents = #"""
-    {
-      "threshold": 0.15,
-      "bindings": [
-        {
-          "fingers": 3,
-          "direction": "down",
-          "command": [
-            "/usr/bin/osascript",
-            "-e",
-            "display dialog \"It's hooked!\" with title \"Three-finger swipe down\" buttons {\"OK\"} default button \"OK\" giving up after 3"
-          ]
-        }
-      ]
-    }
+    threshold = 0.15
+
+    [[bindings]]
+    fingers = 3
+    direction = "down"
+    command = [
+      "/usr/bin/osascript",
+      "-e",
+      "display dialog \"It's hooked!\" with title \"Three-finger swipe down\" buttons {\"OK\"} default button \"OK\" giving up after 3"
+    ]
     """#
 
   public static func load(at url: URL) throws -> Configuration {

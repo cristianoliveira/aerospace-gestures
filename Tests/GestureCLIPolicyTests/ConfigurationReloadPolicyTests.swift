@@ -25,11 +25,11 @@ final class ConfigurationReloadPolicyTests: XCTestCase {
     let policy = ConfigurationReloadPolicy(initialConfiguration: original, mode: .run)
     let request = try XCTUnwrap(policy.beginReload())
 
-    XCTAssertTrue(policy.completeReload(request, with: .failure("invalid JSON")))
+    XCTAssertTrue(policy.completeReload(request, with: .failure("invalid TOML")))
 
     XCTAssertEqual(policy.activeConfiguration?.threshold, 0.15)
     XCTAssertEqual(policy.activeConfiguration?.bindings.first?.command, ["/bin/echo"])
-    XCTAssertEqual(policy.state, .failed("invalid JSON"))
+    XCTAssertEqual(policy.state, .failed("invalid TOML"))
   }
 
   func testOnlyLatestActiveRequestCanComplete() throws {
@@ -66,7 +66,12 @@ final class ConfigurationReloadPolicyTests: XCTestCase {
     try Configuration.load(
       Data(
         """
-        {"threshold":\(threshold),"bindings":[{"fingers":3,"direction":"down","command":["\(command)"]}]}
+        threshold = \(threshold)
+
+        [[bindings]]
+        fingers = 3
+        direction = "down"
+        command = ["\(command)"]
         """.utf8))
   }
 }

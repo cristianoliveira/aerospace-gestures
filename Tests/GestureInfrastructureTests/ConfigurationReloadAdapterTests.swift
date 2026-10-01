@@ -8,7 +8,7 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
   func testManualRunKeepsItsExplicitConfigurationPath() throws {
     let fixture = try Fixture()
     defer { fixture.remove() }
-    let fallback = fixture.root.appendingPathComponent("manual/config.json")
+    let fallback = fixture.root.appendingPathComponent("manual/config.toml")
     let paths = fixture.sourcePaths
     let resolver = ConfigurationReloadSourceResolver(
       nixManaged: false,
@@ -138,18 +138,18 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
     }
   }
 
-  func testInvalidJSONPreventsAdapterValidationAndReloadCandidate() throws {
+  func testInvalidTOMLPreventsAdapterValidationAndReloadCandidate() throws {
     let fixture = try Fixture()
     defer { fixture.remove() }
-    let invalidJSON = fixture.storeDirectoryURL.appendingPathComponent(
-      "invalid-aerospace-gestures.json")
-    try Data("not json".utf8).write(to: invalidJSON)
+    let invalidTOML = fixture.storeDirectoryURL.appendingPathComponent(
+      "invalid-aerospace-gestures.toml")
+    try Data("[[bindings]".utf8).write(to: invalidTOML)
     try FileManager.default.setAttributes(
-      [.posixPermissions: 0o444], ofItemAtPath: invalidJSON.path)
+      [.posixPermissions: 0o444], ofItemAtPath: invalidTOML.path)
     try fixture.installManagedPlist()
-    try fixture.pointStableConfiguration(to: invalidJSON)
+    try fixture.pointStableConfiguration(to: invalidTOML)
     let adapter = ConfigurationReloadAdapter(sourceResolver: fixture.resolver(nixManaged: true)) {
-      _ in XCTFail("Invalid JSON must not reach executable validation")
+      _ in XCTFail("Invalid TOML must not reach executable validation")
     }
 
     XCTAssertThrowsError(try adapter.load())
@@ -186,7 +186,7 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
     init() throws {
       executableURL = root.appendingPathComponent("bin/aerospace-gestures")
       plistURL = root.appendingPathComponent("Library/LaunchAgents/com.aerospace-gestures.plist")
-      managedConfigurationURL = root.appendingPathComponent("etc/aerospace-gestures/config.json")
+      managedConfigurationURL = root.appendingPathComponent("etc/aerospace-gestures/config.toml")
       storeDirectoryURL = root.appendingPathComponent("nix/store", isDirectory: true)
       try FileManager.default.createDirectory(
         at: executableURL.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -220,7 +220,7 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
     ) -> ConfigurationReloadSourceResolver {
       ConfigurationReloadSourceResolver(
         nixManaged: nixManaged,
-        fallbackURL: root.appendingPathComponent("manual/config.json"),
+        fallbackURL: root.appendingPathComponent("manual/config.toml"),
         currentExecutableURL: executableURL,
         paths: sourcePaths,
         trustedOwnerUID: trustedOwnerUID)
@@ -251,10 +251,13 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
     }
 
     func writeStoreConfiguration(_ argument: String, permissions: Int = 0o444) throws -> URL {
-      let url = storeDirectoryURL.appendingPathComponent("test-aerospace-gestures.json")
+      let url = storeDirectoryURL.appendingPathComponent("test-aerospace-gestures.toml")
       let data = Data(
         """
-        {"bindings":[{"fingers":3,"direction":"down","command":["/bin/echo","\(argument)"]}]}
+        [[bindings]]
+        fingers = 3
+        direction = "down"
+        command = ["/bin/echo", "\(argument)"]
         """.utf8)
       if FileManager.default.fileExists(atPath: url.path) {
         try FileManager.default.removeItem(at: url)

@@ -6,7 +6,13 @@ import XCTest
 final class CommandDecisionTests: XCTestCase {
   func testSelectsMatchingBindingOnlyWhenExecutionIsEnabled() throws {
     let configuration = try Configuration.load(
-      Data(#"{"bindings":[{"fingers":3,"direction":"left","command":["/bin/echo"]}]}"#.utf8))
+      Data(
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        command = ["/bin/echo"]
+        """.utf8))
     let gesture = Gesture(fingers: 3, direction: .left)
 
     XCTAssertNil(CommandDecision.binding(for: gesture, in: configuration.bindings, dryRun: true))

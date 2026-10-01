@@ -2,7 +2,7 @@
 
 ## Supported environment
 
-Use macOS 13 or later and Swift 5.9 or later (the package tools version is 5.9). CI runs on macOS 15 with Xcode 16.4 / Swift 6.1. No third-party runtime or package dependencies are currently used. Swift's formatter is supplied by Xcode; CI does not install floating tools.
+Use macOS 13 or later and Swift 5.9 or later (the package tools version is 5.9). CI runs on macOS 15 with Xcode 16.4 / Swift 6.1. The only runtime package dependency is exact-pinned TOMLKit 0.6.0, which vendors the MIT-licensed toml++ 3.4.0 parser and builds it as C++17. Swift's formatter is supplied by Xcode; CI does not install floating tools.
 
 Check your environment:
 
@@ -69,7 +69,7 @@ Before committing, review focused coverage and regression risk, run `make check`
 
 There is no release workflow yet. Before a future release, verify locally with `swift build -c release` and `swift test`, then exercise the documented listen/configuration smoke test on the supported hardware. Creating a release/publishing remains an explicit human action.
 
-Any new dependency needs a pinned resolution and a relevant license/security review; do not add an audit command for an empty dependency graph. For security-sensitive integrations, add a targeted audit when there is a concrete dependency to assess.
+Any new dependency needs a pinned resolution and a relevant license/security review. SwiftPM has no built-in vulnerability-audit command; inspect its resolved graph and advisories with available tooling rather than adding a fake audit gate. For security-sensitive integrations, add a targeted audit when there is a concrete dependency to assess.
 
 ## Architecture
 

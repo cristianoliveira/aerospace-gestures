@@ -137,7 +137,7 @@ final class LaunchAgentServiceTests: XCTestCase {
     XCTAssertEqual(try fixture.service.install(), .installed)
     let originalPlist = try Data(contentsOf: fixture.paths.plistURL)
 
-    let replacementConfig = fixture.root.appendingPathComponent("new config.json")
+    let replacementConfig = fixture.root.appendingPathComponent("new config.toml")
     try fixture.writeConfiguration(at: replacementConfig)
     let updatedPaths = LaunchAgentPaths(
       homeDirectory: fixture.paths.homeDirectory,
@@ -212,7 +212,7 @@ final class LaunchAgentServiceTests: XCTestCase {
     XCTAssertEqual(try fixture.service.install(), .installed)
     let oldPlist = try Data(contentsOf: fixture.paths.plistURL)
     let newConfigurationURL = fixture.paths.homeDirectory
-      .appendingPathComponent(".config/alternate.json")
+      .appendingPathComponent(".config/alternate.toml")
     try fixture.writeConfiguration(at: newConfigurationURL)
     let updatedPaths = LaunchAgentPaths(
       homeDirectory: fixture.paths.homeDirectory,
@@ -303,7 +303,7 @@ final class LaunchAgentServiceTests: XCTestCase {
     let fixture = try ServiceFixture()
     defer { fixture.remove() }
     XCTAssertEqual(try fixture.service.install(), .installed)
-    let alternateConfig = fixture.root.appendingPathComponent("changed default.json")
+    let alternateConfig = fixture.root.appendingPathComponent("changed default.toml")
     try Data("invalid config".utf8).write(to: alternateConfig)
     let changedDefaultPaths = LaunchAgentPaths(
       homeDirectory: fixture.paths.homeDirectory,
@@ -581,7 +581,7 @@ private final class ServiceFixture {
     let executable = home.appendingPathComponent(".local/bin/aerospace-gestures")
     try FileManager.default.createDirectory(
       at: executable.deletingLastPathComponent(), withIntermediateDirectories: true)
-    let config = home.appendingPathComponent(".config/xdg root/config.json")
+    let config = home.appendingPathComponent(".config/xdg root/config.toml")
     paths = LaunchAgentPaths(
       homeDirectory: home, executableURL: executable, configurationURL: config, uid: 2403,
       launchctlURL: URL(fileURLWithPath: "/tmp/fake launchctl"))
@@ -601,7 +601,12 @@ private final class ServiceFixture {
   func writeConfiguration(at url: URL) throws {
     let parent = url.deletingLastPathComponent()
     try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
-    let contents = #"{"bindings":[{"fingers":3,"direction":"down","command":["/usr/bin/true"]}]}"#
+    let contents = """
+      [[bindings]]
+      fingers = 3
+      direction = "down"
+      command = ["/usr/bin/true"]
+      """
     try Data(contents.utf8).write(to: url)
   }
 
