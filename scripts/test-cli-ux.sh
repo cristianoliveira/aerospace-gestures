@@ -5,6 +5,8 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+test_tmp="$(mktemp -d)"
+trap 'rm -rf "$test_tmp"' EXIT
 cd "$root"
 
 swift build >/dev/null 2>&1
@@ -89,7 +91,7 @@ expect_usage_failure "unknown service action prints only service help" "$service
 expect_usage_failure "unknown help topic prints only help help" "$help_help" "$bin" help bogus
 expect_usage_failure "unknown version option prints only version help" "$version_help" "$bin" version --faster
 
-missing_configuration="$(mktemp -d)/missing.toml"
+missing_configuration="$test_tmp/missing.toml"
 expect_error "runtime config failure keeps diagnostics" "Error: Cannot load configuration" \
   "$bin" check "$missing_configuration"
 expect_error "runtime config failure keeps root recovery guidance" \

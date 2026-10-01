@@ -41,9 +41,6 @@ public enum CLIHelpTopic: Equatable {
 }
 
 public enum CLIHelp {
-  static let knownCommands =
-    "init, listen, check, run, service, help, version"
-
   public static func text(for topic: CLIHelpTopic, defaultConfigurationURL: URL) -> String {
     let command = "aerospace-gestures"
     let name = """
@@ -215,9 +212,7 @@ public enum CLIRequest: Equatable {
 
     if command == "help" {
       guard arguments.count <= 2 else {
-        throw usageError(
-          "Expected help [command]. Available commands: \(CLIHelp.knownCommands)",
-          topic: .help)
+        throw usageError("Expected help [command]", topic: .help)
       }
       guard arguments.count == 2 else { return .help(.root) }
       if arguments[1] == "--help" || arguments[1] == "-h" { return .help(.help) }
@@ -280,7 +275,7 @@ public enum CLIRequest: Equatable {
   }
 
   /// Splits options into flags and positionals so a dash-prefixed token is never
-  /// mistaken for a config path. Unrecognized options fail closed with a hint.
+  /// mistaken for a config path. Unrecognized options fail closed with focused help.
   private static func parseOptions(
     _ options: [String], for command: String, topic: CLIHelpTopic,
     extraAllowed: Set<String> = []
