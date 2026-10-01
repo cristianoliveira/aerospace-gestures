@@ -40,6 +40,19 @@ expect_error() { # description expected_stderr_substring command...
   fi
 }
 
+expect_exact_error() { # description exact_stderr command...
+  local description=$1 expected=$2
+  shift 2
+  local err status
+  err="$("$@" 2>&1 >/dev/null)" && status=0 || status=$?
+  if [[ $status -eq 0 || "$err" != "$expected" ]]; then
+    printf 'FAIL: %s (status %s, stderr %q)\n' "$description" "$status" "$err"
+    failures=$((failures + 1))
+  else
+    printf 'ok: %s\n' "$description"
+  fi
+}
+
 expect_stdout "--version prints the baked version on stdout" "$version" "$bin" --version
 expect_stdout "version subcommand prints the baked version on stdout" "$version" "$bin" version
 
@@ -55,12 +68,15 @@ expect_stdout "service action help returns safe group help" "Actions:" "$bin" se
 
 expect_error "unknown command fails on stderr with available commands" "Available commands" "$bin" bogus
 expect_error "unknown command with a flag still fails" "Unknown command" "$bin" bogus --version
+expect_exact_error "unknown check option prints one relevant hint" \
+  "Error: Unknown option '--faster' for check. Run aerospace-gestures check --help for usage and recovery steps." \
+  "$bin" check --faster
 expect_error "unknown option is not treated as a config path" "Unknown option '--dry-run' for check" "$bin" check --dry-run
 expect_error "unknown short option is rejected for init" "Unknown option '-x' for init" "$bin" init -x
 expect_error "service rejects unknown options" "Unknown option '--quiet' for service" "$bin" service --quiet
 
 error_output="$("$bin" check --dry-run 2>&1 >/dev/null || true)"
-hint="Run aerospace-gestures --help for usage and recovery steps."
+hint="Run aerospace-gestures check --help for usage and recovery steps."
 remainder="${error_output#*"$hint"}"
 if [[ "$error_output" != *"$hint"* || "$remainder" == *"$hint"* ]]; then
   printf 'FAIL: parse errors must print the recovery hint exactly once\n'

@@ -153,16 +153,28 @@ final class CLIUXTests: XCTestCase {
     XCTAssertTrue(text.contains("Private MultitouchSupport API is experimental"))
   }
 
-  func testUnknownCommandErrorListsAvailableCommandsWithoutDuplicatingMainHint() {
-    let error = CLIArgumentError.unknownCommand("bogus")
-    XCTAssertTrue(String(describing: error).contains("Available commands"))
-    XCTAssertTrue(String(describing: error).contains("version"))
-    XCTAssertFalse(String(describing: error).contains("Run aerospace-gestures --help"))
+  func testUnknownCommandErrorListsCommandsAndRootHelpOnce() {
+    let description = String(describing: CLIArgumentError.unknownCommand("bogus"))
+    XCTAssertTrue(description.contains("Available commands"))
+    XCTAssertTrue(description.contains("version"))
+    XCTAssertEqual(description.components(separatedBy: "Run aerospace-gestures --help").count, 2)
   }
 
-  func testUnknownOptionErrorLeavesRecoveryHintToMain() {
-    XCTAssertThrowsError(try CLIRequest.parse(["check", "--dry-run"], in: environment)) { error in
-      XCTAssertFalse(String(describing: error).contains("Run aerospace-gestures"))
+  func testParseErrorsIncludeOneRelevantPerCommandHint() {
+    let cases: [([String], String)] = [
+      (["check", "--faster"], "aerospace-gestures check --help"),
+      (["run", "--faster"], "aerospace-gestures run --help"),
+      (["service", "--faster"], "aerospace-gestures service --help"),
+      (["version", "--faster"], "aerospace-gestures version --help"),
+      (["listen", "extra"], "aerospace-gestures listen --help"),
+      (["help", "check", "extra"], "aerospace-gestures help --help"),
+    ]
+    for (arguments, hint) in cases {
+      XCTAssertThrowsError(try CLIRequest.parse(arguments, in: environment)) { error in
+        let description = String(describing: error)
+        XCTAssertTrue(description.contains(hint), "missing relevant hint for \(arguments)")
+        XCTAssertEqual(description.components(separatedBy: hint).count, 2)
+      }
     }
   }
 
