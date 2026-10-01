@@ -60,9 +60,9 @@ public enum CLIHelp {
         """
       flags = """
         Flags:
-          --help, -h   Show help for a command
-          --version    Print the binary version
-          --dry-run    run only: observe gestures without executing commands
+          -h, --help      Show help for a command
+          -v, --version   Print the binary version
+          --dry-run       run only: observe gestures without executing commands
         """
       commandDetails = """
         Available Commands:
@@ -208,7 +208,7 @@ public enum CLIRequest: Equatable {
   {
     guard let command = arguments.first else { return .help(.root) }
     if arguments == ["--help"] || arguments == ["-h"] { return .help(.root) }
-    if arguments == ["--version"] { return .version }
+    if arguments == ["--version"] || arguments == ["-v"] { return .version }
 
     if command == "help" {
       guard arguments.count <= 2 else {

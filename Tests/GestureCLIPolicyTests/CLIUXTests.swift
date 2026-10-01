@@ -11,8 +11,9 @@ final class CLIUXTests: XCTestCase {
 
   // MARK: version
 
-  func testVersionFlagAndCommandParseToVersionRequest() throws {
+  func testVersionFlagsAndCommandParseToVersionRequest() throws {
     XCTAssertEqual(try CLIRequest.parse(["--version"], in: environment), .version)
+    XCTAssertEqual(try CLIRequest.parse(["-v"], in: environment), .version)
     XCTAssertEqual(try CLIRequest.parse(["version"], in: environment), .version)
   }
 
@@ -116,7 +117,8 @@ final class CLIUXTests: XCTestCase {
     for command in ["init", "listen", "check", "run", "service", "help", "version"] {
       XCTAssertTrue(text.contains(command), "root help must list \(command)")
     }
-    XCTAssertTrue(text.contains("--version"))
+    XCTAssertTrue(text.contains("-h, --help"))
+    XCTAssertTrue(text.contains("-v, --version"))
     XCTAssertTrue(text.contains("--dry-run"))
   }
 
@@ -149,9 +151,13 @@ final class CLIUXTests: XCTestCase {
     XCTAssertTrue(text.contains("Private MultitouchSupport API is experimental"))
   }
 
-  func testUnknownRootCommandsAndOptionsUseRootHelpTopic() {
+  func testUnknownRootCommandsUseRootHelpTopic() {
     assertParseError(["bogus"], topic: .root)
-    assertParseError(["-v"], topic: .root)
+  }
+
+  func testVersionShortFlagRemainsInvalidAfterSubcommands() {
+    assertParseError(["check", "-v"], topic: .check)
+    assertParseError(["service", "-v"], topic: .service)
   }
 
   func testKnownCommandParseErrorsCarryFocusedHelpTopic() {

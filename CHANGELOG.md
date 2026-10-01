@@ -2,8 +2,8 @@
 
 ## v0.2.1
 
-- Redesigned CLI help with discoverable commands, focused examples and service actions (`aerospace-gestures help <command>` or `<command> --help`).
-- Added `aerospace-gestures --version` and `aerospace-gestures version`.
+- Redesigned CLI help with discoverable commands, focused examples and service actions (`aerospace-gestures help <command>` or `<command> -h` / `<command> --help`).
+- Added `aerospace-gestures -v` / `--version` and `aerospace-gestures version`.
 - CLI syntax errors now print the relevant structured help on stderr and exit nonzero; option-like arguments are no longer mistaken for config paths.
 - Configuration remains TOML-only; no config change is needed when upgrading from v0.2.0.
 
