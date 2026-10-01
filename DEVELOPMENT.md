@@ -14,6 +14,18 @@ xcrun --find swift-format
 
 If Swift or Xcode is missing, install the Xcode Command Line Tools with `xcode-select --install`, select a supported Xcode with `sudo xcode-select --switch <Xcode.app>/Contents/Developer`, then rerun these checks. Do not install unrelated tools as a workaround.
 
+## Nix development shell
+
+The flake supports `aarch64-darwin` and `x86_64-darwin`. Its explicit Nix packages are Git and GNU Make; Swift and `swift-format` come from the selected Apple Xcode toolchain. Install Nix with flakes enabled and select Xcode before entering the shell. Nix does not install or select Xcode for you. The `nixpkgs-26.05-darwin` pin preserves Intel macOS support; verify that a replacement pin still supports `x86_64-darwin`.
+
+```sh
+nix flake show
+nix develop
+make check
+```
+
+To run the project gate without opening an interactive shell, use `nix develop -c make check`. If the Xcode checks above fail, select or install Xcode before running the gate.
+
 ## Find and claim work
 
 1. Discover tasks in `plans/todo/`; check `depends_on` and the acceptance criteria.
