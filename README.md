@@ -1,6 +1,8 @@
 # aerospace-gestures
 
-Map three-, four-, or five-finger macOS trackpad swipes to commands. Experimental Swift CLI; no third-party packages or network access.
+Gestures extension for [AeroSpace WM](https://github.com/nikitabobko/AeroSpace)
+
+Map three-, four-, or five-finger macOS trackpad swipes to commands.
 
 ## Install
 
