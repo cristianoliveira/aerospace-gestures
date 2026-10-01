@@ -51,7 +51,8 @@ public final class InstanceLock {
     }
     var currentDirectoryURL = resolvedRoot
     do {
-      try validateDirectoryDescriptor(directoryDescriptor, at: currentDirectoryURL, ownerUID: ownerUID)
+      try validateDirectoryDescriptor(
+        directoryDescriptor, at: currentDirectoryURL, ownerUID: ownerUID)
     } catch {
       _ = Darwin.close(directoryDescriptor)
       throw error
@@ -59,7 +60,8 @@ public final class InstanceLock {
 
     for component in components {
       do {
-        try validateDirectoryDescriptor(directoryDescriptor, at: currentDirectoryURL, ownerUID: ownerUID)
+        try validateDirectoryDescriptor(
+          directoryDescriptor, at: currentDirectoryURL, ownerUID: ownerUID)
       } catch {
         _ = Darwin.close(directoryDescriptor)
         throw error
@@ -67,7 +69,8 @@ public final class InstanceLock {
       var child = openat(
         directoryDescriptor, component, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
       if child < 0, errno == ENOENT {
-        guard mkdirat(directoryDescriptor, component, mode_t(S_IRWXU)) == 0 || errno == EEXIST else {
+        guard mkdirat(directoryDescriptor, component, mode_t(S_IRWXU)) == 0 || errno == EEXIST
+        else {
           let reason = String(cString: strerror(errno))
           _ = Darwin.close(directoryDescriptor)
           throw InstanceLockError.cannotOpen(url, reason)
@@ -158,8 +161,10 @@ public enum InstanceLockError: Error, CustomStringConvertible {
       return "Another aerospace-gestures process already holds the lock at \(url.path)"
     case .cannotPrepareDirectory(let url, let error):
       return "Cannot prepare instance lock directory at \(url.path): \(error)"
-    case .cannotOpen(let url, let reason): return "Cannot open instance lock at \(url.path): \(reason)"
-    case .cannotLock(let url, let reason): return "Cannot acquire instance lock at \(url.path): \(reason)"
+    case .cannotOpen(let url, let reason):
+      return "Cannot open instance lock at \(url.path): \(reason)"
+    case .cannotLock(let url, let reason):
+      return "Cannot acquire instance lock at \(url.path): \(reason)"
     }
   }
 }

@@ -36,7 +36,10 @@ final class InstanceLockTests: XCTestCase {
 
     let managed = try InstanceLock.acquire(
       at: path, under: directory, waitForContention: true,
-      sleep: { _ in waitCount += 1; foreground.release() })
+      sleep: { _ in
+        waitCount += 1
+        foreground.release()
+      })
 
     XCTAssertEqual(waitCount, 1)
     managed.release()
@@ -49,10 +52,12 @@ final class InstanceLockTests: XCTestCase {
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     let lockPath = directory.appendingPathComponent("support/listener.lock")
 
-    XCTAssertThrowsError(try InstanceLock.acquire(
-      at: lockPath, under: directory, ownerUID: getuid() + 1))
-    XCTAssertFalse(FileManager.default.fileExists(
-      atPath: directory.appendingPathComponent("support").path))
+    XCTAssertThrowsError(
+      try InstanceLock.acquire(
+        at: lockPath, under: directory, ownerUID: getuid() + 1))
+    XCTAssertFalse(
+      FileManager.default.fileExists(
+        atPath: directory.appendingPathComponent("support").path))
   }
 
   func testRejectsGroupWorldWritableAncestorBeforeCreatingDescendants() throws {
@@ -65,7 +70,8 @@ final class InstanceLockTests: XCTestCase {
     let lockPath = unsafe.appendingPathComponent("nested/listener.lock")
 
     XCTAssertThrowsError(try InstanceLock.acquire(at: lockPath, under: directory))
-    XCTAssertFalse(FileManager.default.fileExists(atPath: unsafe.appendingPathComponent("nested").path))
+    XCTAssertFalse(
+      FileManager.default.fileExists(atPath: unsafe.appendingPathComponent("nested").path))
   }
 
   func testAncestorSymlinkIsRejectedBeforeCreatingOutsideDirectory() throws {
@@ -79,8 +85,9 @@ final class InstanceLockTests: XCTestCase {
     let lockPath = redirected.appendingPathComponent("nested/listener.lock")
 
     XCTAssertThrowsError(try InstanceLock.acquire(at: lockPath, under: directory))
-    XCTAssertFalse(FileManager.default.fileExists(
-      atPath: outside.appendingPathComponent("nested").path))
+    XCTAssertFalse(
+      FileManager.default.fileExists(
+        atPath: outside.appendingPathComponent("nested").path))
   }
 
   func testLockFileSymlinkIsRejectedWithoutChangingItsTarget() throws {
