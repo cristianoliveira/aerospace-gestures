@@ -118,6 +118,14 @@ jobs:
           fi
           "$packaged_binary" --help >/dev/null
 
+          packaged_version="$($packaged_binary --version)"
+          expected_version="${GITHUB_REF_NAME#v}"
+          if [[ "$packaged_version" != "$expected_version" ]]; then
+            echo "Packaged binary --version ($packaged_version) does not match release tag ($GITHUB_REF_NAME);" \
+              "bump CLIVersion.current in Sources/GestureCLIPolicy/CLIVersion.swift before tagging" >&2
+            exit 1
+          fi
+
       - name: Attest release archive provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:

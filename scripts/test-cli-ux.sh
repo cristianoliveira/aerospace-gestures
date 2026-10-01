@@ -9,8 +9,10 @@ cd "$root"
 
 swift build >/dev/null 2>&1
 bin="$(swift build --show-bin-path)/aerospace-gestures"
-version="$(sed -n 's/^  public static let current = "\(.*\)"/\1/p' \
-  "$root/Sources/GestureCLIPolicy/CLIVersion.swift")"
+# Independent expected version (the current release). The release workflow
+# separately compares the packaged binary's --version output against the real
+# tag, so this script never scrapes the expected value from source.
+version="0.2.0"
 
 failures=0
 expect_stdout() { # description expected_substring command...

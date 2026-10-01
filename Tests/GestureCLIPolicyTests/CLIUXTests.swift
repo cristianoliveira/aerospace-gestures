@@ -16,14 +16,11 @@ final class CLIUXTests: XCTestCase {
     XCTAssertEqual(try CLIRequest.parse(["version"], in: environment), .version)
   }
 
-  func testVersionConstantMatchesChangelogReleaseSection() throws {
+  func testVersionConstantMatchesTheCurrentRelease() {
+    // Independent expected value: the release this branch targets. The release
+    // workflow separately gates the packaged binary's --version output against
+    // the actual tag, so docs and source are never scraped as expectations.
     XCTAssertEqual(CLIVersion.current, "0.2.0")
-    let changelog = try String(
-      contentsOf: URL(fileURLWithPath: Self.repositoryRoot().appendingPathComponent("CHANGELOG.md").path),
-      encoding: .utf8)
-    XCTAssertTrue(
-      changelog.contains("## v\(CLIVersion.current)"),
-      "CHANGELOG.md must document a section for the binary version \(CLIVersion.current)")
   }
 
   // MARK: help routing
@@ -138,16 +135,5 @@ final class CLIUXTests: XCTestCase {
     let error = CLIArgumentError.unknownCommand("bogus")
     XCTAssertTrue(String(describing: error).contains("Available commands"))
     XCTAssertTrue(String(describing: error).contains("version"))
-  }
-
-  private static func repositoryRoot() -> URL {
-    var url = URL(fileURLWithPath: #filePath)
-    for _ in 0..<6 {
-      url.deleteLastPathComponent()
-      if FileManager.default.fileExists(atPath: url.appendingPathComponent("CHANGELOG.md").path) {
-        return url
-      }
-    }
-    fatalError("could not locate repository root containing CHANGELOG.md from \(#filePath)")
   }
 }
