@@ -2,7 +2,7 @@
 
 ## v0.2.0
 
-**Breaking: configuration is TOML-only.** JSON configuration files are rejected; there is no migration or automatic conversion. Re-create your config from `aerospace-gestures init` (TOML popup example) or convert it by hand — see [docs/USAGE.md](docs/USAGE.md) for the schema.
+**Breaking: configuration is TOML-only.** JSON configuration files are rejected; there is no migration or automatic conversion. Re-create your config from `aerospace-gestures init` (TOML popup example) or convert it by hand — see the [v0.2.0 usage guide](https://github.com/cristianoliveira/aerospace-gestures/blob/v0.2.0/docs/USAGE.md) for the schema.
 
 - TOML configuration with the same schema (`threshold`, `[[bindings]]`); parse errors report line/column; all prior validation rules retained.
 - New pinned dependency: TOMLKit 0.6.0 (MIT), which vendors the MIT-licensed toml++ 3.4.0 parser; no runtime network access. See `Package.resolved`.
