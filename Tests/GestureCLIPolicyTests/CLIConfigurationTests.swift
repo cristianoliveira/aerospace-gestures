@@ -93,7 +93,7 @@ final class CLIConfigurationTests: XCTestCase {
       let text = CLIHelp.text(for: topic, defaultConfigurationURL: defaultURL)
       XCTAssertTrue(text.contains(defaultURL.path))
       XCTAssertTrue(text.contains("Prerequisites:"))
-      XCTAssertTrue(text.contains("Example:"))
+      XCTAssertTrue(text.contains("Examples:"))
       XCTAssertTrue(text.contains("aerospace-gestures init"))
       XCTAssertTrue(text.contains("aerospace-gestures check <config.toml>"))
     }

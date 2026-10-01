@@ -57,6 +57,9 @@ let managedStartupDiagnostics: StartupDiagnosticStore? =
   : nil
 
 switch request {
+case .version:
+  print(CLIVersion.current)
+  exit(0)
 case .help(let topic):
   print(
     CLIHelp.text(
@@ -120,7 +123,7 @@ case .run(let url, let isDryRun):
   configurationURL = url
   configuration = loadConfiguration(
     at: url, startupDiagnostics: managedStartupDiagnostics)
-case .help, .initialize, .check, .service:
+case .help, .version, .initialize, .check, .service:
   fatalError("Handled CLI request unexpectedly reached device startup")
 }
 
@@ -128,7 +131,7 @@ let executionMode: GestureExecutionMode
 switch request {
 case .listen: executionMode = .listen
 case .run(_, let isDryRun): executionMode = isDryRun ? .dryRun : .run
-case .help, .initialize, .check, .service:
+case .help, .version, .initialize, .check, .service:
   fatalError("Handled CLI request unexpectedly reached device startup")
 }
 let actionPolicy = GestureActionPolicy(mode: executionMode)

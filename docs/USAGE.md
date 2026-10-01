@@ -14,6 +14,8 @@ swift run aerospace-gestures run
 
 Move three fingers down the trackpad. A dialog should say **“It's hooked!”**, then close after three seconds (or click OK). Lift all fingers before trying again. Ctrl-C in the terminal stops the listener.
 
+`--help` / `-h` and `help <command>` print per-command usage (try `help service` for the service actions); `--version` or `version` prints the binary version. Unknown commands or options print a hint on stderr and exit nonzero; help and version always exit 0.
+
 The default configuration binds only three-finger down; other detected gestures may appear in the terminal but do nothing. `init` creates the file only when absent and never overwrites an existing file or symlink. No AeroSpace setup is needed. The popup uses a dialog rather than a notification banner, so it does not depend on notification settings; it may take focus.
 
 If macOS also opens App Exposé, disable its conflicting gesture in **System Settings → Trackpad → More Gestures**. If no popup appears, use the listen-only steps below to check whether touch events arrive.
