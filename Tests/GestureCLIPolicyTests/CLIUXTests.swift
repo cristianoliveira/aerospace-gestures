@@ -16,19 +16,41 @@ final class CLIUXTests: XCTestCase {
     XCTAssertEqual(try CLIRequest.parse(["version"], in: environment), .version)
   }
 
-  func testVersionConstantMatchesTheCurrentRelease() {
-    // Independent expected value: the release this branch targets. The release
-    // workflow separately gates the packaged binary's --version output against
-    // the actual tag, so docs and source are never scraped as expectations.
-    XCTAssertEqual(CLIVersion.current, "0.2.0")
+  func testVersionConstantMatchesTheCurrentDevelopmentLine() {
+    // Independent expected value for unreleased CLI work. Before tagging, the
+    // release workflow requires dropping `-dev` so the packaged binary exactly
+    // matches the real tag.
+    XCTAssertEqual(CLIVersion.current, "0.3.0-dev")
   }
 
   // MARK: help routing
 
-  func testHelpCommandRoutesToRootAndKnownCommands() throws {
-    XCTAssertEqual(try CLIRequest.parse(["help"], in: environment), .help(.root))
-    XCTAssertEqual(try CLIRequest.parse(["help", "check"], in: environment), .help(.check))
-    XCTAssertEqual(try CLIRequest.parse(["help", "service"], in: environment), .help(.service))
+  func testHelpCommandRoutesToEveryAdvertisedCommand() throws {
+    let cases: [([String], CLIHelpTopic)] = [
+      (["help"], .root),
+      (["help", "init"], .initialize),
+      (["help", "listen"], .listen),
+      (["help", "check"], .check),
+      (["help", "run"], .run),
+      (["help", "service"], .service),
+      (["help", "help"], .help),
+      (["help", "version"], .version),
+    ]
+    for (arguments, topic) in cases {
+      XCTAssertEqual(try CLIRequest.parse(arguments, in: environment), .help(topic))
+    }
+  }
+
+  func testAdvertisedCommandsAndServiceActionsAcceptHelpFlags() throws {
+    XCTAssertEqual(try CLIRequest.parse(["help", "--help"], in: environment), .help(.help))
+    XCTAssertEqual(try CLIRequest.parse(["help", "-h"], in: environment), .help(.help))
+    XCTAssertEqual(try CLIRequest.parse(["version", "--help"], in: environment), .help(.version))
+    XCTAssertEqual(try CLIRequest.parse(["version", "-h"], in: environment), .help(.version))
+    for action in ["install", "status", "start", "stop", "restart", "uninstall"] {
+      XCTAssertEqual(
+        try CLIRequest.parse(["service", action, "--help"], in: environment),
+        .help(.service))
+    }
   }
 
   func testHelpWithUnknownCommandThrowsUnknownCommandHint() throws {
@@ -131,9 +153,25 @@ final class CLIUXTests: XCTestCase {
     XCTAssertTrue(text.contains("Private MultitouchSupport API is experimental"))
   }
 
-  func testUnknownCommandErrorListsAvailableCommands() {
+  func testUnknownCommandErrorListsAvailableCommandsWithoutDuplicatingMainHint() {
     let error = CLIArgumentError.unknownCommand("bogus")
     XCTAssertTrue(String(describing: error).contains("Available commands"))
     XCTAssertTrue(String(describing: error).contains("version"))
+    XCTAssertFalse(String(describing: error).contains("Run aerospace-gestures --help"))
+  }
+
+  func testUnknownOptionErrorLeavesRecoveryHintToMain() {
+    XCTAssertThrowsError(try CLIRequest.parse(["check", "--dry-run"], in: environment)) { error in
+      XCTAssertFalse(String(describing: error).contains("Run aerospace-gestures"))
+    }
+  }
+
+  func testHelpSeparatesSectionsWithBlankLines() {
+    let text = CLIHelp.text(
+      for: .root,
+      defaultConfigurationURL: URL(fileURLWithPath: "/tmp/default/config.toml"))
+    for nextHeading in ["Available Commands:", "Flags:", "Examples:"] {
+      XCTAssertTrue(text.contains("\n\n\(nextHeading)"), "missing space before \(nextHeading)")
+    }
   }
 }

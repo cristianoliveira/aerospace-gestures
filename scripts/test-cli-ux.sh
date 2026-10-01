@@ -9,10 +9,9 @@ cd "$root"
 
 swift build >/dev/null 2>&1
 bin="$(swift build --show-bin-path)/aerospace-gestures"
-# Independent expected version (the current release). The release workflow
-# separately compares the packaged binary's --version output against the real
-# tag, so this script never scrapes the expected value from source.
-version="0.2.0"
+# Independent expected version for current unreleased CLI work. Before tagging,
+# remove `-dev`; the release workflow checks the packaged binary against the tag.
+version="0.3.0-dev"
 
 failures=0
 expect_stdout() { # description expected_substring command...
@@ -48,12 +47,27 @@ expect_stdout "root --help shows structured sections on stdout" "Available Comma
 expect_stdout "root help includes flags and examples" "Examples:" "$bin" --help
 expect_stdout "help check shows per-command usage on stdout" "Usage: aerospace-gestures check" "$bin" help check
 expect_stdout "help service lists service actions" "Actions:" "$bin" help service
+expect_stdout "help version is navigable" "Usage: aerospace-gestures version" "$bin" help version
+expect_stdout "version --help is navigable" "Usage: aerospace-gestures version" "$bin" version --help
+expect_stdout "help help is navigable" "Usage: aerospace-gestures help" "$bin" help help
+expect_stdout "help --help is navigable" "Usage: aerospace-gestures help" "$bin" help --help
+expect_stdout "service action help returns safe group help" "Actions:" "$bin" service status --help
 
 expect_error "unknown command fails on stderr with available commands" "Available commands" "$bin" bogus
 expect_error "unknown command with a flag still fails" "Unknown command" "$bin" bogus --version
 expect_error "unknown option is not treated as a config path" "Unknown option '--dry-run' for check" "$bin" check --dry-run
 expect_error "unknown short option is rejected for init" "Unknown option '-x' for init" "$bin" init -x
 expect_error "service rejects unknown options" "Unknown option '--quiet' for service" "$bin" service --quiet
+
+error_output="$("$bin" check --dry-run 2>&1 >/dev/null || true)"
+hint="Run aerospace-gestures --help for usage and recovery steps."
+remainder="${error_output#*"$hint"}"
+if [[ "$error_output" != *"$hint"* || "$remainder" == *"$hint"* ]]; then
+  printf 'FAIL: parse errors must print the recovery hint exactly once\n'
+  failures=$((failures + 1))
+else
+  printf 'ok: parse errors print the recovery hint exactly once\n'
+fi
 
 if ((failures)); then
   printf '%d failure(s)\n' "$failures"

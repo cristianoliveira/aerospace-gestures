@@ -2,10 +2,9 @@ import Foundation
 
 /// The single explicit version source for the binary.
 ///
-/// Release tooling tags `v<current>`; `CHANGELOG.md` documents a `## v<current>`
-/// section for it. A package test enforces the changelog pairing so the binary
-/// version and the release records cannot drift apart. There is no runtime git
-/// lookup: the value is baked in at compile time.
+/// Development builds use the next release line with a `-dev` suffix. Before
+/// tagging, remove the suffix: the release workflow compares the packaged
+/// binary against the actual tag. There is no runtime git lookup.
 public enum CLIVersion {
-  public static let current = "0.2.0"
+  public static let current = "0.3.0-dev"
 }

@@ -20,9 +20,10 @@ public enum CLIHelpTopic: Equatable {
   case run
   case listen
   case service
+  case help
+  case version
 
-  /// Maps a `help <command>` argument to its topic; unknown names are rejected
-  /// with the same hint as unknown commands so help never invents topics.
+  /// Maps every advertised command to a navigable `help <command>` topic.
   public init(named name: String) throws {
     switch name {
     case "init": self = .initialize
@@ -30,18 +31,9 @@ public enum CLIHelpTopic: Equatable {
     case "run": self = .run
     case "listen": self = .listen
     case "service": self = .service
+    case "help": self = .help
+    case "version": self = .version
     default: throw CLIArgumentError.unknownCommand(name)
-    }
-  }
-
-  var commandName: String? {
-    switch self {
-    case .root: return nil
-    case .initialize: return "init"
-    case .check: return "check"
-    case .run: return "run"
-    case .listen: return "listen"
-    case .service: return "service"
     }
   }
 }
@@ -59,7 +51,7 @@ public enum CLIHelp {
     let usage: String
     let flags: String
     let description: String
-    let availableCommands: String
+    let commandDetails: String?
     let example: String
     switch topic {
     case .root:
@@ -73,7 +65,7 @@ public enum CLIHelp {
           --version    Print the binary version
           --dry-run    run only: observe gestures without executing commands
         """
-      availableCommands = """
+      commandDetails = """
         Available Commands:
           init      Create the popup example configuration; never overwrites
           listen    Observe gestures without executing commands
@@ -95,7 +87,7 @@ public enum CLIHelp {
         Flags:
           --help, -h   Show this help
         """
-      availableCommands = ""
+      commandDetails = nil
       description =
         "Creates the popup example exclusively. Existing files and symlinks are preserved."
       example = "\(command) init"
@@ -105,7 +97,7 @@ public enum CLIHelp {
         Flags:
           --help, -h   Show this help
         """
-      availableCommands = ""
+      commandDetails = nil
       description =
         "Observes gestures without executing commands or showing an action toggle; requires macOS 13+ and a multitouch trackpad."
       example = "\(command) listen"
@@ -115,7 +107,7 @@ public enum CLIHelp {
         Flags:
           --help, -h   Show this help
         """
-      availableCommands = ""
+      commandDetails = nil
       description = "Validates TOML and executable paths without starting devices or commands."
       example = "\(command) check /path/to/config.toml"
     case .run:
@@ -125,7 +117,7 @@ public enum CLIHelp {
           --help, -h    Show this help
           --dry-run     Observe gestures without executing commands
         """
-      availableCommands = ""
+      commandDetails = nil
       description =
         "Normal run starts enabled with a menu-bar action toggle and Reload configuration; pausing keeps listening but blocks new commands. Reload validates before swapping without restarting input. --dry-run observes only and never enables command execution."
       example = "\(command) run --dry-run"
@@ -135,7 +127,7 @@ public enum CLIHelp {
         Flags:
           --help, -h   Show this help
         """
-      availableCommands = """
+      commandDetails = """
         Actions:
           install     Capture the config path, install and start the LaunchAgent
           status      Report plist ownership, launchd state, and startup diagnostics
@@ -153,25 +145,44 @@ public enum CLIHelp {
         status reports launchd registration/process state, not trackpad responsiveness.
         """
       example = "\(command) service status"
+    case .help:
+      usage = "Usage: \(command) help [command]"
+      flags = """
+        Flags:
+          --help, -h   Show this help
+        """
+      commandDetails = nil
+      description = "Shows root help or focused help for an advertised command."
+      example = "\(command) help service"
+    case .version:
+      usage = "Usage: \(command) version"
+      flags = """
+        Flags:
+          --help, -h   Show this help
+        """
+      commandDetails = nil
+      description = "Prints the binary version and exits without starting devices or services."
+      example = "\(command) --version"
     }
 
-    return """
-      \(name)
-
-      \(usage)
-      \(availableCommands)
-      \(flags)
-      \(description)
-
+    var sections = [name, usage]
+    if let commandDetails { sections.append(commandDetails) }
+    sections.append(flags)
+    sections.append(description)
+    sections.append("""
       Default configuration: \(defaultConfigurationURL.path)
       Prerequisites: macOS 13+ and a multitouch trackpad for listen/run; init/check need no device. Swift 5.9+ to build.
       If the default file is missing, create it with `\(command) init`.
       To validate a file: `\(command) check <config.toml>`.
       If init reports that a file exists, inspect it with check or choose another path with `\(command) init <config.toml>`.
+      """)
+    sections.append("""
       Examples:
         \(example)
-      Private MultitouchSupport API is experimental and system gestures are not suppressed.
-      """
+      """)
+    sections.append(
+      "Private MultitouchSupport API is experimental and system gestures are not suppressed.")
+    return sections.joined(separator: "\n\n")
   }
 }
 
@@ -198,7 +209,7 @@ public enum CLIRequest: Equatable {
   {
     guard let command = arguments.first else { return .help(.root) }
     if arguments == ["--help"] || arguments == ["-h"] { return .help(.root) }
-    if arguments == ["--version"] || arguments == ["version"] { return .version }
+    if arguments == ["--version"] { return .version }
 
     if command == "help" {
       guard arguments.count <= 2 else {
@@ -206,17 +217,26 @@ public enum CLIRequest: Equatable {
           "Expected help [command]. Available commands: \(CLIHelp.knownCommands)")
       }
       guard arguments.count == 2 else { return .help(.root) }
+      if arguments[1] == "--help" || arguments[1] == "-h" { return .help(.help) }
       return .help(try CLIHelpTopic(named: arguments[1]))
     }
 
     let options = Array(arguments.dropFirst())
+    if command == "version" {
+      let (flags, positionals) = try parseOptions(options, for: command)
+      if flags.contains("--help") || flags.contains("-h") { return .help(.version) }
+      guard positionals.isEmpty else {
+        throw CLIArgumentError.invalidArguments("version takes no arguments")
+      }
+      return .version
+    }
+
     switch command {
     case "listen":
       let (flags, positionals) = try parseOptions(options, for: command)
       if flags.contains("--help") || flags.contains("-h") { return .help(.listen) }
       guard positionals.isEmpty, flags.isEmpty else {
-        throw CLIArgumentError.invalidArguments(
-          "listen takes no arguments. Run aerospace-gestures listen --help for usage.")
+        throw CLIArgumentError.invalidArguments("listen takes no arguments")
       }
       return .listen
     case "init", "check":
@@ -225,8 +245,7 @@ public enum CLIRequest: Equatable {
         return .help(command == "init" ? .initialize : .check)
       }
       guard positionals.count <= 1 else {
-        throw CLIArgumentError.invalidArguments(
-          "Expected \(command) [config.toml]. Run aerospace-gestures \(command) --help for usage.")
+        throw CLIArgumentError.invalidArguments("Expected \(command) [config.toml]")
       }
       let configuration = ConfigurationPath.resolve(
         explicitPath: positionals.first, in: environment)
@@ -236,23 +255,19 @@ public enum CLIRequest: Equatable {
       let (flags, positionals) = try parseOptions(options, for: command, extraAllowed: ["--dry-run"])
       if flags.contains("--help") || flags.contains("-h") { return .help(.run) }
       guard positionals.count <= 1 else {
-        throw CLIArgumentError.invalidArguments(
-          "Expected run [config.toml] [--dry-run]. Run aerospace-gestures run --help for usage.")
+        throw CLIArgumentError.invalidArguments("Expected run [config.toml] [--dry-run]")
       }
       return .run(
         configuration: ConfigurationPath.resolve(explicitPath: positionals.first, in: environment),
         dryRun: flags.contains("--dry-run"))
     case "service":
-      if options == ["--help"] || options == ["-h"] { return .help(.service) }
+      if options.contains("--help") || options.contains("-h") { return .help(.service) }
       if let stray = options.first(where: { $0.hasPrefix("-") }) {
-        throw CLIArgumentError.invalidArguments(
-          "Unknown option '\(stray)' for service."
-            + " Run aerospace-gestures service --help for usage.")
+        throw CLIArgumentError.invalidArguments("Unknown option '\(stray)' for service")
       }
       guard options.count == 1, let action = CLIServiceAction(rawValue: options[0]) else {
         throw CLIArgumentError.invalidArguments(
-          "Expected service install|status|start|stop|restart|uninstall."
-            + " Run aerospace-gestures service --help for usage.")
+          "Expected service install|status|start|stop|restart|uninstall")
       }
       return .service(action)
     default:
@@ -275,8 +290,7 @@ public enum CLIRequest: Equatable {
       }
       guard allowed.contains(option) else {
         throw CLIArgumentError.invalidArguments(
-          "Unknown option '\(option)' for \(command)."
-            + " Run aerospace-gestures \(command) --help for usage.")
+          "Unknown option '\(option)' for \(command)")
       }
       flags.insert(option)
     }
@@ -341,7 +355,6 @@ public enum CLIArgumentError: Error, CustomStringConvertible {
       return
         "Unknown command: \(command)."
         + " Available commands: \(CLIHelp.knownCommands)."
-        + " Run aerospace-gestures --help for usage."
     case .invalidArguments(let message): return message
     }
   }
