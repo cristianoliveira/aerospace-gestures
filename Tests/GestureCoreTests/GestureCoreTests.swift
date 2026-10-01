@@ -81,7 +81,7 @@ final class GestureCoreTests: XCTestCase {
     XCTAssertEqual(detector.update(points(x: 0.5)), Gesture(fingers: 3, direction: .left))
   }
 
-    func testConfigurationRejectsUnsafeOrAmbiguousBindings() throws {
+  func testConfigurationRejectsUnsafeOrAmbiguousBindings() throws {
     let invalid = [
       "threshold = 0\nbindings = []",
       """
@@ -144,5 +144,4 @@ final class GestureCoreTests: XCTestCase {
       XCTAssertTrue(String(describing: error).contains("valid UTF-8"))
     }
   }
-
 }
