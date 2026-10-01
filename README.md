@@ -1,8 +1,16 @@
-# aerospace-gestures
+<p align="center">
+  <img src="docs/brand/logo.svg" alt="AeroSpace Gestures — Triple Swipe logo" width="112" height="112">
+</p>
 
-Gestures extension for [AeroSpace WM](https://github.com/nikitabobko/AeroSpace)
+<h1 align="center">AeroSpace Gestures</h1>
+
+<p align="center"><strong>Small gesture. Your command.</strong></p>
+
+A gestures extension for [AeroSpace WM](https://github.com/nikitabobko/AeroSpace)
 
 Map three-, four-, or five-finger macOS trackpad swipes to commands.
+
+The **Triple Swipe** menu-bar icon gives you access to pause/resume and configuration reload. A small pause badge means actions are paused; the listener remains active. The icon follows the macOS menu-bar appearance.
 
 ## Install
 
@@ -71,3 +79,4 @@ This uses Apple's private `MultitouchSupport` framework. It does not suppress sy
 - [Usage](docs/USAGE.md): configure commands, listen safely, pause/reload from the menu, install, run a service, and troubleshoot.
 - [Development](DEVELOPMENT.md): build, test, and contribute.
 - [Architecture](docs/ARCHITECTURE.md): design and known risks.
+- [Brand assets](docs/brand/README.md): Triple Swipe logo and menu-bar treatment.

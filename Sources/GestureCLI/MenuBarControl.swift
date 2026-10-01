@@ -98,18 +98,10 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
 
     guard let button = statusItem.button else { return }
     button.setAccessibilityLabel(presentation.accessibilityLabel)
-    button.toolTip = presentation.accessibilityLabel
-
-    let symbolName = actionPolicy.state == .enabled ? "hand.point.up.left.fill" : "hand.raised.fill"
-    if let image = NSImage(
-      systemSymbolName: symbolName, accessibilityDescription: presentation.accessibilityLabel)
-    {
-      image.isTemplate = true
-      button.image = image
-      button.title = ""
-    } else {
-      button.image = nil
-      button.title = actionPolicy.state == .enabled ? "On" : "Paused"
-    }
+    button.toolTip = "AeroSpace Gestures — \(presentation.accessibilityLabel)"
+    button.image = MenuBarIcon.image(
+      isPaused: actionPolicy.state == .paused,
+      accessibilityDescription: presentation.accessibilityLabel)
+    button.title = ""
   }
 }

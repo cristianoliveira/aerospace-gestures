@@ -1,5 +1,7 @@
 # Icon concepts
 
+**Selected: 1. Triple Swipe.** Current assets and usage guidance live in [../brand/](../brand/README.md). This folder preserves the original design exploration.
+
 Open [comparison.png](comparison.png) to compare all four directions. [comparison.svg](comparison.svg) is the editable vector sheet.
 
 | Option | Source | Idea |
@@ -11,9 +13,7 @@ Open [comparison.png](comparison.png) to compare all four directions. [compariso
 
 Individual icons have transparent backgrounds, a 256 × 256 viewBox, and `currentColor` strokes (black by default). Inline SVG can inherit a CSS color. The mint backgrounds belong only to the comparison sheet.
 
-The sheet includes monochrome studies at 16, 22, and 32 pixels. View it at native size to judge these samples; they are not yet optically tuned or tested in the macOS menu bar. The selected concept will need enabled/paused variants and an AppKit-compatible asset before integration.
-
-These are design candidates only. The app's current icons are unchanged.
+The sheet includes monochrome studies at 16, 22, and 32 pixels. View it at native size to judge these original samples. The app now draws Triple Swipe as a template image with a pause badge for paused actions; this historical sheet does not show the state variants.
 
 To regenerate the PNG with ImageMagick:
 
