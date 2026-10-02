@@ -101,6 +101,9 @@ expect_exact_stdout "root -h equals root --help" "$root_help" "$bin" -h
 expect_exact_stdout "check -h equals check --help" "$check_help" "$bin" check -h
 expect_exact_stdout "version -h equals version --help" "$version_help" "$bin" version -h
 expect_exact_stdout "help -h equals help --help" "$help_help" "$bin" help -h
+expect_exact_stdout "check --help succeeds without config" "$check_help" "$bin" check --help
+expect_exact_stdout "run -h succeeds without config" "$run_help" "$bin" run --dry-run -h
+expect_exact_stdout "service -h succeeds without action" "$service_help" "$bin" service -h
 
 expect_usage_failure "unknown root command prints only root help" "$root_help" "$bin" bogus
 expect_usage_failure "unknown root command with flag prints only root help" "$root_help" "$bin" bogus --version
@@ -112,6 +115,11 @@ expect_usage_failure "listen argument prints only listen help" "$listen_help" "$
 expect_usage_failure "unknown service action prints only service help" "$service_help" "$bin" service nope
 expect_usage_failure "unknown help topic prints only help help" "$help_help" "$bin" help bogus
 expect_usage_failure "unknown version option prints only version help" "$version_help" "$bin" version --faster
+expect_usage_failure "check without config prints only check help" "$check_help" "$bin" check
+expect_usage_failure "run without config prints only run help" "$run_help" "$bin" run
+expect_usage_failure "run --dry-run without config prints only run help" "$run_help" \
+  "$bin" run --dry-run
+expect_usage_failure "service without action prints only service help" "$service_help" "$bin" service
 
 missing_configuration="$test_tmp/missing.toml"
 expect_error "runtime config failure keeps diagnostics" "Error: Cannot load configuration" \

@@ -79,7 +79,8 @@ public enum CLIHelp {
         check validates configuration and executable paths without starting devices or commands.
         service manages this user's GUI LaunchAgent; it never grants permissions or builds the binary.
         """
-      example = "\(command) init && \(command) check && \(command) run --dry-run"
+      example =
+        "\(command) init ./config.toml && \(command) check ./config.toml && \(command) run ./config.toml --dry-run"
     case .initialize:
       usage = "Usage: \(command) init [config.toml]"
       flags = """
@@ -101,7 +102,7 @@ public enum CLIHelp {
         "Observes gestures without executing commands or showing an action toggle; requires macOS 13+ and a multitouch trackpad."
       example = "\(command) listen"
     case .check:
-      usage = "Usage: \(command) check [config.toml]"
+      usage = "Usage: \(command) check <config.toml>"
       flags = """
         Flags:
           --help, -h   Show this help
@@ -110,7 +111,7 @@ public enum CLIHelp {
       description = "Validates TOML and executable paths without starting devices or commands."
       example = "\(command) check /path/to/config.toml"
     case .run:
-      usage = "Usage: \(command) run [config.toml] [--dry-run]"
+      usage = "Usage: \(command) run <config.toml> [--dry-run]"
       flags = """
         Flags:
           --help, -h    Show this help
@@ -119,7 +120,7 @@ public enum CLIHelp {
       commandDetails = nil
       description =
         "Normal run starts enabled with a menu-bar action toggle and Reload configuration; pausing keeps listening but blocks new commands. Reload validates before swapping without restarting input. --dry-run observes only and never enables command execution."
-      example = "\(command) run --dry-run"
+      example = "\(command) run /path/to/config.toml --dry-run"
     case .service:
       usage = "Usage: \(command) service <install|status|start|stop|restart|uninstall>"
       flags = """
@@ -168,14 +169,16 @@ public enum CLIHelp {
     if let commandDetails { sections.append(commandDetails) }
     sections.append(flags)
     sections.append(description)
-    sections.append("""
-      Default configuration: \(defaultConfigurationURL.path)
+    sections.append(
+      """
+      Default configuration path for init and service: \(defaultConfigurationURL.path)
       Prerequisites: macOS 13+ and a multitouch trackpad for listen/run; init/check need no device. Swift 5.9+ to build.
       If the default file is missing, create it with `\(command) init`.
       To validate a file: `\(command) check <config.toml>`.
       If init reports that a file exists, inspect it with check or choose another path with `\(command) init <config.toml>`.
       """)
-    sections.append("""
+    sections.append(
+      """
       Examples:
         \(example)
       """)
@@ -237,41 +240,56 @@ public enum CLIRequest: Equatable {
         throw usageError("listen takes no arguments", topic: .listen)
       }
       return .listen
-    case "init", "check":
-      let topic = command == "init" ? CLIHelpTopic.initialize : .check
-      let (flags, positionals) = try parseOptions(options, for: command, topic: topic)
-      if flags.contains("--help") || flags.contains("-h") { return .help(topic) }
+    case "init":
+      let (flags, positionals) = try parseOptions(options, for: command, topic: .initialize)
+      if flags.contains("--help") || flags.contains("-h") { return .help(.initialize) }
       guard positionals.count <= 1 else {
-        throw usageError("Expected \(command) [config.toml]", topic: topic)
+        throw usageError("Expected init [config.toml]", topic: .initialize)
       }
-      let configuration = ConfigurationPath.resolve(
-        explicitPath: positionals.first, in: environment)
-      return command == "init" ? .initialize(configuration: configuration) : .check(
-        configuration: configuration)
+      return .initialize(
+        configuration: ConfigurationPath.resolve(
+          explicitPath: positionals.first, in: environment))
+    case "check":
+      let (flags, positionals) = try parseOptions(options, for: command, topic: .check)
+      if flags.contains("--help") || flags.contains("-h") { return .help(.check) }
+      let path = try requireSingleOperand(
+        positionals, command: command, operand: "config.toml", topic: .check)
+      return .check(
+        configuration: ConfigurationPath.resolve(explicitPath: path, in: environment))
     case "run":
       let (flags, positionals) = try parseOptions(
         options, for: command, topic: .run, extraAllowed: ["--dry-run"])
       if flags.contains("--help") || flags.contains("-h") { return .help(.run) }
-      guard positionals.count <= 1 else {
-        throw usageError("Expected run [config.toml] [--dry-run]", topic: .run)
-      }
+      let path = try requireSingleOperand(
+        positionals, command: command, operand: "config.toml", topic: .run)
       return .run(
-        configuration: ConfigurationPath.resolve(explicitPath: positionals.first, in: environment),
+        configuration: ConfigurationPath.resolve(explicitPath: path, in: environment),
         dryRun: flags.contains("--dry-run"))
     case "service":
       if options.contains("--help") || options.contains("-h") { return .help(.service) }
       if let stray = options.first(where: { $0.hasPrefix("-") }) {
         throw usageError("Unknown option '\(stray)' for service", topic: .service)
       }
-      guard options.count == 1, let action = CLIServiceAction(rawValue: options[0]) else {
+      let actionName = try requireSingleOperand(
+        options, command: command,
+        operand: "install|status|start|stop|restart|uninstall", topic: .service)
+      guard let action = CLIServiceAction(rawValue: actionName) else {
         throw usageError(
-          "Expected service install|status|start|stop|restart|uninstall",
-          topic: .service)
+          "Expected service install|status|start|stop|restart|uninstall", topic: .service)
       }
       return .service(action)
     default:
       throw CLIArgumentError.unknownCommand(command)
     }
+  }
+
+  private static func requireSingleOperand(
+    _ operands: [String], command: String, operand: String, topic: CLIHelpTopic
+  ) throws -> String {
+    guard operands.count == 1 else {
+      throw usageError("Expected \(command) <\(operand)>", topic: topic)
+    }
+    return operands[0]
   }
 
   /// Splits options into flags and positionals so a dash-prefixed token is never

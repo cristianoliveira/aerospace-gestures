@@ -41,14 +41,14 @@ brew install cristianoliveira/tap/aerospace-gestures
 Requires macOS 13+, a multitouch trackpad, and Swift 5.9+.
 
 ```sh
-aerospace-gestures init   # once; does not overwrite an existing config
-aerospace-gestures check
-aerospace-gestures run
+aerospace-gestures init ./config.toml   # once; does not overwrite an existing config
+aerospace-gestures check ./config.toml
+aerospace-gestures run ./config.toml
 ```
 
-Swipe **three fingers down**. The default config shows an “It's hooked!” popup. Lift your fingers before trying again; press Ctrl-C to stop. Other swipes may be logged but have no default command.
+Swipe **three fingers down**. The generated config shows an “It's hooked!” popup. Lift your fingers before trying again; press Ctrl-C to stop. Other swipes may be logged but have no default command.
 
-To use your own config, save this as `config.toml`:
+To use your own commands, edit `config.toml`:
 
 ```toml
 [[bindings]]

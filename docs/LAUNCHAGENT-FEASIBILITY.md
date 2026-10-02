@@ -27,6 +27,6 @@ The exact temporary label was booted out. A subsequent `launchctl print` reporte
 
 ## Human reproduction
 
-On a logged-in GUI session with a multitouch trackpad, build the arm64 release, install the binary at `~/.local/bin/aerospace-gestures`, run `aerospace-gestures init` once if the default config is absent, and `aerospace-gestures check`. Register a temporary per-user LaunchAgent for `aerospace-gestures run` in `gui/$(id -u)`, then close Terminal and perform one three-finger downward swipe. Expect exactly one dialog. Confirm frame receipt and the command exit separately from the UI result. Boot out the exact temporary label and remove only test-owned files afterward.
+On a logged-in GUI session with a multitouch trackpad, build the arm64 release, install the binary at `~/.local/bin/aerospace-gestures`, run `aerospace-gestures init` once if the default config is absent, and validate the path printed by init with `aerospace-gestures check <config.toml>`. Register a temporary per-user LaunchAgent for `aerospace-gestures run <config.toml>` in `gui/$(id -u)`, then close Terminal and perform one three-finger downward swipe. Expect exactly one dialog. Confirm frame receipt and the command exit separately from the UI result. Boot out the exact temporary label and remove only test-owned files afterward.
 
 No TASK-0003 service implementation was started. The plan card remains with the product owner for closeout.

@@ -61,15 +61,42 @@ final class CLIUXTests: XCTestCase {
     assertParseError(["help", "check", "extra"], topic: .help)
   }
 
+  func testCommandsWithoutRequiredOperandsRemainValid() throws {
+    let defaultConfiguration = ConfigurationPath.resolve(explicitPath: nil, in: environment)
+
+    XCTAssertEqual(try CLIRequest.parse([], in: environment), .help(.root))
+    XCTAssertEqual(
+      try CLIRequest.parse(["init"], in: environment),
+      .initialize(configuration: defaultConfiguration))
+    XCTAssertEqual(try CLIRequest.parse(["listen"], in: environment), .listen)
+    XCTAssertEqual(try CLIRequest.parse(["help"], in: environment), .help(.root))
+    XCTAssertEqual(try CLIRequest.parse(["version"], in: environment), .version)
+  }
+
   // MARK: options are never mistaken for a config path
 
   func testUnknownOptionIsRejectedInsteadOfBecomingAConfigPath() {
-    for arguments in [["check", "--dry-run"], ["init", "-x"], ["run", "--dri"], ["service", "--quiet"]] {
+    for arguments in [
+      ["check", "--dry-run"], ["init", "-x"], ["run", "--dri"], ["service", "--quiet"],
+    ] {
       XCTAssertThrowsError(try CLIRequest.parse(arguments, in: environment)) { error in
         XCTAssertTrue(
           String(describing: error).contains("Unknown option"),
           "expected an unknown-option hint for \(arguments), got: \(error)")
       }
+    }
+  }
+
+  func testCommandsWithRequiredOperandsRejectMissingOperandsWithFocusedHelp() {
+    let cases: [([String], CLIHelpTopic)] = [
+      (["check"], .check),
+      (["run"], .run),
+      (["run", "--dry-run"], .run),
+      (["service"], .service),
+    ]
+
+    for (arguments, topic) in cases {
+      assertParseError(arguments, topic: topic)
     }
   }
 
@@ -85,11 +112,16 @@ final class CLIUXTests: XCTestCase {
     }
   }
 
-  func testHelpFlagIsAcceptedInAnyPosition() throws {
+  func testHelpFlagIsAcceptedInAnyPositionAndSkipsOperandValidation() throws {
     XCTAssertEqual(try CLIRequest.parse(["run", "--help"], in: environment), .help(.run))
     XCTAssertEqual(
-      try CLIRequest.parse(["run", "config.toml", "--help"], in: environment), .help(.run))
-    XCTAssertEqual(try CLIRequest.parse(["check", "-h"], in: environment), .help(.check))
+      try CLIRequest.parse(["run", "config.toml", "extra", "--help"], in: environment),
+      .help(.run))
+    XCTAssertEqual(
+      try CLIRequest.parse(["check", "one", "two", "-h"], in: environment), .help(.check))
+    XCTAssertEqual(
+      try CLIRequest.parse(["service", "nope", "extra", "--help"], in: environment),
+      .help(.service))
   }
 
   func testListenStillRejectsAnyArgumentOrOption() {
@@ -98,8 +130,9 @@ final class CLIUXTests: XCTestCase {
   }
 
   func testPositionalConfigPathsStillResolve() throws {
-    guard case .check(let configuration) = try CLIRequest.parse(
-      ["check", "my config.toml"], in: environment)
+    guard
+      case .check(let configuration) = try CLIRequest.parse(
+        ["check", "my config.toml"], in: environment)
     else { return XCTFail("check should keep accepting a positional config path") }
     XCTAssertTrue(configuration.path.hasSuffix("my config.toml"))
   }
@@ -131,6 +164,12 @@ final class CLIUXTests: XCTestCase {
       }
       XCTAssertTrue(text.contains(defaultURL.path))
     }
+
+    let checkHelp = CLIHelp.text(for: .check, defaultConfigurationURL: defaultURL)
+    XCTAssertTrue(checkHelp.contains("Usage: aerospace-gestures check <config.toml>"))
+    let runHelp = CLIHelp.text(for: .run, defaultConfigurationURL: defaultURL)
+    XCTAssertTrue(runHelp.contains("Usage: aerospace-gestures run <config.toml> [--dry-run]"))
+    XCTAssertTrue(runHelp.contains("run /path/to/config.toml --dry-run"))
   }
 
   func testServiceHelpListsAllActions() {

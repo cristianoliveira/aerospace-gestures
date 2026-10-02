@@ -7,9 +7,9 @@ Start with the [quick start](../README.md). This guide covers configuration, per
 ## First experiment: three fingers down → popup
 
 ```sh
-swift run aerospace-gestures init # first-time setup only; refuses an existing file
-swift run aerospace-gestures check
-swift run aerospace-gestures run
+swift run aerospace-gestures init ./config.toml # first-time setup only; refuses an existing file
+swift run aerospace-gestures check ./config.toml
+swift run aerospace-gestures run ./config.toml
 ```
 
 Move three fingers down the trackpad. A dialog should say **“It's hooked!”**, then close after three seconds (or click OK). Lift all fingers before trying again. Ctrl-C in the terminal stops the listener.
@@ -37,13 +37,13 @@ Disable conflicting actions in **System Settings → Trackpad → More Gestures*
 ## Configure commands
 
 ```sh
-swift run aerospace-gestures init # first-time setup only
-swift run aerospace-gestures check
-swift run aerospace-gestures run --dry-run
-swift run aerospace-gestures run
+swift run aerospace-gestures init ./config.toml # first-time setup only
+swift run aerospace-gestures check ./config.toml
+swift run aerospace-gestures run ./config.toml --dry-run
+swift run aerospace-gestures run ./config.toml
 ```
 
-The default path is `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` when `XDG_CONFIG_HOME` is an absolute nonempty path; otherwise it is `~/.config/aerospace-gestures/config.toml`. Pass a path to `init`, `check`, or `run` to override it; relative paths are resolved from the current working directory. `run` and `listen` never create configuration implicitly. Use `check <path>` to validate a file without starting trackpad input.
+`init` accepts an optional path. Without one, its default is `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` when `XDG_CONFIG_HOME` is an absolute nonempty path; otherwise it is `~/.config/aerospace-gestures/config.toml`. `check` and `run` require a configuration path so an omitted operand produces command usage instead of acting on an implicit file. Relative paths are resolved from the current working directory. `run` and `listen` never create configuration implicitly. Use `check <path>` to validate a file without starting trackpad input.
 
 The default init example runs `/usr/bin/osascript` to show the proven popup; child output is discarded; the same popup is tracked as [`config.probe.toml`](../config.probe.toml). For a harmless command-only sample, see [`config.example.toml`](../config.example.toml) (which uses `/bin/echo`). Successful execution appears as `Command exited with status 0`. AeroSpace's `exec-and-forget` is its own configuration directive, not an executable for this app.
 
@@ -95,7 +95,8 @@ Install the executable first; service commands never build or replace it. `make 
 ```sh
 make install
 "$HOME/.local/bin/aerospace-gestures" init # only if your config is absent
-"$HOME/.local/bin/aerospace-gestures" check
+# Use the full configuration path printed by init:
+"$HOME/.local/bin/aerospace-gestures" check "/full/path/from/init"
 "$HOME/.local/bin/aerospace-gestures" service install
 "$HOME/.local/bin/aerospace-gestures" service status
 ```

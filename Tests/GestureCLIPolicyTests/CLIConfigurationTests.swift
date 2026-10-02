@@ -37,51 +37,29 @@ final class CLIConfigurationTests: XCTestCase {
         dryRun: true))
   }
 
-  func testAbsoluteXDGDirectoryIsUsedForDefaultAndAllowsSpaces() throws {
+  func testAbsoluteXDGDirectoryIsUsedForDefaultAndAllowsSpaces() {
     let environment = CLIEnvironment(
       values: ["XDG_CONFIG_HOME": "/tmp/config root"], homeDirectory: home,
       currentDirectory: currentDirectory)
 
-    let request = try CLIRequest.parse(["check"], in: environment)
-
     XCTAssertEqual(
-      request,
-      .check(configuration: URL(fileURLWithPath: "/tmp/config root/aerospace-gestures/config.toml"))
-    )
+      ConfigurationPath.resolve(explicitPath: nil, in: environment),
+      URL(fileURLWithPath: "/tmp/config root/aerospace-gestures/config.toml"))
   }
 
-  func testEmptyOrRelativeXDGDirectoryFallsBackToHomeConfigDirectory() throws {
+  func testEmptyOrRelativeXDGDirectoryFallsBackToHomeConfigDirectory() {
     for xdgValue in ["", "relative/config"] {
       let environment = CLIEnvironment(
         values: ["XDG_CONFIG_HOME": xdgValue], homeDirectory: home,
         currentDirectory: currentDirectory)
 
-      let request = try CLIRequest.parse(["check"], in: environment)
-
       XCTAssertEqual(
-        request,
-        .check(
-          configuration: URL(
-            fileURLWithPath: ".config/aerospace-gestures/config.toml", relativeTo: home
-          )
-          .standardizedFileURL))
-    }
-  }
-
-  func testRunWithoutPathUsesDefaultAndAcceptsDryRunFlag() throws {
-    let environment = CLIEnvironment(
-      values: [:], homeDirectory: home, currentDirectory: currentDirectory)
-
-    let request = try CLIRequest.parse(["run", "--dry-run"], in: environment)
-
-    XCTAssertEqual(
-      request,
-      .run(
-        configuration: URL(
+        ConfigurationPath.resolve(explicitPath: nil, in: environment),
+        URL(
           fileURLWithPath: ".config/aerospace-gestures/config.toml", relativeTo: home
         )
-        .standardizedFileURL,
-        dryRun: true))
+        .standardizedFileURL)
+    }
   }
 
   func testSubcommandHelpIncludesDefaultPathPrerequisitesExamplesAndRecovery() throws {
