@@ -7,6 +7,7 @@
 - Added source-built default Nix flake packages for Apple silicon and Intel macOS (`nix profile install .`).
 - CLI syntax errors now print the relevant structured help on stderr and exit nonzero; option-like arguments are no longer mistaken for config paths.
 - `check` and `run` now require an explicit configuration path; omitting it prints focused command usage instead of attempting the default path.
+- Listen-only observation now starts explicitly with `aerospace-gestures listen start`; bare `listen` prints focused help.
 - Configuration remains TOML-only; no config change is needed when upgrading from v0.2.0.
 
 ## v0.2.0

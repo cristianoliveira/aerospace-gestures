@@ -67,7 +67,7 @@ public enum CLIHelp {
       commandDetails = """
         Available Commands:
           init      Create the popup example configuration; never overwrites
-          listen    Observe gestures without executing commands
+          listen    Observe gestures; try `listen --help` for actions
           check     Validate configuration and executable paths
           run       Run with menu-bar pause and configuration reload
           service   Manage the per-user GUI LaunchAgent
@@ -92,15 +92,18 @@ public enum CLIHelp {
         "Creates the popup example exclusively. Existing files and symlinks are preserved."
       example = "\(command) init"
     case .listen:
-      usage = "Usage: \(command) listen"
+      usage = "Usage: \(command) listen <start>"
       flags = """
         Flags:
           --help, -h   Show this help
         """
-      commandDetails = nil
+      commandDetails = """
+        Actions:
+          start   Observe gestures without executing commands
+        """
       description =
-        "Observes gestures without executing commands or showing an action toggle; requires macOS 13+ and a multitouch trackpad."
-      example = "\(command) listen"
+        "listen start observes gestures without executing commands or showing an action toggle; requires macOS 13+ and a multitouch trackpad."
+      example = "\(command) listen start"
     case .check:
       usage = "Usage: \(command) check <config.toml>"
       flags = """
@@ -258,7 +261,14 @@ public enum CLIRequest: Equatable {
         configuration: ConfigurationPath.resolve(explicitPath: operands[0], in: environment),
         dryRun: options.contains("--dry-run"))
     },
-    "listen": CommandContract(topic: .listen, operandCount: 0...0) { _, _, _ in .listen },
+    "listen": CommandContract(
+      topic: .listen, operandCount: 1...1, operandSynopsis: "<start>"
+    ) { operands, _, _ in
+      guard operands[0] == "start" else {
+        throw CLIArgumentError.invalidArguments("Expected listen start", topic: .listen)
+      }
+      return .listen
+    },
     "service": CommandContract(
       topic: .service, operandCount: 1...1,
       operandSynopsis: "<install|status|start|stop|restart|uninstall>"

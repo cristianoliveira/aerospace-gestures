@@ -81,6 +81,7 @@ expect_exact_stdout "version subcommand prints the exact baked version" "$versio
 expect_stdout "root --help shows structured sections on stdout" "Available Commands:" "$bin" --help
 expect_stdout "root help includes flags and examples" "Examples:" "$bin" --help
 expect_stdout "help check shows per-command usage on stdout" "Usage: aerospace-gestures check" "$bin" help check
+expect_stdout "help listen documents explicit start action" "Usage: aerospace-gestures listen <start>" "$bin" help listen
 expect_stdout "help service lists service actions" "Actions:" "$bin" help service
 expect_stdout "help version is navigable" "Usage: aerospace-gestures version" "$bin" help version
 expect_stdout "version --help is navigable" "Usage: aerospace-gestures version" "$bin" version --help
@@ -104,6 +105,7 @@ expect_exact_stdout "help -h equals help --help" "$help_help" "$bin" help -h
 expect_exact_stdout "check --help succeeds without config" "$check_help" "$bin" check --help
 expect_exact_stdout "run -h succeeds without config" "$run_help" "$bin" run --dry-run -h
 expect_exact_stdout "service -h succeeds without action" "$service_help" "$bin" service -h
+expect_exact_stdout "listen start -h succeeds without starting devices" "$listen_help" "$bin" listen start -h
 
 expect_usage_failure "unknown root command prints only root help" "$root_help" "$bin" bogus
 expect_usage_failure "unknown root command with flag prints only root help" "$root_help" "$bin" bogus --version
@@ -111,7 +113,9 @@ expect_usage_failure "unknown init option prints only init help" "$init_help" "$
 expect_usage_failure "unknown check option prints only check help" "$check_help" "$bin" check --faster
 expect_usage_failure "subcommand -v remains invalid and prints focused help" "$check_help" "$bin" check -v
 expect_usage_failure "unknown run option prints only run help" "$run_help" "$bin" run --faster
-expect_usage_failure "listen argument prints only listen help" "$listen_help" "$bin" listen extra
+expect_usage_failure "listen without action prints only listen help" "$listen_help" "$bin" listen
+expect_usage_failure "unknown listen action prints only listen help" "$listen_help" "$bin" listen stop
+expect_usage_failure "extra listen operand prints only listen help" "$listen_help" "$bin" listen start extra
 expect_usage_failure "unknown service action prints only service help" "$service_help" "$bin" service nope
 expect_usage_failure "unknown help topic prints only help help" "$help_help" "$bin" help bogus
 expect_usage_failure "unknown version option prints only version help" "$version_help" "$bin" version --faster

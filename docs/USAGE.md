@@ -25,10 +25,10 @@ If macOS also opens App Exposé, disable its conflicting gesture in **System Set
 Requires macOS 13+, a multitouch trackpad, and a Swift 5.9+ toolchain (Xcode Command Line Tools: `xcode-select --install`).
 
 ```sh
-swift run aerospace-gestures listen
+swift run aerospace-gestures listen start
 ```
 
-Swipe with three or four fingers while another application is focused. You should see `Receiving trackpad frames`, followed by direction events. Direction describes physical finger motion, independent of Natural Scrolling. Ctrl-C stops the process. Listen mode never runs commands.
+Swipe with three or four fingers while another application is focused. You should see `Receiving trackpad frames`, followed by direction events. Direction describes physical finger motion, independent of Natural Scrolling. Ctrl-C stops the process. Listen mode never runs commands. Start observation with `aerospace-gestures listen start`; `aerospace-gestures listen --help` shows the listen action and its usage without starting devices.
 
 If no frames arrive, check **System Settings → Privacy & Security → Input Monitoring** for your terminal, then restart the process. Permission requirements can vary with macOS; this tool does not bypass them. Do not use sudo.
 
@@ -43,7 +43,7 @@ swift run aerospace-gestures run ./config.toml --dry-run
 swift run aerospace-gestures run ./config.toml
 ```
 
-`init` accepts an optional path. Without one, its default is `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` when `XDG_CONFIG_HOME` is an absolute nonempty path; otherwise it is `~/.config/aerospace-gestures/config.toml`. `check` and `run` require a configuration path so an omitted operand produces command usage instead of acting on an implicit file. Relative paths are resolved from the current working directory. `run` and `listen` never create configuration implicitly. Use `check <path>` to validate a file without starting trackpad input.
+`init` accepts an optional path. Without one, its default is `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` when `XDG_CONFIG_HOME` is an absolute nonempty path; otherwise it is `~/.config/aerospace-gestures/config.toml`. `check` and `run` require a configuration path so an omitted operand produces command usage instead of acting on an implicit file. Relative paths are resolved from the current working directory. `run` and `listen start` never create configuration implicitly. Use `check <path>` to validate a file without starting trackpad input.
 
 The default init example runs `/usr/bin/osascript` to show the proven popup; child output is discarded; the same popup is tracked as [`config.probe.toml`](../config.probe.toml). For a harmless command-only sample, see [`config.example.toml`](../config.example.toml) (which uses `/bin/echo`). Successful execution appears as `Command exited with status 0`. AeroSpace's `exec-and-forget` is its own configuration directive, not an executable for this app.
 

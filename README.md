@@ -44,6 +44,8 @@ Requires macOS 13+, a multitouch trackpad, and Swift 5.9+.
 aerospace-gestures init ./config.toml   # once; does not overwrite an existing config
 aerospace-gestures check ./config.toml
 aerospace-gestures run ./config.toml
+# To observe gestures without running commands:
+aerospace-gestures listen start
 ```
 
 Swipe **three fingers down**. The generated config shows an “It's hooked!” popup. Lift your fingers before trying again; press Ctrl-C to stop. Other swipes may be logged but have no default command.

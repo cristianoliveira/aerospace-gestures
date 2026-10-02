@@ -61,14 +61,14 @@ final class CLIUXTests: XCTestCase {
     assertParseError(["help", "check", "extra"], topic: .help)
   }
 
-  func testCommandsWithoutRequiredOperandsRemainValid() throws {
+  func testRootAndCommandsWithOptionalOperandsRemainValid() throws {
     let defaultConfiguration = ConfigurationPath.resolve(explicitPath: nil, in: environment)
 
     XCTAssertEqual(try CLIRequest.parse([], in: environment), .help(.root))
     XCTAssertEqual(
       try CLIRequest.parse(["init"], in: environment),
       .initialize(configuration: defaultConfiguration))
-    XCTAssertEqual(try CLIRequest.parse(["listen"], in: environment), .listen)
+    XCTAssertEqual(try CLIRequest.parse(["listen", "start"], in: environment), .listen)
     XCTAssertEqual(try CLIRequest.parse(["help"], in: environment), .help(.root))
     XCTAssertEqual(try CLIRequest.parse(["version"], in: environment), .version)
   }
@@ -96,8 +96,9 @@ final class CLIUXTests: XCTestCase {
       (["run", "one.toml", "two.toml"], .run),
       (["service"], .service),
       (["service", "start", "extra"], .service),
+      (["listen"], .listen),
+      (["listen", "stop"], .listen),
       (["init", "one.toml", "two.toml"], .initialize),
-      (["listen", "extra"], .listen),
       (["help", "check", "extra"], .help),
       (["version", "extra"], .version),
     ]
@@ -131,9 +132,14 @@ final class CLIUXTests: XCTestCase {
       .help(.service))
   }
 
-  func testListenStillRejectsAnyArgumentOrOption() {
-    XCTAssertThrowsError(try CLIRequest.parse(["listen", "extra"], in: environment))
+  func testListenRequiresStartActionAndRejectsUnknownActions() throws {
+    assertParseError(["listen"], topic: .listen)
+    assertParseError(["listen", "stop"], topic: .listen)
     XCTAssertThrowsError(try CLIRequest.parse(["listen", "--verbose"], in: environment))
+    XCTAssertEqual(try CLIRequest.parse(["listen", "start"], in: environment), .listen)
+    XCTAssertEqual(try CLIRequest.parse(["listen", "--help"], in: environment), .help(.listen))
+    XCTAssertEqual(
+      try CLIRequest.parse(["listen", "start", "-h"], in: environment), .help(.listen))
   }
 
   func testPositionalConfigPathsStillResolve() throws {
@@ -177,6 +183,9 @@ final class CLIUXTests: XCTestCase {
     let runHelp = CLIHelp.text(for: .run, defaultConfigurationURL: defaultURL)
     XCTAssertTrue(runHelp.contains("Usage: aerospace-gestures run <config.toml> [--dry-run]"))
     XCTAssertTrue(runHelp.contains("run /path/to/config.toml --dry-run"))
+    let listenHelp = CLIHelp.text(for: .listen, defaultConfigurationURL: defaultURL)
+    XCTAssertTrue(listenHelp.contains("Usage: aerospace-gestures listen <start>"))
+    XCTAssertTrue(listenHelp.contains("listen start"))
   }
 
   func testServiceHelpListsAllActions() {
