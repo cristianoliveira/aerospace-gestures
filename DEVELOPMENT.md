@@ -14,17 +14,26 @@ xcrun --find swift-format
 
 If Swift or Xcode is missing, install the Xcode Command Line Tools with `xcode-select --install`, select a supported Xcode with `sudo xcode-select --switch <Xcode.app>/Contents/Developer`, then rerun these checks. Do not install unrelated tools as a workaround.
 
-## Nix development shell
+## Nix development shell and package
 
-The flake supports `aarch64-darwin` and `x86_64-darwin`. Its explicit Nix packages are Git and GNU Make; Swift and `swift-format` come from the selected Apple Xcode toolchain. Install Nix with flakes enabled and select Xcode before entering the shell. Nix does not install or select Xcode for you. The `nixpkgs-26.05-darwin` pin preserves Intel macOS support; verify that a replacement pin still supports `x86_64-darwin`.
+The flake supports `aarch64-darwin` and `x86_64-darwin`. The default development shell is unchanged: its explicit Nix packages are Git and GNU Make, while Swift and `swift-format` come from the selected Apple Xcode toolchain. Install Nix with flakes enabled and select Xcode before entering the shell. Nix does not install or select Xcode for you. The `nixpkgs-26.05-darwin` pin preserves Intel macOS support; verify that a replacement pin still supports `x86_64-darwin`.
 
 ```sh
-nix flake show
+nix flake show --all-systems
 nix develop
 make check
 ```
 
 To run the project gate without opening an interactive shell, use `nix develop -c make check`. If the Xcode checks above fail, select or install Xcode before running the gate.
+
+The flake also exposes `packages.<system>.default` and `packages.<system>.aerospace-gestures`. These build from this checkout with nixpkgs Swift/SwiftPM; they do not download release archives. `nix/workspace-state.json` and `nix/default.nix` pin TOMLKit to the exact `Package.resolved` revision and fixed-output hash so SwiftPM does not resolve the network during the sandboxed build. When `Package.resolved` changes, regenerate both files with the `swiftpm2nix` version from the locked nixpkgs input and review the resulting revision and hash together.
+
+```sh
+nix build .#
+nix flake check
+```
+
+The Nix derivation cannot run Swift package tests because nixpkgs SwiftPM on Darwin lacks Apple's `xctest` runner. Run `make check` as the canonical test gate before accepting package changes; `nix flake check` verifies that the source package builds. Validate both architectures on native runners because Nix does not cross-build this macOS package.
 
 ## Find and claim work
 
@@ -67,7 +76,7 @@ Installation refuses to replace an effective (local or global) external `core.ho
 
 Before committing, review focused coverage and regression risk, run `make check`, run applicable manual checks, and confirm `git status` contains only intended files. Make a conventional commit that references the task ID. Update the task board only after acceptance evidence and the code commit; record outstanding manual checks honestly. Never auto-push, publish, or install a user service as part of setup.
 
-Releases are tag-driven: pushing a `vX.Y.Z` tag runs `.github/workflows/release.yml`, which runs `make check`, builds arm64 and amd64 archives deterministically (USTAR, zeroed timestamps), verifies architecture and `--help`, attests provenance, and publishes a GitHub release with the archives and generated SHA256SUMS. The binary version is the single constant `CLIVersion.current` in `Sources/GestureCLIPolicy/CLIVersion.swift`; when releasing, set it to the tag version (without the `v` prefix). The release workflow gates the packaged binary's `--version` output against the actual `GITHUB_REF_NAME` tag after extraction and fails closed on drift. SwiftPM dependencies are fetched from the exact revision pinned in `Package.resolved`; there is no runner cache, so builds stay reproducible per pin. Before tagging, run `make check` and validate a local archive (`swift build --configuration release --triple <native-triple>`, package per the workflow, then smoke-test the extracted binary); the binary payload is not byte-reproducible across clean builds, so the published SHA256SUMS are authoritative. Then exercise the documented listen/configuration smoke test on the supported hardware. Tagging and publishing remain explicit human actions; Homebrew tap and Nix updates are separate manual steps.
+Releases are tag-driven: pushing a `vX.Y.Z` tag runs `.github/workflows/release.yml`, which runs `make check`, builds arm64 and amd64 archives deterministically (USTAR, zeroed timestamps), verifies architecture and `--help`, attests provenance, and publishes a GitHub release with the archives and generated SHA256SUMS. The runtime binary version is the single constant `CLIVersion.current` in `Sources/GestureCLIPolicy/CLIVersion.swift`; when releasing, set it to the tag version (without the `v` prefix) and keep the package metadata version in `flake.nix` aligned. The release workflow gates the packaged binary's `--version` output against the actual `GITHUB_REF_NAME` tag after extraction and fails closed on runtime drift. SwiftPM dependencies are fetched from the exact revision pinned in `Package.resolved`; there is no runner cache, so builds stay reproducible per pin. Before tagging, run `make check` and validate a local archive (`swift build --configuration release --triple <native-triple>`, package per the workflow, then smoke-test the extracted binary); the binary payload is not byte-reproducible across clean builds, so the published SHA256SUMS are authoritative. Then exercise the documented listen/configuration smoke test on the supported hardware. Tagging and publishing remain explicit human actions; Homebrew tap and Nix updates are separate manual steps.
 
 Any new dependency needs a pinned resolution and a relevant license/security review. SwiftPM has no built-in vulnerability-audit command; inspect its resolved graph and advisories with available tooling rather than adding a fake audit gate. For security-sensitive integrations, add a targeted audit when there is a concrete dependency to assess.
 

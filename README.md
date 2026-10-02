@@ -14,13 +14,21 @@ The **Triple Swipe** menu-bar icon gives you access to pause/resume and configur
 
 ## Install
 
-From this repo (requires Swift 5.9+):
+From a checkout with [Nix](https://nixos.org/) flakes enabled:
+
+```sh
+nix profile install .
+```
+
+This builds the pinned source and SwiftPM dependency, then adds `aerospace-gestures` to your Nix profile. It does not create a config, service, or permission grant.
+
+Or build with Swift 5.9+ and install to `~/.local/bin` (the script will not replace an existing binary):
 
 ```sh
 make install
 ```
 
-This installs `~/.local/bin/aerospace-gestures`; add `~/.local/bin` to your `PATH`. It will not replace an existing binary.
+Add `~/.local/bin` to your `PATH` for this installation method.
 
 Or from Homebrew:
 
@@ -58,13 +66,21 @@ aerospace-gestures run ./config.toml
 
 ## Uninstall
 
-For a Homebrew installation:
+Stop any managed service first (see [Usage](docs/USAGE.md)). Then remove the installation with its original package manager.
+
+For Nix:
+
+```sh
+nix profile remove aerospace-gestures
+```
+
+For Homebrew:
 
 ```sh
 brew uninstall aerospace-gestures
 ```
 
-For a repo installation, stop any managed service before deleting `~/.local/bin/aerospace-gestures` (see [Usage](docs/USAGE.md)).
+For a repo installation, delete `~/.local/bin/aerospace-gestures`.
 
 ## Troubleshooting
 

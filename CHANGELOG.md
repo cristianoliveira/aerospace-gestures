@@ -4,6 +4,7 @@
 
 - Redesigned CLI help with discoverable commands, focused examples and service actions (`aerospace-gestures help <command>` or `<command> -h` / `<command> --help`).
 - Added `aerospace-gestures -v` / `--version` and `aerospace-gestures version`.
+- Added source-built default Nix flake packages for Apple silicon and Intel macOS (`nix profile install .`).
 - CLI syntax errors now print the relevant structured help on stderr and exit nonzero; option-like arguments are no longer mistaken for config paths.
 - Configuration remains TOML-only; no config change is needed when upgrading from v0.2.0.
 
