@@ -31,6 +31,62 @@ final class CommandRunnerTests: XCTestCase {
     wait(for: [completed], timeout: 3)
   }
 
+  func testCapturesStdoutAndStderrWithoutAddingOutputToCompletionMessage() {
+    let completed = expectation(description: "captured output command completes")
+    let outputLock = NSLock()
+    var stdout = Data()
+    var stderr = Data()
+    let runner = CommandRunner()
+
+    XCTAssertTrue(
+      runner.run(
+        ["/bin/sh", "-c", "printf 'from stdout'; printf 'from stderr' >&2"],
+        outputHandler: { stream, data in
+          outputLock.lock()
+          defer { outputLock.unlock() }
+          switch stream {
+          case .stdout: stdout.append(data)
+          case .stderr: stderr.append(data)
+          }
+        }
+      ) { message in
+        XCTAssertEqual(message, "Command exited with status 0")
+        completed.fulfill()
+      })
+    wait(for: [completed], timeout: 3)
+
+    outputLock.lock()
+    defer { outputLock.unlock() }
+    XCTAssertEqual(String(data: stdout, encoding: .utf8), "from stdout")
+    XCTAssertEqual(String(data: stderr, encoding: .utf8), "from stderr")
+  }
+
+  func testCapturesOnlyTheConfiguredMaximumAndStillDrainsBothPipes() {
+    let completed = expectation(description: "large output command completes")
+    let outputLock = NSLock()
+    var captured = Data()
+    let maximumOutputBytes = 4096
+    let runner = CommandRunner(maximumOutputBytes: maximumOutputBytes)
+
+    XCTAssertTrue(
+      runner.run(
+        ["/bin/sh", "-c", "head -c 131072 /dev/zero; head -c 131072 /dev/zero >&2"],
+        outputHandler: { _, data in
+          outputLock.lock()
+          captured.append(data)
+          outputLock.unlock()
+        }
+      ) { message in
+        XCTAssertEqual(message, "Command exited with status 0")
+        completed.fulfill()
+      })
+    wait(for: [completed], timeout: 3)
+
+    outputLock.lock()
+    defer { outputLock.unlock() }
+    XCTAssertLessThanOrEqual(captured.count, maximumOutputBytes + 64)
+  }
+
   func testReportsNonzeroExitStatus() {
     let completed = expectation(description: "nonzero exit reported")
     let runner = CommandRunner()
@@ -74,7 +130,7 @@ final class CommandRunnerTests: XCTestCase {
     let completed = expectation(description: "active command stopped")
     let runner = CommandRunner(timeout: 30)
     XCTAssertTrue(
-      runner.run(["/bin/sleep", "30"]) { message in
+      runner.run(["/bin/sleep", "30"], outputHandler: { _, _ in }) { message in
         XCTAssertNotEqual(message, "Command exited with status 0")
         completed.fulfill()
       })
@@ -101,7 +157,7 @@ final class CommandRunnerTests: XCTestCase {
     let script =
       "trap '' TERM; printf '%s\\n' \"$$\" > '\(temporaryPIDFile.path)'; mv '\(temporaryPIDFile.path)' '\(pidFile.path)'; exec /bin/sleep 30"
 
-    XCTAssertTrue(runner.run(["/bin/sh", "-c", script]) { _ in })
+    XCTAssertTrue(runner.run(["/bin/sh", "-c", script], outputHandler: { _, _ in }) { _ in })
     let deadline = Date().addingTimeInterval(3)
     while Date() < deadline {
       if let contents = try? String(contentsOf: pidFile, encoding: .utf8),
@@ -132,7 +188,10 @@ final class CommandRunnerTests: XCTestCase {
     let completed = expectation(description: "unresponsive command killed")
     let runner = CommandRunner(timeout: 0.05)
     XCTAssertTrue(
-      runner.run(["/bin/sh", "-c", "trap '' TERM; exec /bin/sleep 30"]) { message in
+      runner.run(
+        ["/bin/sh", "-c", "printf started; trap '' TERM; exec /bin/sleep 30"],
+        outputHandler: { _, _ in }
+      ) { message in
         XCTAssertNotEqual(message, "Command exited with status 0")
         completed.fulfill()
       })

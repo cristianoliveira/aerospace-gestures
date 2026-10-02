@@ -130,6 +130,26 @@ final class GestureCoreTests: XCTestCase {
     XCTAssertEqual(config.bindings[0].command, ["/bin/echo", "hello; not a shell"])
   }
 
+  func testCommandOutputDebuggingIsOptInAndDefaultsOff() throws {
+    let defaultConfiguration = try Configuration.load(Data("bindings = []".utf8))
+    XCTAssertFalse(defaultConfiguration.debugCommandOutput)
+
+    let enabledConfiguration = try Configuration.load(
+      Data("debug_command_output = true\nbindings = []".utf8))
+    XCTAssertTrue(enabledConfiguration.debugCommandOutput)
+
+    let bindingScopedConfiguration = try Configuration.load(
+      Data(
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "down"
+        command = ["/bin/echo"]
+        debug_command_output = true
+        """.utf8))
+    XCTAssertFalse(bindingScopedConfiguration.debugCommandOutput)
+  }
+
   func testConfigurationRejectsMalformedTOMLAndLegacyJSON() {
     XCTAssertThrowsError(try Configuration.load(Data("[[bindings]\n".utf8))) { error in
       XCTAssertTrue(String(describing: error).contains("invalid TOML at line"))

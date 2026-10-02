@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added opt-in `debug_command_output = true` to show gesture-command stdout/stderr in foreground runs or a private, bounded log for managed services; output remains discarded by default.
+
 ## v0.3.0
 
 **Breaking CLI invocation:** `check` and `run` now require an explicit `<config.toml>` path; use `listen start` instead of bare `listen`. Existing TOML config files need no migration; LaunchAgents installed by `aerospace-gestures service` already pass an explicit config path.
