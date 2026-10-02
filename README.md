@@ -20,7 +20,7 @@ From a checkout with [Nix](https://nixos.org/) flakes enabled:
 nix profile install .
 ```
 
-This builds the pinned source and SwiftPM dependency, then adds `aerospace-gestures` to your Nix profile. It does not create a config, service, or permission grant.
+This builds the pinned source and SwiftPM dependency, then adds `aerospace-gestures` to your Nix profile. It does not create a config, service, or permission grant. If `~/.local/bin/aerospace-gestures` is already installed, check `type -a aerospace-gestures`: that older binary may appear before the Nix profile on your `PATH`.
 
 Or build with Swift 5.9+ and install to `~/.local/bin` (the script will not replace an existing binary):
 
