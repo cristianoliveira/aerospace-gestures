@@ -82,12 +82,17 @@ public struct Binding: Decodable, Sendable {
 public struct Configuration: Decodable, Sendable {
   public let threshold: Double
   public let bindings: [Binding]
+  public let debugCommandOutput: Bool
 
-  enum CodingKeys: String, CodingKey { case threshold, bindings }
+  enum CodingKeys: String, CodingKey {
+    case threshold, bindings
+    case debugCommandOutput = "debug_command_output"
+  }
   public init(from decoder: Decoder) throws {
     let values = try decoder.container(keyedBy: CodingKeys.self)
     threshold = try values.decodeIfPresent(Double.self, forKey: .threshold) ?? 0.15
     bindings = try values.decode([Binding].self, forKey: .bindings)
+    debugCommandOutput = try values.decodeIfPresent(Bool.self, forKey: .debugCommandOutput) ?? false
   }
 
   public static func load(_ data: Data) throws -> Configuration {

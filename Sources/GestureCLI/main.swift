@@ -5,6 +5,7 @@ import GestureCLIPolicy
 import GestureCore
 import GestureInfrastructure
 import MultitouchInput
+import os
 
 let commandName = "aerospace-gestures"
 
@@ -180,6 +181,38 @@ do {
   fail(String(describing: error))
 }
 
+let isManagedService =
+  environment.values["AEROSPACE_GESTURES_MANAGED"] == "1"
+  || environment.values[ConfigurationReloadSourceResolver.nixManagedEnvironmentKey] == "1"
+let commandOutputLog =
+  isManagedService
+  ? CommandOutputLog(
+    fileURL: environment.homeDirectory
+      .appendingPathComponent("Library/Application Support/aerospace-gestures", isDirectory: true)
+      .appendingPathComponent("command-output.log"),
+    rootURL: environment.homeDirectory)
+  : nil
+let commandOutputWarningLock = NSLock()
+let commandOutputLogger = Logger(
+  subsystem: "com.aerospace-gestures", category: "command-output")
+var commandOutputWriteWarningShown = false
+let commandOutputHandler: (CommandOutputStream, Data) -> Void = { stream, data in
+  if let commandOutputLog {
+    do {
+      try commandOutputLog.append(data, from: stream)
+    } catch {
+      commandOutputWarningLock.lock()
+      defer { commandOutputWarningLock.unlock() }
+      guard !commandOutputWriteWarningShown else { return }
+      commandOutputWriteWarningShown = true
+      commandOutputLogger.warning(
+        "Cannot write private command output log; command still ran and output was discarded.")
+    }
+  } else {
+    let destination = stream == .stdout ? FileHandle.standardOutput : FileHandle.standardError
+    try? destination.write(contentsOf: data)
+  }
+}
 let runner = CommandRunner()
 var detectors: [UInt: SwipeDetector] = [:]
 var receivedFrame = false
@@ -214,6 +247,7 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
     else { return }
     if !runner.run(
       binding.command,
+      outputHandler: activeConfiguration?.debugCommandOutput == true ? commandOutputHandler : nil,
       completion: { message in
         print(message)
         fflush(stdout)
