@@ -206,90 +206,95 @@ public enum CLIRequest: Equatable {
   case run(configuration: URL, dryRun: Bool)
   case service(CLIServiceAction)
 
+  private struct CommandContract {
+    let topic: CLIHelpTopic
+    let operandCount: ClosedRange<Int>
+    let operandSynopsis: String
+    let extraAllowedOptions: Set<String>
+    let makeRequest: ([String], Set<String>, CLIEnvironment) throws -> CLIRequest
+
+    init(
+      topic: CLIHelpTopic,
+      operandCount: ClosedRange<Int>,
+      operandSynopsis: String = "",
+      extraAllowedOptions: Set<String> = [],
+      makeRequest: @escaping ([String], Set<String>, CLIEnvironment) throws -> CLIRequest
+    ) {
+      self.topic = topic
+      self.operandCount = operandCount
+      self.operandSynopsis = operandSynopsis
+      self.extraAllowedOptions = extraAllowedOptions
+      self.makeRequest = makeRequest
+    }
+
+    func validate(_ operands: [String], command: String) throws {
+      guard operandCount.contains(operands.count) else {
+        let expected = operandSynopsis.isEmpty ? command : "\(command) \(operandSynopsis)"
+        throw CLIArgumentError.invalidArguments("Expected \(expected)", topic: topic)
+      }
+    }
+  }
+
+  /// Every named command enters the same option, help, and operand-validation pipeline.
+  private static let commandContracts: [String: CommandContract] = [
+    "init": CommandContract(
+      topic: .initialize, operandCount: 0...1, operandSynopsis: "[config.toml]"
+    ) { operands, _, environment in
+      .initialize(
+        configuration: ConfigurationPath.resolve(
+          explicitPath: operands.first, in: environment))
+    },
+    "check": CommandContract(
+      topic: .check, operandCount: 1...1, operandSynopsis: "<config.toml>"
+    ) { operands, _, environment in
+      .check(
+        configuration: ConfigurationPath.resolve(explicitPath: operands[0], in: environment))
+    },
+    "run": CommandContract(
+      topic: .run, operandCount: 1...1, operandSynopsis: "<config.toml>",
+      extraAllowedOptions: ["--dry-run"]
+    ) { operands, options, environment in
+      .run(
+        configuration: ConfigurationPath.resolve(explicitPath: operands[0], in: environment),
+        dryRun: options.contains("--dry-run"))
+    },
+    "listen": CommandContract(topic: .listen, operandCount: 0...0) { _, _, _ in .listen },
+    "service": CommandContract(
+      topic: .service, operandCount: 1...1,
+      operandSynopsis: "<install|status|start|stop|restart|uninstall>"
+    ) { operands, _, _ in
+      guard let action = CLIServiceAction(rawValue: operands[0]) else {
+        throw CLIArgumentError.invalidArguments(
+          "Expected service install|status|start|stop|restart|uninstall", topic: .service)
+      }
+      return .service(action)
+    },
+    "help": CommandContract(topic: .help, operandCount: 0...1, operandSynopsis: "[command]") {
+      operands, _, _ in
+      guard let name = operands.first else { return .help(.root) }
+      return .help(try CLIHelpTopic(named: name))
+    },
+    "version": CommandContract(topic: .version, operandCount: 0...0) { _, _, _ in .version },
+  ]
+
   public static func parse(_ arguments: [String], in environment: CLIEnvironment) throws
     -> CLIRequest
   {
     guard let command = arguments.first else { return .help(.root) }
     if arguments == ["--help"] || arguments == ["-h"] { return .help(.root) }
     if arguments == ["--version"] || arguments == ["-v"] { return .version }
-
-    if command == "help" {
-      guard arguments.count <= 2 else {
-        throw usageError("Expected help [command]", topic: .help)
-      }
-      guard arguments.count == 2 else { return .help(.root) }
-      if arguments[1] == "--help" || arguments[1] == "-h" { return .help(.help) }
-      return .help(try CLIHelpTopic(named: arguments[1]))
-    }
-
-    let options = Array(arguments.dropFirst())
-    if command == "version" {
-      let (flags, positionals) = try parseOptions(options, for: command, topic: .version)
-      if flags.contains("--help") || flags.contains("-h") { return .help(.version) }
-      guard positionals.isEmpty else {
-        throw usageError("version takes no arguments", topic: .version)
-      }
-      return .version
-    }
-
-    switch command {
-    case "listen":
-      let (flags, positionals) = try parseOptions(options, for: command, topic: .listen)
-      if flags.contains("--help") || flags.contains("-h") { return .help(.listen) }
-      guard positionals.isEmpty, flags.isEmpty else {
-        throw usageError("listen takes no arguments", topic: .listen)
-      }
-      return .listen
-    case "init":
-      let (flags, positionals) = try parseOptions(options, for: command, topic: .initialize)
-      if flags.contains("--help") || flags.contains("-h") { return .help(.initialize) }
-      guard positionals.count <= 1 else {
-        throw usageError("Expected init [config.toml]", topic: .initialize)
-      }
-      return .initialize(
-        configuration: ConfigurationPath.resolve(
-          explicitPath: positionals.first, in: environment))
-    case "check":
-      let (flags, positionals) = try parseOptions(options, for: command, topic: .check)
-      if flags.contains("--help") || flags.contains("-h") { return .help(.check) }
-      let path = try requireSingleOperand(
-        positionals, command: command, operand: "config.toml", topic: .check)
-      return .check(
-        configuration: ConfigurationPath.resolve(explicitPath: path, in: environment))
-    case "run":
-      let (flags, positionals) = try parseOptions(
-        options, for: command, topic: .run, extraAllowed: ["--dry-run"])
-      if flags.contains("--help") || flags.contains("-h") { return .help(.run) }
-      let path = try requireSingleOperand(
-        positionals, command: command, operand: "config.toml", topic: .run)
-      return .run(
-        configuration: ConfigurationPath.resolve(explicitPath: path, in: environment),
-        dryRun: flags.contains("--dry-run"))
-    case "service":
-      if options.contains("--help") || options.contains("-h") { return .help(.service) }
-      if let stray = options.first(where: { $0.hasPrefix("-") }) {
-        throw usageError("Unknown option '\(stray)' for service", topic: .service)
-      }
-      let actionName = try requireSingleOperand(
-        options, command: command,
-        operand: "install|status|start|stop|restart|uninstall", topic: .service)
-      guard let action = CLIServiceAction(rawValue: actionName) else {
-        throw usageError(
-          "Expected service install|status|start|stop|restart|uninstall", topic: .service)
-      }
-      return .service(action)
-    default:
+    guard let contract = commandContracts[command] else {
       throw CLIArgumentError.unknownCommand(command)
     }
-  }
 
-  private static func requireSingleOperand(
-    _ operands: [String], command: String, operand: String, topic: CLIHelpTopic
-  ) throws -> String {
-    guard operands.count == 1 else {
-      throw usageError("Expected \(command) <\(operand)>", topic: topic)
+    let (options, operands) = try parseOptions(
+      Array(arguments.dropFirst()), for: command, topic: contract.topic,
+      extraAllowed: contract.extraAllowedOptions)
+    if options.contains("--help") || options.contains("-h") {
+      return .help(contract.topic)
     }
-    return operands[0]
+    try contract.validate(operands, command: command)
+    return try contract.makeRequest(operands, options, environment)
   }
 
   /// Splits options into flags and positionals so a dash-prefixed token is never

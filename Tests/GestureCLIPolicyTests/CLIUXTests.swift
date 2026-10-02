@@ -87,15 +87,22 @@ final class CLIUXTests: XCTestCase {
     }
   }
 
-  func testCommandsWithRequiredOperandsRejectMissingOperandsWithFocusedHelp() {
-    let cases: [([String], CLIHelpTopic)] = [
+  func testCommandContractsRejectMissingAndExtraOperandsWithFocusedHelp() {
+    let violations: [([String], CLIHelpTopic)] = [
       (["check"], .check),
+      (["check", "one.toml", "two.toml"], .check),
       (["run"], .run),
       (["run", "--dry-run"], .run),
+      (["run", "one.toml", "two.toml"], .run),
       (["service"], .service),
+      (["service", "start", "extra"], .service),
+      (["init", "one.toml", "two.toml"], .initialize),
+      (["listen", "extra"], .listen),
+      (["help", "check", "extra"], .help),
+      (["version", "extra"], .version),
     ]
 
-    for (arguments, topic) in cases {
+    for (arguments, topic) in violations {
       assertParseError(arguments, topic: topic)
     }
   }
