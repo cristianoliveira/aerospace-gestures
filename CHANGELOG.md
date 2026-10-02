@@ -1,13 +1,14 @@
 # Changelog
 
-## v0.2.1
+## v0.3.0
+
+**Breaking CLI invocation:** `check` and `run` now require an explicit `<config.toml>` path; use `listen start` instead of bare `listen`. Existing TOML config files need no migration; LaunchAgents installed by `aerospace-gestures service` already pass an explicit config path.
 
 - Redesigned CLI help with discoverable commands, focused examples and service actions (`aerospace-gestures help <command>` or `<command> -h` / `<command> --help`).
 - Added `aerospace-gestures -v` / `--version` and `aerospace-gestures version`.
 - Added source-built default Nix flake packages for Apple silicon and Intel macOS (`nix profile install .`).
 - CLI syntax errors now print the relevant structured help on stderr and exit nonzero; option-like arguments are no longer mistaken for config paths.
-- `check` and `run` now require an explicit configuration path; omitting it prints focused command usage instead of attempting the default path.
-- Listen-only observation now starts explicitly with `aerospace-gestures listen start`; bare `listen` prints focused help.
+- Bare `check`, `run`, and `listen` now print focused command usage instead of implicitly using a default path or starting the listener.
 - Configuration remains TOML-only; no config change is needed when upgrading from v0.2.0.
 
 ## v0.2.0
