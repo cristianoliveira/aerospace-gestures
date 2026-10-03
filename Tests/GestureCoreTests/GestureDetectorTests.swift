@@ -145,6 +145,51 @@ final class GestureDetectorTests: XCTestCase {
     }
   }
 
+  func testOneFingerMotionAboveRMSThresholdDoesNotPinch() {
+    let pinchThreshold = 0.2
+    for count in 3...5 {
+      let start = radialContacts(count: count, radius: 0.1)
+      let initialRadius = rmsRadius(start)
+      var detector = GestureDetector(threshold: 0.15, pinchThreshold: pinchThreshold)
+      XCTAssertNil(detector.update(start))
+
+      for scale in [1.5, 2.0, 3.0] {
+        var current = start
+        current[0] = Contact(
+          id: current[0].id,
+          x: 0.5 + (current[0].x - 0.5) * scale,
+          y: 0.5 + (current[0].y - 0.5) * scale)
+        let relativeRadiusChange = abs(1 - rmsRadius(current) / initialRadius)
+        if scale >= 2.0 {
+          XCTAssertGreaterThan(relativeRadiusChange, pinchThreshold)
+        } else {
+          XCTAssertLessThan(relativeRadiusChange, pinchThreshold)
+        }
+        XCTAssertNil(detector.update(current), "\(count) contacts, one finger scaled to \(scale)")
+      }
+    }
+  }
+
+  func testOneStationaryFingerDoesNotPinchWhenOthersCrossRmsThreshold() {
+    let pinchThreshold = 0.2
+    for count in 3...5 {
+      let start = radialContacts(count: count, radius: 0.2)
+      let current = start.enumerated().map { index, contact in
+        guard index != 0 else { return contact }
+        return Contact(
+          id: contact.id,
+          x: 0.5 + (contact.x - 0.5) * 0.3,
+          y: 0.5 + (contact.y - 0.5) * 0.3)
+      }
+      let relativeRadiusChange = 1 - rmsRadius(current) / rmsRadius(start)
+      XCTAssertGreaterThan(relativeRadiusChange, pinchThreshold)
+
+      var detector = GestureDetector(threshold: 0.15, pinchThreshold: pinchThreshold)
+      XCTAssertNil(detector.update(start))
+      XCTAssertNil(detector.update(current), "\(count) contacts, first finger stationary")
+    }
+  }
+
   func testMultiFingerPinchRejectsTranslationRotationAndOneFingerOutlier() {
     for count in 3...5 {
       let start = radialContacts(count: count, radius: 0.2)
@@ -170,6 +215,18 @@ final class GestureDetectorTests: XCTestCase {
         x: 0.5 + radius * cos(angle),
         y: 0.5 + radius * sin(angle))
     }
+  }
+
+  private func rmsRadius(_ contacts: [Contact]) -> Double {
+    let count = Double(contacts.count)
+    let centerX = contacts.map(\.x).reduce(0, +) / count
+    let centerY = contacts.map(\.y).reduce(0, +) / count
+    let magnitudeSquared = contacts.reduce(0) { result, contact in
+      let x = contact.x - centerX
+      let y = contact.y - centerY
+      return result + x * x + y * y
+    }
+    return sqrt(magnitudeSquared / count)
   }
 
   private func translated(_ contacts: [Contact], x: Double, y: Double) -> [Contact] {
