@@ -8,7 +8,7 @@
 
 A gestures extension for [AeroSpace WM](https://github.com/nikitabobko/AeroSpace)
 
-Map three-, four-, or five-finger macOS trackpad swipes to commands.
+Map three-, four-, or five-finger macOS trackpad swipes and two-finger pinch-in/spread-out gestures to commands.
 
 The **Triple Swipe** menu-bar icon gives you access to pause/resume and configuration reload. A small pause badge means actions are paused; the listener remains active. The icon follows the macOS menu-bar appearance.
 
@@ -48,15 +48,26 @@ aerospace-gestures run ./config.toml
 aerospace-gestures listen start
 ```
 
-Swipe **three fingers down**. The generated config shows an “It's hooked!” popup. Lift your fingers before trying again; press Ctrl-C to stop. Other swipes may be logged but have no default command.
+Swipe **three fingers down**. The generated config shows an “It's hooked!” popup. Lift your fingers before trying again; press Ctrl-C to stop. Other swipes may be logged but have no default command. Pinch bindings are opt-in and do not suppress macOS pinch-to-zoom; private API delivery and interaction with native zoom require real-trackpad validation.
 
-To use your own commands, edit `config.toml`:
+To use your own commands, edit `config.toml`. Swipe bindings keep the existing `fingers` and `direction` fields; pinch bindings use a distinct `gesture` field and an independent relative-separation threshold:
 
 ```toml
+# Top-level, independent from the swipe `threshold`.
+pinch_threshold = 0.2
+
 [[bindings]]
 fingers = 3
 direction = "down"
 command = ["/usr/bin/open", "-a", "Calculator"]
+
+[[bindings]]
+gesture = "pinch_in"
+command = ["/usr/bin/open", "-a", "Calculator"]
+
+[[bindings]]
+gesture = "pinch_out"
+command = ["/usr/bin/open", "-a", "Calendar"]
 ```
 
 Run the CLI with that file:

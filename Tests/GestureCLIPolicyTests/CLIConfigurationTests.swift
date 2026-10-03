@@ -75,6 +75,9 @@ final class CLIConfigurationTests: XCTestCase {
       XCTAssertTrue(text.contains("aerospace-gestures init"))
       XCTAssertTrue(text.contains("aerospace-gestures check <config.toml>"))
     }
+    let rootHelp = CLIHelp.text(for: .root, defaultConfigurationURL: defaultURL)
+    XCTAssertTrue(rootHelp.contains("pinch-to-zoom"))
+    XCTAssertTrue(rootHelp.contains("manual validation"))
     let runHelp = CLIHelp.text(for: .run, defaultConfigurationURL: defaultURL)
     XCTAssertTrue(runHelp.contains("Reload configuration"))
     XCTAssertTrue(runHelp.contains("without restarting input"))

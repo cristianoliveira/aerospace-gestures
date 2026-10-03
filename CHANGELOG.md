@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added opt-in `debug_command_output = true` to show gesture-command stdout/stderr in foreground runs or a private, bounded log for managed services; output remains discarded by default.
+- Added opt-in two-finger `pinch_in` and `pinch_out` bindings with an independent relative-separation threshold; native macOS pinch-to-zoom is not suppressed.
 
 ## v0.3.0
 

@@ -8,7 +8,7 @@ final class GestureCoreTests: XCTestCase {
   }
 
   func testSwipeEmitsOnceUntilAllFingersLift() {
-    var detector = SwipeDetector(threshold: 0.15)
+    var detector = GestureDetector(threshold: 0.15)
     XCTAssertNil(detector.update(points(x: 0.2)))
     XCTAssertEqual(detector.update(points(x: 0.4)), Gesture(fingers: 3, direction: .right))
     XCTAssertNil(detector.update(points(x: 0.7)))
@@ -18,7 +18,7 @@ final class GestureCoreTests: XCTestCase {
   }
 
   func testThreeFingerDownSwipeEmitsOnceAndRearmsAfterLift() {
-    var detector = SwipeDetector(threshold: 0.15)
+    var detector = GestureDetector(threshold: 0.15)
     let expected = Gesture(fingers: 3, direction: .down)
 
     XCTAssertNil(detector.update(points(x: 0.5, y: 0.8)))
@@ -32,14 +32,14 @@ final class GestureCoreTests: XCTestCase {
   }
 
   func testFourFingerVerticalSwipeAndSmallMovement() {
-    var detector = SwipeDetector(threshold: 0.15)
+    var detector = GestureDetector(threshold: 0.15)
     XCTAssertNil(detector.update(points(4, x: 0.5, y: 0.2)))
     XCTAssertNil(detector.update(points(4, x: 0.5, y: 0.25)))
     XCTAssertEqual(detector.update(points(4, x: 0.5, y: 0.5)), Gesture(fingers: 4, direction: .up))
   }
 
   func testTwoFingersAndDiagonalDoNotTrigger() {
-    var detector = SwipeDetector(threshold: 0.15)
+    var detector = GestureDetector(threshold: 0.15)
     XCTAssertNil(detector.update(points(2, x: 0.1)))
     XCTAssertNil(detector.update(points(2, x: 0.8)))
     XCTAssertNil(detector.update(points(x: 0.1, y: 0.1)))
@@ -47,14 +47,14 @@ final class GestureCoreTests: XCTestCase {
   }
 
   func testChangingContactsResetsOriginRatherThanCreatingSwipe() {
-    var detector = SwipeDetector(threshold: 0.15)
+    var detector = GestureDetector(threshold: 0.15)
     XCTAssertNil(detector.update(points(x: 0.1)))
     XCTAssertNil(detector.update(points(4, x: 0.8)))
     XCTAssertEqual(detector.update(points(4, x: 0.6)), Gesture(fingers: 4, direction: .left))
   }
 
   func testPinchingDoesNotCountAsSwipe() {
-    var detector = SwipeDetector(threshold: 0.15)
+    var detector = GestureDetector(threshold: 0.15)
     XCTAssertNil(detector.update(points(x: 0.5)))
     XCTAssertNil(
       detector.update([
@@ -65,7 +65,7 @@ final class GestureCoreTests: XCTestCase {
   }
 
   func testFiveFingerDownSwipeDoesNotRearmWhenOnlySomeFingersLift() {
-    var detector = SwipeDetector(threshold: 0.15)
+    var detector = GestureDetector(threshold: 0.15)
     XCTAssertNil(detector.update(points(5, x: 0.5, y: 0.8)))
     XCTAssertEqual(
       detector.update(points(5, x: 0.5, y: 0.5)), Gesture(fingers: 5, direction: .down))
@@ -74,7 +74,7 @@ final class GestureCoreTests: XCTestCase {
   }
 
   func testInvalidPositionsResetTheOrigin() {
-    var detector = SwipeDetector(threshold: 0.15)
+    var detector = GestureDetector(threshold: 0.15)
     XCTAssertNil(detector.update(points(x: 0.1)))
     XCTAssertNil(detector.update(points(x: .nan)))
     XCTAssertNil(detector.update(points(x: 0.8)))
@@ -128,6 +128,113 @@ final class GestureCoreTests: XCTestCase {
         """.utf8))
     XCTAssertEqual(config.threshold, 0.15)
     XCTAssertEqual(config.bindings[0].command, ["/bin/echo", "hello; not a shell"])
+  }
+
+  func testPinchBindingsAndThresholdCoexistWithLegacySwipeBindings() throws {
+    let config = try Configuration.load(
+      Data(
+        """
+        threshold = 0.3
+        pinch_threshold = 0.25
+
+        [[bindings]]
+        fingers = 3
+        direction = "down"
+        command = ["/bin/echo", "swipe"]
+
+        [[bindings]]
+        gesture = "pinch_in"
+        command = ["/bin/echo", "in"]
+
+        [[bindings]]
+        gesture = "pinch_out"
+        command = ["/bin/echo", "out"]
+        """.utf8))
+
+    XCTAssertEqual(config.threshold, 0.3)
+    XCTAssertEqual(config.pinchThreshold, 0.25)
+    XCTAssertEqual(
+      config.bindings.map(\.gesture),
+      [Gesture(fingers: 3, direction: .down), .pinchIn, .pinchOut])
+  }
+
+  func testPinchThresholdHasIndependentBoundedDefaultAndValidation() throws {
+    XCTAssertEqual(try Configuration.load(Data("bindings = []".utf8)).pinchThreshold, 0.2)
+    XCTAssertEqual(
+      try Configuration.load(Data("pinch_threshold = 0.05\nbindings = []".utf8)).pinchThreshold,
+      0.05)
+    XCTAssertEqual(
+      try Configuration.load(Data("pinch_threshold = 0.5\nbindings = []".utf8)).pinchThreshold,
+      0.5)
+
+    for threshold in [0.049, 0.501] {
+      XCTAssertThrowsError(
+        try Configuration.load(Data("pinch_threshold = \(threshold)\nbindings = []".utf8)))
+    }
+  }
+
+  func testConfigurationRejectsMixedDuplicateAndUnsupportedGestureBindings() {
+    let invalid: [(toml: String, message: String)] = [
+      (
+        """
+        [[bindings]]
+        gesture = "pinch_in"
+        fingers = 2
+        command = ["/bin/echo"]
+        """,
+        "cannot also specify"
+      ),
+      (
+        """
+        [[bindings]]
+        gesture = "pinch_in"
+        direction = "left"
+        command = ["/bin/echo"]
+        """,
+        "cannot also specify"
+      ),
+      (
+        """
+        [[bindings]]
+        gesture = "pinch_sideways"
+        command = ["/bin/echo"]
+        """,
+        "gesture must be"
+      ),
+      (
+        """
+        [[bindings]]
+        gesture = "pinch_in"
+        command = ["/bin/echo"]
+
+        [[bindings]]
+        gesture = "pinch_in"
+        command = ["/bin/true"]
+        """,
+        "duplicate gesture binding"
+      ),
+      (
+        """
+        [[bindings]]
+        fingers = 2
+        direction = "left"
+        command = ["/bin/echo"]
+        """,
+        "finger count must be 3, 4, or 5"
+      ),
+    ]
+
+    for (toml, message) in invalid {
+      XCTAssertThrowsError(try Configuration.load(Data(toml.utf8))) { error in
+        XCTAssertTrue(String(describing: error).contains(message), String(describing: error))
+      }
+    }
+  }
+
+  func testGesturesHaveUnderstandableDisplayNames() {
+    XCTAssertEqual(Gesture(fingers: 3, direction: .down).displayName, "3-finger down")
+    XCTAssertEqual(Gesture.pinchIn.displayName, "two-finger pinch in")
+    XCTAssertEqual(Gesture.pinchOut.displayName, "two-finger pinch out")
   }
 
   func testCommandOutputDebuggingIsOptInAndDefaultsOff() throws {
