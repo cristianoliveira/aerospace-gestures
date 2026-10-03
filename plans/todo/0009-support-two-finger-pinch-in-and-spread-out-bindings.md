@@ -30,4 +30,3 @@ People can bind commands to directional swipes but not to the familiar inward an
 - No rotation, continuous zoom factor, gesture interception, default pinch bindings, new permissions, live service or configuration installation.
 - Existing CommandRunner and LaunchAgent logic must remain unchanged unless a concrete integration bug demands it.
 - Hardware behavior is an explicit evidence gap, not a claim of support: perform a consented real-trackpad check later before promising interaction with native macOS zoom.
-
