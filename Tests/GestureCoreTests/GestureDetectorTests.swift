@@ -1,3 +1,4 @@
+import Foundation
 import GestureCore
 import XCTest
 
@@ -66,13 +67,36 @@ final class GestureDetectorTests: XCTestCase {
     XCTAssertNil(detector.update(contacts(ids: [10, 20, 30], x: 0.8)))
   }
 
-  func testZeroAndVerySmallBaselineSeparationCannotTriggerPinch() {
+  func testMultiFingerCountAndIdentityChangesRebaselineBeforeFreshRecognition() {
+    var countDetector = GestureDetector(threshold: 0.15, pinchThreshold: 0.2)
+    XCTAssertNil(countDetector.update(radialContacts(count: 3, radius: 0.2)))
+    XCTAssertNil(countDetector.update(radialContacts(count: 4, radius: 0.14)))
+    XCTAssertEqual(
+      countDetector.update(radialContacts(count: 4, radius: 0.17)),
+      Gesture(fingers: 4, direction: .pinchOut))
+
+    var identityDetector = GestureDetector(threshold: 0.15, pinchThreshold: 0.2)
+    XCTAssertNil(identityDetector.update(radialContacts(count: 3, radius: 0.2)))
+    XCTAssertNil(identityDetector.update(radialContacts(count: 3, radius: 0.14, idOffset: 10)))
+    XCTAssertNil(identityDetector.update(radialContacts(count: 3, radius: 0.16, idOffset: 10)))
+    XCTAssertEqual(
+      identityDetector.update(radialContacts(count: 3, radius: 0.1, idOffset: 10)),
+      Gesture(fingers: 3, direction: .pinchIn))
+  }
+
+  func testZeroAndVerySmallBaselinesCannotTriggerPinch() {
     for separation in [0.0, 0.01, 0.039] {
       var detector = GestureDetector(threshold: 0.15, pinchThreshold: 0.2)
       let midpoint = 0.5
       let half = separation / 2
       XCTAssertNil(detector.update(pair((midpoint - half, 0.5), (midpoint + half, 0.5))))
       XCTAssertNil(detector.update(pair((0.5, 0.5), (0.5 + separation * 0.2, 0.5))))
+    }
+
+    for radius in [0.0, 0.01, 0.019] {
+      var detector = GestureDetector(threshold: 0.15, pinchThreshold: 0.2)
+      XCTAssertNil(detector.update(radialContacts(count: 3, radius: radius)))
+      XCTAssertNil(detector.update(radialContacts(count: 3, radius: radius * 0.5)))
     }
   }
 
@@ -88,6 +112,74 @@ final class GestureDetectorTests: XCTestCase {
     XCTAssertEqual(detectors[1]?.update(pair((0.43, 0.5), (0.57, 0.5))), .pinchIn)
     XCTAssertNil(detectors[2]?.update(pair((0.415, 0.5), (0.585, 0.5))))
     XCTAssertEqual(detectors[2]?.update(pair((0.43, 0.5), (0.57, 0.5))), .pinchIn)
+  }
+
+  func testThreeToFiveFingerPinchesInAndOutFireOnceUntilFullLift() {
+    for count in 3...5 {
+      let start = radialContacts(count: count, radius: 0.2)
+      var pinchInDetector = GestureDetector(threshold: 0.15, pinchThreshold: 0.2)
+      XCTAssertNil(pinchInDetector.update(start))
+      XCTAssertNil(pinchInDetector.update(radialContacts(count: count, radius: 0.17)))
+      XCTAssertEqual(
+        pinchInDetector.update(radialContacts(count: count, radius: 0.14)),
+        Gesture(fingers: count, direction: .pinchIn))
+      XCTAssertNil(pinchInDetector.update(radialContacts(count: count, radius: 0.12)))
+      XCTAssertNil(pinchInDetector.update([]))
+      XCTAssertNil(pinchInDetector.update(start))
+      XCTAssertEqual(
+        pinchInDetector.update(radialContacts(count: count, radius: 0.14)),
+        Gesture(fingers: count, direction: .pinchIn))
+
+      var spreadDetector = GestureDetector(threshold: 0.15, pinchThreshold: 0.2)
+      XCTAssertNil(spreadDetector.update(start))
+      XCTAssertNil(spreadDetector.update(radialContacts(count: count, radius: 0.23)))
+      XCTAssertEqual(
+        spreadDetector.update(radialContacts(count: count, radius: 0.26)),
+        Gesture(fingers: count, direction: .pinchOut))
+      XCTAssertNil(spreadDetector.update(radialContacts(count: count, radius: 0.3)))
+      XCTAssertNil(spreadDetector.update([]))
+      XCTAssertNil(spreadDetector.update(start))
+      XCTAssertEqual(
+        spreadDetector.update(radialContacts(count: count, radius: 0.26)),
+        Gesture(fingers: count, direction: .pinchOut))
+    }
+  }
+
+  func testMultiFingerPinchRejectsTranslationRotationAndOneFingerOutlier() {
+    for count in 3...5 {
+      let start = radialContacts(count: count, radius: 0.2)
+      var detector = GestureDetector(threshold: 0.15, pinchThreshold: 0.2)
+      XCTAssertNil(detector.update(start))
+      XCTAssertNil(detector.update(translated(start, x: 0.1, y: -0.05)))
+      XCTAssertNil(detector.update(rotated(start)))
+
+      var oneFingerMoved = start
+      oneFingerMoved[0] = Contact(
+        id: oneFingerMoved[0].id,
+        x: 0.5 + (oneFingerMoved[0].x - 0.5) * 0.5,
+        y: 0.5 + (oneFingerMoved[0].y - 0.5) * 0.5)
+      XCTAssertNil(detector.update(oneFingerMoved))
+    }
+  }
+
+  private func radialContacts(count: Int, radius: Double, idOffset: Int = 0) -> [Contact] {
+    (0..<count).map { index in
+      let angle = 2 * Double.pi * Double(index) / Double(count)
+      return Contact(
+        id: index + 1 + idOffset,
+        x: 0.5 + radius * cos(angle),
+        y: 0.5 + radius * sin(angle))
+    }
+  }
+
+  private func translated(_ contacts: [Contact], x: Double, y: Double) -> [Contact] {
+    contacts.map { Contact(id: $0.id, x: $0.x + x, y: $0.y + y) }
+  }
+
+  private func rotated(_ contacts: [Contact]) -> [Contact] {
+    contacts.map { contact in
+      Contact(id: contact.id, x: 1 - contact.y, y: contact.x)
+    }
   }
 
   private func pair(

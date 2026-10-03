@@ -130,7 +130,7 @@ final class GestureCoreTests: XCTestCase {
     XCTAssertEqual(config.bindings[0].command, ["/bin/echo", "hello; not a shell"])
   }
 
-  func testPinchBindingsAndThresholdCoexistWithLegacySwipeBindings() throws {
+  func testPinchBindingsSupportTwoToFiveFingersAndCoexistWithSameCountSwipes() throws {
     let config = try Configuration.load(
       Data(
         """
@@ -151,13 +151,35 @@ final class GestureCoreTests: XCTestCase {
         fingers = 2
         direction = "out"
         command = ["/bin/echo", "out"]
+
+        [[bindings]]
+        fingers = 3
+        direction = "in"
+        command = ["/bin/echo", "three-in"]
+
+        [[bindings]]
+        fingers = 4
+        direction = "out"
+        command = ["/bin/echo", "four-out"]
+
+        [[bindings]]
+        fingers = 5
+        direction = "in"
+        command = ["/bin/echo", "five-in"]
         """.utf8))
 
     XCTAssertEqual(config.threshold, 0.3)
     XCTAssertEqual(config.pinchThreshold, 0.25)
     XCTAssertEqual(
       config.bindings.map(\.gesture),
-      [Gesture(fingers: 3, direction: .down), .pinchIn, .pinchOut])
+      [
+        Gesture(fingers: 3, direction: .down),
+        .pinchIn,
+        .pinchOut,
+        Gesture(fingers: 3, direction: .pinchIn),
+        Gesture(fingers: 4, direction: .pinchOut),
+        Gesture(fingers: 5, direction: .pinchIn),
+      ])
   }
 
   func testPinchThresholdHasIndependentBoundedDefaultAndValidation() throws {
@@ -200,7 +222,7 @@ final class GestureCoreTests: XCTestCase {
     }
   }
 
-  func testPinchDirectionsRequireExactlyTwoFingersAndCardinalDirectionsRequireThreeToFive() {
+  func testPinchDirectionsRequireSupportedCountsAndSwipeDirectionsRequireCardinalValues() {
     let invalid: [(toml: String, message: String)] = [
       (
         """
@@ -214,11 +236,20 @@ final class GestureCoreTests: XCTestCase {
       (
         """
         [[bindings]]
-        fingers = 3
+        fingers = 1
         direction = "in"
         command = ["/bin/echo"]
         """,
-        "directions 'in' and 'out' require exactly two fingers"
+        "pinch bindings must use 2, 3, 4, or 5 fingers"
+      ),
+      (
+        """
+        [[bindings]]
+        fingers = 6
+        direction = "out"
+        command = ["/bin/echo"]
+        """,
+        "pinch bindings must use 2, 3, 4, or 5 fingers"
       ),
       (
         """
@@ -276,6 +307,10 @@ final class GestureCoreTests: XCTestCase {
     XCTAssertEqual(Gesture(fingers: 3, direction: .down).displayName, "3-finger down")
     XCTAssertEqual(Gesture.pinchIn.displayName, "two-finger pinch in")
     XCTAssertEqual(Gesture.pinchOut.displayName, "two-finger pinch out")
+    XCTAssertEqual(
+      Gesture(fingers: 3, direction: .pinchIn).displayName, "3-finger pinch in")
+    XCTAssertEqual(
+      Gesture(fingers: 4, direction: .pinchOut).displayName, "4-finger pinch out")
   }
 
   func testCommandOutputDebuggingIsOptInAndDefaultsOff() throws {

@@ -78,7 +78,7 @@ final class CLIConfigurationTests: XCTestCase {
     let rootHelp = CLIHelp.text(for: .root, defaultConfigurationURL: defaultURL)
     XCTAssertTrue(rootHelp.contains("pinch-to-zoom"))
     XCTAssertTrue(rootHelp.contains("manual validation"))
-    XCTAssertTrue(rootHelp.contains("2 with 'in'/'out'"))
+    XCTAssertTrue(rootHelp.contains("2–5 with 'in'/'out'"))
     XCTAssertTrue(rootHelp.contains("obsolete gesture field is rejected"))
     let runHelp = CLIHelp.text(for: .run, defaultConfigurationURL: defaultURL)
     XCTAssertTrue(runHelp.contains("Reload configuration"))

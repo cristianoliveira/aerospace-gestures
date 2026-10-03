@@ -42,12 +42,12 @@ direction = "down"
 command = ["/bin/echo", "hello"]
 
 [[bindings]]
-fingers = 2
+fingers = 3
 direction = "in"
 command = ["/bin/echo", "pinched"]
 ```
 
-Swipe threshold must be finite and in `0.02...0.8`; pinch threshold must be finite and in `0.05...0.5` and represents a fraction of initial two-finger separation. Swipe bindings use 3, 4, or 5 fingers with cardinal directions; pinch bindings use exactly 2 fingers with direction `in` or `out`. The obsolete `gesture` field is rejected. A pinch requires both contacts to move radially and ignores baselines below `0.04` normalized units. Commands are non-empty argv arrays with an absolute executable and no NUL bytes; gesture bindings must be unique. `debug_command_output` is optional and defaults to false. The CLI additionally verifies executable permissions. Normal run reloads on request; configuration is replaced only after a complete load and executable validation. Command output is never included in completion text or startup diagnostics.
+Swipe threshold must be finite and in `0.02...0.8`; pinch threshold must be finite and in `0.05...0.5` and represents a fraction of initial centroid-relative RMS contact radius. Swipe bindings use 3, 4, or 5 fingers with cardinal directions; pinch bindings use 2, 3, 4, or 5 fingers with direction `in` or `out`. Pinch and swipe bindings may coexist at the same count. The obsolete `gesture` field is rejected. Every pinch contact must move radially; degenerate baselines below `0.04` separation (two contacts) or `0.02` RMS radius (three to five) are ignored. Commands are non-empty argv arrays with an absolute executable and no NUL bytes; gesture bindings must be unique. `debug_command_output` is optional and defaults to false. The CLI additionally verifies executable permissions. Normal run reloads on request; configuration is replaced only after a complete load and executable validation. Command output is never included in completion text or startup diagnostics.
 
 ## Testing and risks
 

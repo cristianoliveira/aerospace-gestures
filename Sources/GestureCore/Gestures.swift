@@ -15,9 +15,9 @@ public struct Gesture: Equatable, Hashable, Sendable {
   public let direction: Direction?
 
   public init(fingers: Int, direction: Direction) {
-    switch (fingers, direction) {
-    case (2, .pinchIn): self.kind = .pinchIn
-    case (2, .pinchOut): self.kind = .pinchOut
+    switch direction {
+    case .pinchIn: self.kind = .pinchIn
+    case .pinchOut: self.kind = .pinchOut
     default: self.kind = .swipe
     }
     self.fingers = fingers
@@ -37,14 +37,18 @@ public struct Gesture: Equatable, Hashable, Sendable {
   public static let pinchIn = Gesture(kind: .pinchIn)
   public static let pinchOut = Gesture(kind: .pinchOut)
 
+  private var fingerCountName: String {
+    fingers == 2 ? "two" : "\(fingers)"
+  }
+
   public var displayName: String {
     switch kind {
     case .swipe:
       return "\(fingers)-finger \(direction?.rawValue ?? "unknown direction")"
     case .pinchIn:
-      return "two-finger pinch in"
+      return "\(fingerCountName)-finger pinch in"
     case .pinchOut:
-      return "two-finger pinch out"
+      return "\(fingerCountName)-finger pinch out"
     }
   }
 }
@@ -60,9 +64,10 @@ public struct Contact {
   }
 }
 
-/// Deterministic per-contact-sequence recognition for swipes and two-finger pinches.
+/// Deterministic per-contact-sequence recognition for swipes and two-to-five-finger pinches.
 public struct GestureDetector {
   private static let minimumPinchSeparation = 0.04
+  private static let minimumMultiFingerPinchRadius = 0.02
   private let swipeThreshold: Double
   private let pinchThreshold: Double
   private var origin: [Contact] = []
@@ -98,12 +103,13 @@ public struct GestureDetector {
     }
 
     if sorted.count == 2 {
-      return detectPinch(sorted)
+      return detectTwoFingerPinch(sorted)
     }
+    if let pinch = detectMultiFingerPinch(sorted) { return pinch }
     return detectSwipe(sorted)
   }
 
-  private mutating func detectPinch(_ contacts: [Contact]) -> Gesture? {
+  private mutating func detectTwoFingerPinch(_ contacts: [Contact]) -> Gesture? {
     let firstOrigin = origin[0]
     let secondOrigin = origin[1]
     let axisX = secondOrigin.x - firstOrigin.x
@@ -144,6 +150,63 @@ public struct GestureDetector {
     return nil
   }
 
+  private mutating func detectMultiFingerPinch(_ contacts: [Contact]) -> Gesture? {
+    let count = Double(contacts.count)
+    let originCenterX = origin.map(\.x).reduce(0, +) / count
+    let originCenterY = origin.map(\.y).reduce(0, +) / count
+    let currentCenterX = contacts.map(\.x).reduce(0, +) / count
+    let currentCenterY = contacts.map(\.y).reduce(0, +) / count
+    let originVectors = origin.map { ($0.x - originCenterX, $0.y - originCenterY) }
+    let currentVectors = contacts.map { ($0.x - currentCenterX, $0.y - currentCenterY) }
+    let originMagnitudeSquared = originVectors.reduce(0) { result, vector in
+      result + vector.0 * vector.0 + vector.1 * vector.1
+    }
+    let currentMagnitudeSquared = currentVectors.reduce(0) { result, vector in
+      result + vector.0 * vector.0 + vector.1 * vector.1
+    }
+    guard originMagnitudeSquared.isFinite, currentMagnitudeSquared.isFinite else { return nil }
+
+    let originRadius = sqrt(originMagnitudeSquared / count)
+    guard originRadius >= Self.minimumMultiFingerPinchRadius else { return nil }
+    let currentRadius = sqrt(currentMagnitudeSquared / count)
+    let relativeChange = (originRadius - currentRadius) / originRadius
+    guard relativeChange.isFinite, abs(relativeChange) >= pinchThreshold else { return nil }
+
+    let scaleNumerator = zip(originVectors, currentVectors).reduce(0) { result, vectors in
+      result + vectors.0.0 * vectors.1.0 + vectors.0.1 * vectors.1.1
+    }
+    let scale = scaleNumerator / originMagnitudeSquared
+    guard scale.isFinite else { return nil }
+
+    let residualMagnitudeSquared = zip(originVectors, currentVectors).reduce(0) {
+      result, vectors in
+      let residualX = vectors.1.0 - scale * vectors.0.0
+      let residualY = vectors.1.1 - scale * vectors.0.1
+      return result + residualX * residualX + residualY * residualY
+    }
+    let residualRadius = sqrt(residualMagnitudeSquared / count)
+    guard residualRadius <= originRadius * pinchThreshold * 0.35 else { return nil }
+
+    let minimumRadialMovement = originRadius * pinchThreshold * 0.2
+    for (baseline, current) in zip(originVectors, currentVectors) {
+      let baselineRadius = hypot(baseline.0, baseline.1)
+      guard baselineRadius >= originRadius * 0.1 else { return nil }
+      let radialMovement =
+        ((current.0 - baseline.0) * baseline.0 + (current.1 - baseline.1) * baseline.1)
+        / baselineRadius
+      guard radialMovement.isFinite else { return nil }
+      if relativeChange > 0 {
+        guard radialMovement <= -minimumRadialMovement else { return nil }
+      } else {
+        guard radialMovement >= minimumRadialMovement else { return nil }
+      }
+    }
+
+    fired = true
+    let direction: Direction = relativeChange > 0 ? .pinchIn : .pinchOut
+    return Gesture(fingers: contacts.count, direction: direction)
+  }
+
   private mutating func detectSwipe(_ contacts: [Contact]) -> Gesture? {
     let deltas = zip(contacts, origin).map { ($0.x - $1.x, $0.y - $1.y) }
     let dx = deltas.map { $0.0 }.reduce(0, +) / Double(contacts.count)
@@ -177,7 +240,7 @@ public struct Binding: Decodable, Sendable {
     let values = try decoder.container(keyedBy: CodingKeys.self)
     guard !values.contains(.gesture) else {
       throw ConfigurationError.invalid(
-        "gesture is no longer supported; use fingers = 2 and direction = 'in' or 'out'")
+        "gesture is no longer supported; use fingers = 2, 3, 4, or 5 and direction = 'in' or 'out'")
     }
 
     guard let fingers = try values.decodeIfPresent(Int.self, forKey: .fingers),
@@ -187,18 +250,16 @@ public struct Binding: Decodable, Sendable {
     }
     command = try values.decode([String].self, forKey: .command)
 
-    if fingers == 2 {
-      switch direction {
-      case .pinchIn: gesture = .pinchIn
-      case .pinchOut: gesture = .pinchOut
-      default:
+    switch direction {
+    case .pinchIn, .pinchOut:
+      guard (2...5).contains(fingers) else {
+        throw ConfigurationError.invalid("pinch bindings must use 2, 3, 4, or 5 fingers")
+      }
+      gesture = Gesture(fingers: fingers, direction: direction)
+    default:
+      guard fingers != 2 else {
         throw ConfigurationError.invalid(
           "two-finger bindings must use direction 'in' or 'out'")
-      }
-    } else {
-      guard direction != .pinchIn, direction != .pinchOut else {
-        throw ConfigurationError.invalid(
-          "directions 'in' and 'out' require exactly two fingers")
       }
       gesture = Gesture(fingers: fingers, direction: direction)
     }
