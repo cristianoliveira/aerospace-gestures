@@ -2,7 +2,7 @@
 
 Start with the [quick start](../README.md). This guide covers configuration, permissions, menu controls, installation, services, troubleshooting, and limitations.
 
-**Not a supported macOS gesture API.** This uses the private `MultitouchSupport` framework. Its ABI may change or crash on future macOS releases. It observes touches; it does **not** suppress system gestures. Real swipe behavior must be verified on your trackpad.
+**Before you bind commands:** this uses the private `MultitouchSupport` framework, whose ABI can change. The app observes touches but cannot suppress system gestures. The generated config binds only a three-finger-down swipe; pinch bindings are opt-in. Two-to-five-finger pinches have synthetic-test coverage, not real-trackpad validation. The latest tagged release, v0.3.0, does not include pinch support; build this branch to try it.
 
 ## First experiment: three fingers down → popup
 
@@ -28,7 +28,7 @@ Requires macOS 13+, a multitouch trackpad, and a Swift 5.9+ toolchain (Xcode Com
 swift run aerospace-gestures listen start
 ```
 
-Swipe with three or four fingers while another application is focused. You should see `Receiving trackpad frames`, followed by direction events. Direction describes physical finger motion, independent of Natural Scrolling. Ctrl-C stops the process. Listen mode never runs commands. Start observation with `aerospace-gestures listen start`; `aerospace-gestures listen --help` shows the listen action and its usage without starting devices.
+Swipe with three or four fingers while another application is focused. You should see `Receiving trackpad frames`, followed by direction events. Direction describes physical finger motion, independent of Natural Scrolling. If this branch is built, also try a two-to-five-finger pinch; whether those contacts arrive depends on your trackpad and macOS settings. Ctrl-C stops the process. Listen mode never runs commands; `aerospace-gestures listen --help` shows its usage without starting devices.
 
 If no frames arrive, check **System Settings → Privacy & Security → Input Monitoring** for your terminal, then restart the process. Permission requirements can vary with macOS; this tool does not bypass them. Do not use sudo.
 
@@ -62,15 +62,20 @@ direction = "left"
 command = ["/opt/homebrew/bin/aerospace", "focus", "left"]
 ```
 
-For two-to-five-finger pinch bindings, place `pinch_threshold` at the top level before all binding tables. Use the same `fingers` and `direction` fields as swipes; counts 2–5 accept `in` or `out`:
+To bind a pinch, put `pinch_threshold` before the binding tables (top-level). Use the same `fingers` and `direction` keys as a swipe. Here three-finger pinch and three-finger swipe can coexist; only the matching direction runs its command:
 
 ```toml
 pinch_threshold = 0.2
 
 [[bindings]]
 fingers = 3
-direction = "in"
+direction = "left"
 command = ["/usr/bin/open", "-a", "Calculator"]
+
+[[bindings]]
+fingers = 3
+direction = "in"
+command = ["/usr/bin/open", "-a", "Calendar"]
 
 [[bindings]]
 fingers = 4
@@ -81,11 +86,11 @@ command = ["/usr/bin/open", "-a", "Calendar"]
 Configuration:
 
 - Swipe bindings use `fingers` 3, 4, or 5 and `direction` `left`, `right`, `up`, or `down`.
-- Pinch bindings use `fingers` 2, 3, 4, or 5 and `direction = "in"` for fingers moving together or `direction = "out"` for fingers moving apart. Swipe bindings use three to five fingers and cardinal directions. Pinch and swipe bindings may coexist at the same finger count. The obsolete `gesture` field is rejected.
+- Pinch bindings use `fingers` 2, 3, 4, or 5 and `direction = "in"` (together) or `direction = "out"` (apart). Pinch and swipe may share a finger count. Two-finger swipes are not supported. The obsolete `gesture` field is rejected.
 - `command`: executable's absolute path followed by separate arguments. No shell expansion, pipes, or redirection. For more complex actions, invoke your own executable script. The child always receives `/dev/null` as stdin; test commands with stdin closed and pass `--no-stdin` if the tool supports it. By default, stdout and stderr are discarded and only the exit status appears in gesture logs.
 - `debug_command_output`: optional, defaults to `false`. Set `true` temporarily to inspect command stdout/stderr. Foreground `run` forwards them to the matching terminal streams. Managed LaunchAgents (including Nix-managed ones) append tagged output to `~/Library/Application Support/aerospace-gestures/command-output.log`; inspect it with `tail -f "$HOME/Library/Application Support/aerospace-gestures/command-output.log"`. The file is mode `0600` and capped at 1 MiB; raw output is capped at 64 KiB per command (plus small stream labels), after which output is drained and discarded to avoid blocking the command. Reloading configuration changes the setting for future commands. Disable it when finished; the log persists until you remove it with `rm "$HOME/Library/Application Support/aerospace-gestures/command-output.log"`. If the managed log path is unsafe or unavailable, capture is disabled and a warning goes to the macOS unified log; configured commands still run. Command output can contain credentials or other sensitive data; enabling this option deliberately exposes that output in your terminal or private log.
 - `threshold`: optional swipe threshold, defaults to `0.15`, allowed range `0.02`–`0.8`. Measured as normalized trackpad displacement, not pixels. Lower values are more sensitive.
-- `pinch_threshold`: optional, defaults to `0.2`, allowed range `0.05`–`0.5`. It is the fraction of the initial centroid-relative RMS contact radius that must change; it is independent of the swipe threshold. Pinch detection requires every contact to move radially and rejects degenerate baselines (below `0.04` separation for two contacts or `0.02` RMS radius for three to five).
+- `pinch_threshold`: optional, defaults to `0.2`, allowed range `0.05`–`0.5`. It measures relative change in the initial distance between two contacts, or in the centroid-relative RMS radius for three to five; it is independent of the swipe threshold. Both two-finger contacts must move in opposite radial directions; all three-to-five contacts must move radially with a consistent scale. Small/jittery or asymmetric pinches may not register. Baselines below `0.04` separation for two contacts or `0.02` RMS radius for three to five are ignored.
 
 Put `debug_command_output = true` at the **top level**, before any `[[bindings]]` table; a value inside a binding does not enable capture. Remove it or set it to `false` when debugging is done.
 
@@ -160,8 +165,8 @@ These scenarios are deliberately not claimed as tested. The bounded TASK-0003 li
 
 ## Behavior and limits
 
-- One action per contact sequence, rearmed after all fingers lift. Pinch recognition for two to five stable contacts requires every contact to move radially around the group centroid; translation, rotation at near-constant spread, subthreshold jitter, and a single moving/outlier contact do not trigger it.
-- All fingers must move in the same direction; small movements and ambiguous diagonals are ignored.
+- One action per contact sequence, rearmed after all fingers lift. Stable two-to-five-finger pinches require radial motion from every contact; translation, rotation at near-constant spread, subthreshold jitter, and a single moving/outlier contact do not trigger a pinch.
+- Swipes require all fingers to move together; small movements and ambiguous diagonals are ignored.
 - Changing finger identities/count resets the movement origin before recognition.
 - Each device has independent recognition state. Devices are enumerated at startup; restart after reconnecting a trackpad.
 - Only one child command runs at a time. Gestures while busy are dropped, not queued.
