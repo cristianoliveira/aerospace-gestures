@@ -1,6 +1,6 @@
 # AeroSpace Gestures brand
 
-**Triple Swipe** is the project mark: three touch trails become a directional command. The trails represent multi-touch, not a three-finger-only restriction. The app supports three, four, or five fingers.
+**Triple Swipe** is the project mark: three touch trails become a directional command. The trails represent multitouch, not a three-finger-only restriction. The app supports three-to-five-finger swipes and opt-in two-to-five-finger pinches.
 
 **Tagline:** Small gesture. Your command.
 

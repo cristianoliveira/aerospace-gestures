@@ -2,7 +2,7 @@
 
 Start with the [quick start](../README.md). This guide covers configuration, permissions, menu controls, installation, services, troubleshooting, and limitations.
 
-**Before you bind commands:** this uses the private `MultitouchSupport` framework, whose ABI can change. The app observes touches but cannot suppress system gestures. The generated config binds only a three-finger-down swipe; pinch bindings are opt-in. Two-to-five-finger pinches have synthetic-test coverage, not real-trackpad validation. The latest tagged release, v0.3.0, does not include pinch support; build this branch to try it.
+**Before you bind commands:** this uses the private `MultitouchSupport` framework, whose ABI can change. The app observes touches but cannot suppress system gestures. The generated config binds only a three-finger-down swipe; pinch bindings are opt-in. Two-to-five-finger pinches have synthetic-test coverage, not real-trackpad validation. The v0.3.0 release does not include pinch support; build the current checkout to try it.
 
 ## First experiment: three fingers down → popup
 
@@ -28,7 +28,7 @@ Requires macOS 13+, a multitouch trackpad, and a Swift 5.9+ toolchain (Xcode Com
 swift run aerospace-gestures listen start
 ```
 
-Swipe with three or four fingers while another application is focused. You should see `Receiving trackpad frames`, followed by direction events. Direction describes physical finger motion, independent of Natural Scrolling. If this branch is built, also try a two-to-five-finger pinch; whether those contacts arrive depends on your trackpad and macOS settings. Ctrl-C stops the process. Listen mode never runs commands; `aerospace-gestures listen --help` shows its usage without starting devices.
+Swipe with three or four fingers while another application is focused. You should see `Receiving trackpad frames`, followed by direction events. Direction describes physical finger motion, independent of Natural Scrolling. With a binary built from this checkout, also try a two-to-five-finger pinch. Whether those contacts arrive depends on your trackpad and macOS settings. Ctrl-C stops the process. Listen mode never runs commands; `aerospace-gestures listen --help` shows its usage without starting devices.
 
 If no frames arrive, check **System Settings → Privacy & Security → Input Monitoring** for your terminal, then restart the process. Permission requirements can vary with macOS; this tool does not bypass them. Do not use sudo.
 

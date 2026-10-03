@@ -1,6 +1,6 @@
 # Per-user LaunchAgent feasibility (TASK-0002)
 
-Date: 2026-09-30. This records one bounded local test, not a service implementation.
+Date: 2026-09-30. This records one bounded local test, not a service implementation. For the implemented service and current limits, see [Usage](USAGE.md).
 
 ## Result
 
@@ -13,7 +13,7 @@ This is evidence for one host/session and one trackpad. It does not establish co
 - The pre-existing ad-hoc listener was rechecked by UID, PID, argv, cwd, and executable. The user explicitly authorized stopping only PID 87435; it exited after SIGTERM. No other listener was stopped.
 - Built natively with `arch -arm64 /usr/bin/swift build -c release -Xswiftc -warnings-as-errors`. The release executable was arm64 Mach-O, mode 755, SHA-256 `ae3e6a533156ee5dfd7575b28966455a8bcb23828f5b10fde0e043014f8fbdf6`.
 - The previously absent `~/.local/bin/aerospace-gestures` slot was populated for the trial. Source and copied binary hashes and ad-hoc CodeDirectory CDHash (`9e1107c21dc0855cb0e20dde6bd212a706de5552`) matched. `codesign` reported identifier `aerospace-gestures`, no Team ID. No prior installed binary existed, so replacement/permission identity preservation against an existing installation could not be compared.
-- A private temporary `XDG_CONFIG_HOME` was used. Release `init` created its default popup config there (mode 600); release `check` reported one valid binding. The user's `~/.config` was not created or changed; tracked `config.probe.json` remained unchanged.
+- A private temporary `XDG_CONFIG_HOME` was used. Release `init` created its default popup config there (mode 600); release `check` reported one valid binding. The user's `~/.config` was not created or changed; the tracked `config.probe.json` from that revision remained unchanged. Current configurations use TOML; see [Usage](USAGE.md).
 - Temporary label `org.cristianoliveira.aerospace-gestures.task0002.20260930` was bootstrapped only into `gui/503` from a plist under a private temp directory. It used `RunAtLoad`, `KeepAlive=false`, an absolute release binary path, private XDG config, and temporary stdout/stderr paths. `launchctl print` showed `state = running`, `initialized = 1`, and one run. This alone was not treated as hardware success.
 - Log sequence: `Listening`; `No frames yet`; after the human swipe, `Receiving trackpad frames`, `3-finger down`, and `Command exited with status 0`. Stderr was empty. The human confirmed the dialog appeared exactly once with Terminal closed.
 
@@ -29,4 +29,4 @@ The exact temporary label was booted out. A subsequent `launchctl print` reporte
 
 On a logged-in GUI session with a multitouch trackpad, build the arm64 release, install the binary at `~/.local/bin/aerospace-gestures`, run `aerospace-gestures init` once if the default config is absent, and validate the path printed by init with `aerospace-gestures check <config.toml>`. Register a temporary per-user LaunchAgent for `aerospace-gestures run <config.toml>` in `gui/$(id -u)`, then close Terminal and perform one three-finger downward swipe. Expect exactly one dialog. Confirm frame receipt and the command exit separately from the UI result. Boot out the exact temporary label and remove only test-owned files afterward.
 
-No TASK-0003 service implementation was started. The plan card remains with the product owner for closeout.
+At the time of this test, TASK-0003 service implementation had not started. This document is historical evidence, not the current service status.
