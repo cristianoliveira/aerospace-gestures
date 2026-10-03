@@ -143,11 +143,13 @@ final class GestureCoreTests: XCTestCase {
         command = ["/bin/echo", "swipe"]
 
         [[bindings]]
-        gesture = "pinch_in"
+        fingers = 2
+        direction = "in"
         command = ["/bin/echo", "in"]
 
         [[bindings]]
-        gesture = "pinch_out"
+        fingers = 2
+        direction = "out"
         command = ["/bin/echo", "out"]
         """.utf8))
 
@@ -173,54 +175,75 @@ final class GestureCoreTests: XCTestCase {
     }
   }
 
-  func testConfigurationRejectsMixedDuplicateAndUnsupportedGestureBindings() {
+  func testLegacyGestureKeyIsRejectedExplicitly() {
+    let invalid = [
+      """
+      [[bindings]]
+      gesture = "pinch_in"
+      command = ["/bin/echo"]
+      """,
+      """
+      [[bindings]]
+      gesture = "pinch_in"
+      fingers = 2
+      direction = "in"
+      command = ["/bin/echo"]
+      """,
+    ]
+
+    for toml in invalid {
+      XCTAssertThrowsError(try Configuration.load(Data(toml.utf8))) { error in
+        XCTAssertTrue(
+          String(describing: error).contains("gesture is no longer supported"),
+          String(describing: error))
+      }
+    }
+  }
+
+  func testPinchDirectionsRequireExactlyTwoFingersAndCardinalDirectionsRequireThreeToFive() {
     let invalid: [(toml: String, message: String)] = [
       (
         """
         [[bindings]]
-        gesture = "pinch_in"
-        fingers = 2
-        command = ["/bin/echo"]
-        """,
-        "cannot also specify"
-      ),
-      (
-        """
-        [[bindings]]
-        gesture = "pinch_in"
-        direction = "left"
-        command = ["/bin/echo"]
-        """,
-        "cannot also specify"
-      ),
-      (
-        """
-        [[bindings]]
-        gesture = "pinch_sideways"
-        command = ["/bin/echo"]
-        """,
-        "gesture must be"
-      ),
-      (
-        """
-        [[bindings]]
-        gesture = "pinch_in"
-        command = ["/bin/echo"]
-
-        [[bindings]]
-        gesture = "pinch_in"
-        command = ["/bin/true"]
-        """,
-        "duplicate gesture binding"
-      ),
-      (
-        """
-        [[bindings]]
         fingers = 2
         direction = "left"
         command = ["/bin/echo"]
         """,
-        "finger count must be 3, 4, or 5"
+        "two-finger bindings must use direction 'in' or 'out'"
+      ),
+      (
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "in"
+        command = ["/bin/echo"]
+        """,
+        "directions 'in' and 'out' require exactly two fingers"
+      ),
+      (
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "sideways"
+        command = ["/bin/echo"]
+        """,
+        "Direction"
+      ),
+      (
+        """
+        [[bindings]]
+        fingers = 3
+        command = ["/bin/echo"]
+        """,
+        "must specify both fingers and direction"
+      ),
+      (
+        """
+        [[bindings]]
+        direction = "down"
+        command = ["/bin/echo"]
+        """,
+        "must specify both fingers and direction"
       ),
     ]
 
@@ -228,6 +251,24 @@ final class GestureCoreTests: XCTestCase {
       XCTAssertThrowsError(try Configuration.load(Data(toml.utf8))) { error in
         XCTAssertTrue(String(describing: error).contains(message), String(describing: error))
       }
+    }
+  }
+
+  func testDuplicatePinchBindingIsRejected() {
+    let toml = """
+      [[bindings]]
+      fingers = 2
+      direction = "in"
+      command = ["/bin/echo"]
+
+      [[bindings]]
+      fingers = 2
+      direction = "in"
+      command = ["/bin/true"]
+      """
+
+    XCTAssertThrowsError(try Configuration.load(Data(toml.utf8))) { error in
+      XCTAssertTrue(String(describing: error).contains("duplicate gesture binding"))
     }
   }
 

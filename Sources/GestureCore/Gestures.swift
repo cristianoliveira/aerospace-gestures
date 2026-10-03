@@ -1,7 +1,11 @@
 import Foundation
 import TOMLKit
 
-public enum Direction: String, Codable, Sendable { case left, right, up, down }
+public enum Direction: String, Codable, Sendable {
+  case left, right, up, down
+  case pinchIn = "in"
+  case pinchOut = "out"
+}
 
 public struct Gesture: Equatable, Hashable, Sendable {
   public enum Kind: Sendable { case swipe, pinchIn, pinchOut }
@@ -11,7 +15,11 @@ public struct Gesture: Equatable, Hashable, Sendable {
   public let direction: Direction?
 
   public init(fingers: Int, direction: Direction) {
-    self.kind = .swipe
+    switch (fingers, direction) {
+    case (2, .pinchIn): self.kind = .pinchIn
+    case (2, .pinchOut): self.kind = .pinchOut
+    default: self.kind = .swipe
+    }
     self.fingers = fingers
     self.direction = direction
   }
@@ -19,7 +27,11 @@ public struct Gesture: Equatable, Hashable, Sendable {
   private init(kind: Kind) {
     self.kind = kind
     self.fingers = 2
-    self.direction = nil
+    switch kind {
+    case .pinchIn: self.direction = .pinchIn
+    case .pinchOut: self.direction = .pinchOut
+    case .swipe: self.direction = nil
+    }
   }
 
   public static let pinchIn = Gesture(kind: .pinchIn)
@@ -163,27 +175,30 @@ public struct Binding: Decodable, Sendable {
 
   public init(from decoder: Decoder) throws {
     let values = try decoder.container(keyedBy: CodingKeys.self)
-    let configuredGesture = try values.decodeIfPresent(String.self, forKey: .gesture)
-    let fingers = try values.decodeIfPresent(Int.self, forKey: .fingers)
-    let direction = try values.decodeIfPresent(Direction.self, forKey: .direction)
+    guard !values.contains(.gesture) else {
+      throw ConfigurationError.invalid(
+        "gesture is no longer supported; use fingers = 2 and direction = 'in' or 'out'")
+    }
+
+    guard let fingers = try values.decodeIfPresent(Int.self, forKey: .fingers),
+      let direction = try values.decodeIfPresent(Direction.self, forKey: .direction)
+    else {
+      throw ConfigurationError.invalid("bindings must specify both fingers and direction")
+    }
     command = try values.decode([String].self, forKey: .command)
 
-    if let configuredGesture {
-      guard fingers == nil, direction == nil else {
-        throw ConfigurationError.invalid(
-          "gesture bindings cannot also specify fingers or direction")
-      }
-      switch configuredGesture {
-      case "pinch_in": gesture = .pinchIn
-      case "pinch_out": gesture = .pinchOut
+    if fingers == 2 {
+      switch direction {
+      case .pinchIn: gesture = .pinchIn
+      case .pinchOut: gesture = .pinchOut
       default:
         throw ConfigurationError.invalid(
-          "gesture must be 'pinch_in' or 'pinch_out'")
+          "two-finger bindings must use direction 'in' or 'out'")
       }
     } else {
-      guard let fingers, let direction else {
+      guard direction != .pinchIn, direction != .pinchOut else {
         throw ConfigurationError.invalid(
-          "swipe bindings must specify both fingers and direction; pinch bindings use gesture")
+          "directions 'in' and 'out' require exactly two fingers")
       }
       gesture = Gesture(fingers: fingers, direction: direction)
     }

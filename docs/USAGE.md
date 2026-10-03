@@ -62,24 +62,26 @@ direction = "left"
 command = ["/opt/homebrew/bin/aerospace", "focus", "left"]
 ```
 
-For two-finger pinch bindings, place `pinch_threshold` at the top level before all binding tables and use `gesture` instead of `fingers`/`direction`:
+For two-finger pinch bindings, place `pinch_threshold` at the top level before all binding tables. Use the same `fingers` and `direction` fields as swipes; two fingers accept `in` or `out`:
 
 ```toml
 pinch_threshold = 0.2
 
 [[bindings]]
-gesture = "pinch_in"
+fingers = 2
+direction = "in"
 command = ["/usr/bin/open", "-a", "Calculator"]
 
 [[bindings]]
-gesture = "pinch_out"
+fingers = 2
+direction = "out"
 command = ["/usr/bin/open", "-a", "Calendar"]
 ```
 
 Configuration:
 
 - Swipe bindings use `fingers` 3, 4, or 5 and `direction` `left`, `right`, `up`, or `down`.
-- Pinch bindings use `gesture = "pinch_in"` for fingers moving together or `gesture = "pinch_out"` for fingers moving apart. They represent exactly two contacts and cannot be combined with `fingers` or `direction`.
+- Pinch bindings use `fingers = 2` and `direction = "in"` for fingers moving together or `direction = "out"` for fingers moving apart. Swipe bindings use three to five fingers and cardinal directions. The obsolete `gesture` field is rejected.
 - `command`: executable's absolute path followed by separate arguments. No shell expansion, pipes, or redirection. For more complex actions, invoke your own executable script. The child always receives `/dev/null` as stdin; test commands with stdin closed and pass `--no-stdin` if the tool supports it. By default, stdout and stderr are discarded and only the exit status appears in gesture logs.
 - `debug_command_output`: optional, defaults to `false`. Set `true` temporarily to inspect command stdout/stderr. Foreground `run` forwards them to the matching terminal streams. Managed LaunchAgents (including Nix-managed ones) append tagged output to `~/Library/Application Support/aerospace-gestures/command-output.log`; inspect it with `tail -f "$HOME/Library/Application Support/aerospace-gestures/command-output.log"`. The file is mode `0600` and capped at 1 MiB; raw output is capped at 64 KiB per command (plus small stream labels), after which output is drained and discarded to avoid blocking the command. Reloading configuration changes the setting for future commands. Disable it when finished; the log persists until you remove it with `rm "$HOME/Library/Application Support/aerospace-gestures/command-output.log"`. If the managed log path is unsafe or unavailable, capture is disabled and a warning goes to the macOS unified log; configured commands still run. Command output can contain credentials or other sensitive data; enabling this option deliberately exposes that output in your terminal or private log.
 - `threshold`: optional swipe threshold, defaults to `0.15`, allowed range `0.02`–`0.8`. Measured as normalized trackpad displacement, not pixels. Lower values are more sensitive.

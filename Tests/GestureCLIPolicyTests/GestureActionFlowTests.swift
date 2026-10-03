@@ -41,7 +41,8 @@ final class GestureActionFlowTests: XCTestCase {
       Data(
         """
         [[bindings]]
-        gesture = "pinch_in"
+        fingers = 2
+        direction = "in"
         command = ["/bin/echo", "pinched"]
         """.utf8))
     let policy = GestureActionPolicy(mode: .run)

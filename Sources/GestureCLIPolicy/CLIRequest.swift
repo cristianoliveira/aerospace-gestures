@@ -186,6 +186,9 @@ public enum CLIHelp {
         \(example)
       """)
     sections.append(
+      "Bindings use fingers and direction: 2 with 'in'/'out', or 3–5 with 'left'/'right'/'up'/'down'. pinch_threshold is independent from the swipe threshold. The obsolete gesture field is rejected."
+    )
+    sections.append(
       "Private MultitouchSupport API is experimental and system gestures are not suppressed. Pinch bindings do not suppress macOS pinch-to-zoom; real-trackpad delivery and interaction require manual validation."
     )
     return sections.joined(separator: "\n\n")

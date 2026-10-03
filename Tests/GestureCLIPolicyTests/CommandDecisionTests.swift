@@ -9,11 +9,13 @@ final class CommandDecisionTests: XCTestCase {
       Data(
         """
         [[bindings]]
-        gesture = "pinch_in"
+        fingers = 2
+        direction = "in"
         command = ["/bin/echo", "in"]
 
         [[bindings]]
-        gesture = "pinch_out"
+        fingers = 2
+        direction = "out"
         command = ["/bin/echo", "out"]
         """.utf8))
 

@@ -14,13 +14,13 @@ People can bind commands to directional swipes but not to the familiar inward an
 
 ## Outcome and language
 - **Pinch in:** two fingers move toward each other.
-- **Spread out** (configuration name `pinch_out`): two fingers move apart.
+- **Spread out:** two fingers move apart; configuration uses `fingers = 2` and `direction = "out"`.
 - A user can optionally bind one command to either discrete gesture. Nothing fires without a matching binding.
 
 ## Acceptance criteria
 - [x] Stable two-finger inward/outward motion fires the matching event once per contact sequence; a full lift rearms it. A second device is independent.
 - [x] Translation/swipe, rotation at near-constant separation, subthreshold jitter, incomplete one-finger movement, invalid coordinates, finger-ID/count changes, and zero/very small baseline separation do not fire. Pinch/spread must not emit a swipe for the same sequence.
-- [x] Existing three-to-five-finger directional TOML configurations, recognition, and behavior remain valid. New bindings distinguish `gesture = "pinch_in"` and `gesture = "pinch_out"` from legacy `direction`; invalid/mixed/duplicate bindings and unsupported finger counts fail validation clearly.
+- [x] Existing three-to-five-finger directional TOML configurations, recognition, and behavior remain valid. All bindings use `fingers` and `direction`: pinch uses exactly two fingers with `in`/`out`, and swipes use three to five with cardinal directions. Missing/invalid/mixed/duplicate bindings, unsupported finger counts, and the obsolete `gesture` field fail validation clearly.
 - [x] A documented, bounded pinch sensitivity setting is separate from the existing swipe displacement threshold. Detection behavior is deterministic and tested at below/above threshold and reset boundaries.
 - [x] Listen and dry-run never execute commands; run mode preserves pause, busy-child, reload, and per-device isolation semantics for new gestures. CLI displays understandable names.
 - [x] README/Usage/Architecture describe the syntax and explicit limitation: the app does not suppress macOS pinch-to-zoom, and real-trackpad delivery/interference remains unverified until manual validation.

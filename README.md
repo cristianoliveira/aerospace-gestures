@@ -50,7 +50,7 @@ aerospace-gestures listen start
 
 Swipe **three fingers down**. The generated config shows an “It's hooked!” popup. Lift your fingers before trying again; press Ctrl-C to stop. Other swipes may be logged but have no default command. Pinch bindings are opt-in and do not suppress macOS pinch-to-zoom; private API delivery and interaction with native zoom require real-trackpad validation.
 
-To use your own commands, edit `config.toml`. Swipe bindings keep the existing `fingers` and `direction` fields; pinch bindings use a distinct `gesture` field and an independent relative-separation threshold:
+To use your own commands, edit `config.toml`. All bindings use the same `fingers` and `direction` fields: swipes use 3–5 fingers with cardinal directions; pinches use 2 fingers with `in` or `out`. The relative-separation threshold is independent:
 
 ```toml
 # Top-level, independent from the swipe `threshold`.
@@ -62,11 +62,13 @@ direction = "down"
 command = ["/usr/bin/open", "-a", "Calculator"]
 
 [[bindings]]
-gesture = "pinch_in"
+fingers = 2
+direction = "in"
 command = ["/usr/bin/open", "-a", "Calculator"]
 
 [[bindings]]
-gesture = "pinch_out"
+fingers = 2
+direction = "out"
 command = ["/usr/bin/open", "-a", "Calendar"]
 ```
 
