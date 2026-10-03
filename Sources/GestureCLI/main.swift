@@ -214,7 +214,7 @@ let commandOutputHandler: (CommandOutputStream, Data) -> Void = { stream, data i
   }
 }
 let runner = CommandRunner()
-var detectors: [UInt: SwipeDetector] = [:]
+var detectors: [UInt: GestureDetector] = [:]
 var receivedFrame = false
 
 let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
@@ -232,13 +232,15 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
     let activeConfiguration = reloadPolicy.activeConfiguration
     var detector =
       detectors[device]
-      ?? SwipeDetector(threshold: activeConfiguration?.threshold ?? 0.15)
+      ?? GestureDetector(
+        threshold: activeConfiguration?.threshold ?? 0.15,
+        pinchThreshold: activeConfiguration?.pinchThreshold ?? 0.2)
     let gesture = detector.update(contacts)
     detectors[device] = detector
     guard let gesture else { return }
     let actionContext =
       dryRun ? " (listen only)" : actionPolicy.state == .paused ? " (actions paused)" : ""
-    print("\(gesture.fingers)-finger \(gesture.direction.rawValue)\(actionContext)")
+    print("\(gesture.displayName)\(actionContext)")
     fflush(stdout)
     guard
       let binding = CommandDecision.binding(

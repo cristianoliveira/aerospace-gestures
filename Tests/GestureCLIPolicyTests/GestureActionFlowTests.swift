@@ -1,3 +1,4 @@
+import Foundation
 import GestureCore
 import GestureInfrastructure
 import XCTest
@@ -7,7 +8,7 @@ import XCTest
 final class GestureActionFlowTests: XCTestCase {
   func testPauseKeepsRecognitionButResumeRequiresFreshSwipeAfterLift() {
     let policy = GestureActionPolicy(mode: .run)
-    var detector = SwipeDetector(threshold: 0.15)
+    var detector = GestureDetector(threshold: 0.15)
     var dispatched: [Gesture] = []
 
     func process(_ contacts: [Contact]) -> Gesture? {
@@ -34,6 +35,84 @@ final class GestureActionFlowTests: XCTestCase {
     XCTAssertNil(process(contacts(x: 0.8)))
     XCTAssertEqual(process(contacts(x: 0.4)), Gesture(fingers: 3, direction: .left))
     XCTAssertEqual(dispatched, [Gesture(fingers: 3, direction: .left)])
+  }
+
+  func testPinchBindingInRunModeRespectsPauseAndRequiresLiftBeforeDispatch() throws {
+    let configuration = try Configuration.load(
+      Data(
+        """
+        [[bindings]]
+        fingers = 2
+        direction = "in"
+        command = ["/bin/echo", "pinched"]
+        """.utf8))
+    let policy = GestureActionPolicy(mode: .run)
+    var detector = GestureDetector(threshold: 0.15, pinchThreshold: 0.2)
+    var dispatched: [[String]] = []
+
+    func process(_ contacts: [Contact]) -> Gesture? {
+      let token = policy.captureFrame(device: 1, contactCount: contacts.count)
+      guard policy.isCurrent(token) else { return nil }
+
+      let gesture = detector.update(contacts)
+      if let gesture,
+        let binding = CommandDecision.binding(
+          for: gesture, in: configuration.bindings, dryRun: false),
+        policy.mayDispatch(gesture, from: token)
+      {
+        dispatched.append(binding.command)
+      }
+      return gesture
+    }
+
+    XCTAssertNil(process(pinchContacts((0.4, 0.5), (0.6, 0.5))))
+    policy.setActionsEnabled(false)
+    XCTAssertEqual(process(pinchContacts((0.43, 0.5), (0.57, 0.5))), .pinchIn)
+    XCTAssertTrue(dispatched.isEmpty)
+
+    policy.setActionsEnabled(true)
+    XCTAssertNil(process([]))
+    XCTAssertNil(process(pinchContacts((0.4, 0.5), (0.6, 0.5))))
+    XCTAssertEqual(process(pinchContacts((0.43, 0.5), (0.57, 0.5))), .pinchIn)
+    XCTAssertEqual(dispatched, [["/bin/echo", "pinched"]])
+  }
+
+  func testThreeFingerPinchDispatchesItsBindingAlongsideSameCountSwipe() throws {
+    let configuration = try Configuration.load(
+      Data(
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "in"
+        command = ["/bin/echo", "pinch"]
+
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        command = ["/bin/echo", "swipe"]
+
+        [[bindings]]
+        fingers = 4
+        direction = "in"
+        command = ["/bin/echo", "four-finger-pinch"]
+        """.utf8))
+    let policy = GestureActionPolicy(mode: .run)
+    var detector = GestureDetector(threshold: 0.15, pinchThreshold: 0.2)
+
+    XCTAssertNil(detector.update(radialContacts(count: 3, radius: 0.2)))
+    let frame = policy.captureFrame(device: 1, contactCount: 3)
+    guard let gesture = detector.update(radialContacts(count: 3, radius: 0.14)) else {
+      XCTFail("three-finger pinch should be recognized")
+      return
+    }
+
+    XCTAssertEqual(gesture, Gesture(fingers: 3, direction: .pinchIn))
+    XCTAssertEqual(gesture.displayName, "3-finger pinch in")
+    XCTAssertTrue(policy.mayDispatch(gesture, from: frame))
+    XCTAssertEqual(
+      CommandDecision.binding(for: gesture, in: configuration.bindings, dryRun: false)?.command,
+      ["/bin/echo", "pinch"])
+    XCTAssertNil(detector.update(radialContacts(count: 3, radius: 0.12)))
   }
 
   func testReloadInvalidatesQueuedFramesPreservesPauseAndRequiresLift() {
@@ -113,6 +192,22 @@ final class GestureActionFlowTests: XCTestCase {
       Thread.sleep(forTimeInterval: 0.01)
     }
     return FileManager.default.fileExists(atPath: url.path)
+  }
+
+  private func pinchContacts(
+    _ first: (Double, Double), _ second: (Double, Double)
+  ) -> [Contact] {
+    [Contact(id: 1, x: first.0, y: first.1), Contact(id: 2, x: second.0, y: second.1)]
+  }
+
+  private func radialContacts(count: Int, radius: Double) -> [Contact] {
+    (0..<count).map { index in
+      let angle = 2 * Double.pi * Double(index) / Double(count)
+      return Contact(
+        id: index + 1,
+        x: 0.5 + radius * cos(angle),
+        y: 0.5 + radius * sin(angle))
+    }
   }
 
   private func contacts(x: Double) -> [Contact] {

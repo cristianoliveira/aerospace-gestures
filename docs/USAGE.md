@@ -62,13 +62,30 @@ direction = "left"
 command = ["/opt/homebrew/bin/aerospace", "focus", "left"]
 ```
 
+For two-to-five-finger pinch bindings, place `pinch_threshold` at the top level before all binding tables. Use the same `fingers` and `direction` fields as swipes; counts 2–5 accept `in` or `out`:
+
+```toml
+pinch_threshold = 0.2
+
+[[bindings]]
+fingers = 3
+direction = "in"
+command = ["/usr/bin/open", "-a", "Calculator"]
+
+[[bindings]]
+fingers = 4
+direction = "out"
+command = ["/usr/bin/open", "-a", "Calendar"]
+```
+
 Configuration:
 
-- `fingers`: 3, 4, or 5.
-- `direction`: `left`, `right`, `up`, or `down`.
+- Swipe bindings use `fingers` 3, 4, or 5 and `direction` `left`, `right`, `up`, or `down`.
+- Pinch bindings use `fingers` 2, 3, 4, or 5 and `direction = "in"` for fingers moving together or `direction = "out"` for fingers moving apart. Swipe bindings use three to five fingers and cardinal directions. Pinch and swipe bindings may coexist at the same finger count. The obsolete `gesture` field is rejected.
 - `command`: executable's absolute path followed by separate arguments. No shell expansion, pipes, or redirection. For more complex actions, invoke your own executable script. The child always receives `/dev/null` as stdin; test commands with stdin closed and pass `--no-stdin` if the tool supports it. By default, stdout and stderr are discarded and only the exit status appears in gesture logs.
 - `debug_command_output`: optional, defaults to `false`. Set `true` temporarily to inspect command stdout/stderr. Foreground `run` forwards them to the matching terminal streams. Managed LaunchAgents (including Nix-managed ones) append tagged output to `~/Library/Application Support/aerospace-gestures/command-output.log`; inspect it with `tail -f "$HOME/Library/Application Support/aerospace-gestures/command-output.log"`. The file is mode `0600` and capped at 1 MiB; raw output is capped at 64 KiB per command (plus small stream labels), after which output is drained and discarded to avoid blocking the command. Reloading configuration changes the setting for future commands. Disable it when finished; the log persists until you remove it with `rm "$HOME/Library/Application Support/aerospace-gestures/command-output.log"`. If the managed log path is unsafe or unavailable, capture is disabled and a warning goes to the macOS unified log; configured commands still run. Command output can contain credentials or other sensitive data; enabling this option deliberately exposes that output in your terminal or private log.
-- `threshold`: optional, defaults to `0.15`, allowed range `0.02`–`0.8`. Measured as normalized trackpad displacement, not pixels. Lower values are more sensitive.
+- `threshold`: optional swipe threshold, defaults to `0.15`, allowed range `0.02`–`0.8`. Measured as normalized trackpad displacement, not pixels. Lower values are more sensitive.
+- `pinch_threshold`: optional, defaults to `0.2`, allowed range `0.05`–`0.5`. It is the fraction of the initial centroid-relative RMS contact radius that must change; it is independent of the swipe threshold. Pinch detection requires every contact to move radially and rejects degenerate baselines (below `0.04` separation for two contacts or `0.02` RMS radius for three to five).
 
 Put `debug_command_output = true` at the **top level**, before any `[[bindings]]` table; a value inside a binding does not enable capture. Remove it or set it to `false` when debugging is done.
 
@@ -80,7 +97,7 @@ A normal `run` starts enabled and adds a small accessory menu-bar control. Choos
 
 The **Triple Swipe** menu-bar icon is the AeroSpace Gestures logo. When actions are paused, it adds a small two-bar pause badge without changing the menu-bar item width. It uses a monochrome template so macOS controls its appearance. The menu and accessibility label distinguish **Actions enabled** from **Actions paused — listener active**; the icon is not a hardware-health indicator. Reload shows visible loading, success, or error feedback in the menu because LaunchAgent output is discarded. The same process owns the status item in foreground and LaunchAgent modes—there is no second listener, IPC process, or Quit menu action. Normal run requests accessory activation (no Dock icon) without an app bundle.
 
-Menu-bar pause/resume acceptance was manually verified on macOS 26.7 arm64 using a test-owned popup configuration and per-user LaunchAgent; that test job was removed. A later Nix-managed binary replacement was also followed by user-confirmed menu controls and the original popup, without a TCC change. Changed-config hot reload, failure feedback, login/logout, crash recovery, long-term binary/TCC identity, reconnect, sleep/wake, and other OS/hardware combinations remain unverified. LaunchAgent stdout/stderr are discarded, so paused-state frame logging was not directly observed.
+Pinch detection does not suppress macOS pinch-to-zoom or otherwise intercept native gestures. Whether the private MultitouchSupport API delivers pinch motion consistently, or how it interacts with system zoom on a real trackpad, remains unverified; manually test before relying on pinch bindings. Menu-bar pause/resume acceptance was manually verified on macOS 26.7 arm64 using a test-owned popup configuration and per-user LaunchAgent; that test job was removed. A later Nix-managed binary replacement was also followed by user-confirmed menu controls and the original popup, without a TCC change. Changed-config hot reload, failure feedback, login/logout, crash recovery, long-term binary/TCC identity, reconnect, sleep/wake, and other OS/hardware combinations remain unverified. LaunchAgent stdout/stderr are discarded, so paused-state frame logging was not directly observed.
 
 ## Install the binary
 
@@ -143,7 +160,7 @@ These scenarios are deliberately not claimed as tested. The bounded TASK-0003 li
 
 ## Behavior and limits
 
-- One action per contact sequence, rearmed after all fingers lift.
+- One action per contact sequence, rearmed after all fingers lift. Pinch recognition for two to five stable contacts requires every contact to move radially around the group centroid; translation, rotation at near-constant spread, subthreshold jitter, and a single moving/outlier contact do not trigger it.
 - All fingers must move in the same direction; small movements and ambiguous diagonals are ignored.
 - Changing finger identities/count resets the movement origin before recognition.
 - Each device has independent recognition state. Devices are enumerated at startup; restart after reconnecting a trackpad.
@@ -152,4 +169,4 @@ These scenarios are deliberately not claimed as tested. The bounded TASK-0003 li
 - No taps, holds, gesture suppression, automatic startup by default, or App Store/sandbox support.
 - Private device callbacks and physical recognition have no automated hardware coverage. A three-finger popup was manually confirmed on Intel and arm64 macOS 26; other OS versions and stable TCC identity across binary replacement remain unverified.
 
-For development, see [DEVELOPMENT.md](../DEVELOPMENT.md) and [ARCHITECTURE.md](ARCHITECTURE.md). Manual acceptance covered the default three-finger-down popup only; test additional bound directions, two-finger/pinch rejection, and conflicting system actions separately before enabling AeroSpace commands.
+For development, see [DEVELOPMENT.md](../DEVELOPMENT.md) and [ARCHITECTURE.md](ARCHITECTURE.md). Manual acceptance covered the default three-finger-down popup only; test additional bound directions, two-to-five-finger pinch recognition/rejection, and conflicting system actions separately before enabling AeroSpace commands.
