@@ -61,7 +61,7 @@ direction = "in"
 command = ["/bin/echo", "three-finger pinch in"]
 ```
 
-Use `direction = "out"` for a spread-out gesture. Pinch and swipe bindings can share a finger count. Pinch delivery was verified on a real trackpad for v0.4.0. Native macOS pinch-to-zoom still runs, so test your own trackpad and settings before assigning important commands.
+Use `direction = "out"` for a spread-out gesture. Pinch and swipe bindings can share a finger count. Native macOS pinch-to-zoom still runs, so test your own trackpad and settings before assigning important commands.
 
 ## Property reference
 
