@@ -32,7 +32,7 @@ aerospace-gestures run ./config.toml --dry-run
 
 Press Ctrl-C before starting another listener. If no events appear, grant your terminal **System Settings → Privacy & Security → Input Monitoring** permission, then restart the listener. Do not use sudo.
 
-The app cannot suppress macOS gestures. Disable conflicts under **Trackpad → More Gestures**; also check Accessibility's three-finger dragging setting. Pinch delivery remains unverified on real hardware.
+The app cannot suppress macOS gestures. Disable conflicts under **Trackpad → More Gestures**; also check Accessibility's three-finger dragging setting. Pinch delivery was verified on a real trackpad for v0.4.0; test your own trackpad and settings for gesture conflicts.
 
 ## Menu controls
 
