@@ -1,4 +1,12 @@
-threshold = 0.15
+# Reference and tuning guide: docs/CONFIGURATION.md
+# Root settings must come before every [[bindings]] table.
+threshold = 0.15           # Swipe displacement; 0.02–0.8. Lower is more sensitive.
+pinch_threshold = 0.2      # Relative spread change; 0.05–0.5. Independent of swipes.
+debug_command_output = false # Set true temporarily to see echo output; may expose secrets.
+
+# Commands are literal argv arrays: absolute executable, then separate arguments.
+# Echo output is discarded by default; normal run logs only the exit status.
+# One binding per finger-count/direction pair. Lift all fingers between gestures.
 
 [[bindings]]
 fingers = 3
@@ -19,3 +27,16 @@ command = ["/bin/echo", "four-finger up"]
 fingers = 4
 direction = "down"
 command = ["/bin/echo", "four-finger down"]
+
+# Optional pinches: uncomment a whole table to enable it (v0.4.0 source).
+# Real-trackpad delivery is unverified; native macOS pinch-to-zoom still runs.
+# Pinches support 2–5 fingers and may share a finger count with swipes.
+# [[bindings]]
+# fingers = 3
+# direction = "in"
+# command = ["/bin/echo", "three-finger pinch in"]
+
+# [[bindings]]
+# fingers = 4
+# direction = "out"
+# command = ["/bin/echo", "four-finger spread out"]

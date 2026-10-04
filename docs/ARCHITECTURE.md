@@ -28,26 +28,9 @@ The input adapter copies each frame, rejects out-of-order per-device sequence nu
 
 ## Configuration
 
-The default file is `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` when XDG_CONFIG_HOME is nonempty and absolute; otherwise it is `~/.config/aerospace-gestures/config.toml`. `init` creates the popup example exclusively. Explicit config paths override the default; relative paths resolve against the caller's current directory. `check` validates without starting devices, and run/listen never create config implicitly. Normal run loads at startup and can reload explicitly from its active source; an invalid replacement leaves the prior immutable config in use.
+The [Configuration guide](CONFIGURATION.md) owns the user-facing schema, defaults, examples, and reload workflow.
 
-Canonical schema (`threshold` defaults to `0.15`; `pinch_threshold` defaults to `0.2`):
-
-```toml
-threshold = 0.15
-pinch_threshold = 0.2
-
-[[bindings]]
-fingers = 3
-direction = "down"
-command = ["/bin/echo", "hello"]
-
-[[bindings]]
-fingers = 3
-direction = "in"
-command = ["/bin/echo", "pinched"]
-```
-
-Swipe threshold must be finite and in `0.02...0.8`; pinch threshold must be finite and in `0.05...0.5`. For two contacts, the pinch threshold is a fraction of initial pair separation; for three to five, it is a fraction of initial centroid-relative RMS contact radius. Swipe bindings use 3, 4, or 5 fingers with cardinal directions; pinch bindings use 2, 3, 4, or 5 fingers with direction `in` or `out`. Pinch and swipe bindings may coexist at the same count. The obsolete `gesture` field is rejected. Both two-finger contacts must move oppositely along the pair axis; every three-to-five-finger contact must move radially with a consistent scale. Degenerate baselines below `0.04` separation (two contacts) or `0.02` RMS radius (three to five) are ignored. Commands are non-empty argv arrays with an absolute executable and no NUL bytes; gesture bindings must be unique. `debug_command_output` is optional and defaults to false. The CLI additionally verifies executable permissions. Normal run reloads on request; configuration is replaced only after a complete load and executable validation. Command output is never included in completion text or startup diagnostics.
+`GestureCore` decodes UTF-8 TOML into an immutable configuration and validates threshold bounds, gesture counts/directions, unique bindings, and literal command arrays. `GestureInfrastructure` owns file reads and exclusive initialization. The CLI additionally checks executable permissions before accepting a configuration. Normal run reloads on request; a failed candidate leaves the prior snapshot active. Source resolution and trust checks remain in the infrastructure adapter described above. Command output is never included in completion text or startup diagnostics.
 
 ## Automated evidence
 

@@ -36,65 +36,16 @@ Disable conflicting actions in **System Settings → Trackpad → More Gestures*
 
 ## Configure commands
 
+Use the [Configuration guide](CONFIGURATION.md) for file locations, a complete example, the property reference, AeroSpace and script recipes, sensitivity tuning, reload steps, and command-output debugging.
+
 ```sh
-swift run aerospace-gestures init ./config.toml # first-time setup only
 swift run aerospace-gestures check ./config.toml
 swift run aerospace-gestures run ./config.toml --dry-run
+# Press Ctrl-C before starting normal run, which enables commands:
 swift run aerospace-gestures run ./config.toml
 ```
 
-`init` accepts an optional path. Without one, its default is `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` when `XDG_CONFIG_HOME` is an absolute nonempty path; otherwise it is `~/.config/aerospace-gestures/config.toml`. `check` and `run` require a configuration path so an omitted operand produces command usage instead of acting on an implicit file. Relative paths are resolved from the current working directory. `run` and `listen start` never create configuration implicitly. Use `check <path>` to validate a file without starting trackpad input.
-
-The default init example runs `/usr/bin/osascript` to show the proven popup; child output is discarded by default; the same popup is tracked as [`config.probe.toml`](../config.probe.toml). For a harmless command-only sample, see [`config.example.toml`](../config.example.toml) (which uses `/bin/echo`). Successful execution appears as `Command exited with status 0`. AeroSpace's `exec-and-forget` is its own configuration directive, not an executable for this app.
-
-For AeroSpace, find its absolute path:
-
-```sh
-command -v aerospace
-```
-
-Replace a binding with your path, for example:
-
-```toml
-[[bindings]]
-fingers = 3
-direction = "left"
-command = ["/opt/homebrew/bin/aerospace", "focus", "left"]
-```
-
-To bind a pinch, put `pinch_threshold` before the binding tables (top-level). Use the same `fingers` and `direction` keys as a swipe. Here three-finger pinch and three-finger swipe can coexist; only the matching direction runs its command:
-
-```toml
-pinch_threshold = 0.2
-
-[[bindings]]
-fingers = 3
-direction = "left"
-command = ["/usr/bin/open", "-a", "Calculator"]
-
-[[bindings]]
-fingers = 3
-direction = "in"
-command = ["/usr/bin/open", "-a", "Calendar"]
-
-[[bindings]]
-fingers = 4
-direction = "out"
-command = ["/usr/bin/open", "-a", "Calendar"]
-```
-
-Configuration:
-
-- Swipe bindings use `fingers` 3, 4, or 5 and `direction` `left`, `right`, `up`, or `down`.
-- Pinch bindings use `fingers` 2, 3, 4, or 5 and `direction = "in"` (together) or `direction = "out"` (apart). Pinch and swipe may share a finger count. Two-finger swipes are not supported. The obsolete `gesture` field is rejected.
-- `command`: executable's absolute path followed by separate arguments. No shell expansion, pipes, or redirection. For more complex actions, invoke your own executable script. The child always receives `/dev/null` as stdin; test commands with stdin closed and pass `--no-stdin` if the tool supports it. By default, stdout and stderr are discarded and only the exit status appears in gesture logs.
-- `debug_command_output`: optional, defaults to `false`. Set `true` temporarily to inspect command stdout/stderr. Foreground `run` forwards them to the matching terminal streams. Managed LaunchAgents (including Nix-managed ones) append tagged output to `~/Library/Application Support/aerospace-gestures/command-output.log`; inspect it with `tail -f "$HOME/Library/Application Support/aerospace-gestures/command-output.log"`. The file is mode `0600` and capped at 1 MiB; raw output is capped at 64 KiB per command (plus small stream labels), after which output is drained and discarded to avoid blocking the command. Reloading configuration changes the setting for future commands. Disable it when finished; the log persists until you remove it with `rm "$HOME/Library/Application Support/aerospace-gestures/command-output.log"`. If the managed log path is unsafe or unavailable, capture is disabled and a warning goes to the macOS unified log; configured commands still run. Command output can contain credentials or other sensitive data; enabling this option deliberately exposes that output in your terminal or private log.
-- `threshold`: optional swipe threshold, defaults to `0.15`, allowed range `0.02`–`0.8`. Measured as normalized trackpad displacement, not pixels. Lower values are more sensitive.
-- `pinch_threshold`: optional, defaults to `0.2`, allowed range `0.05`–`0.5`. It measures relative change in the initial distance between two contacts, or in the centroid-relative RMS radius for three to five; it is independent of the swipe threshold. Both two-finger contacts must move in opposite radial directions; all three-to-five contacts must move radially with a consistent scale. Small/jittery or asymmetric pinches may not register. Baselines below `0.04` separation for two contacts or `0.02` RMS radius for three to five are ignored.
-
-Put `debug_command_output = true` at the **top level**, before any `[[bindings]]` table; a value inside a binding does not enable capture. Remove it or set it to `false` when debugging is done.
-
-Configuration is loaded at startup. In normal `run`, choose **Reload configuration** from the menu to read and validate the active file without restarting the input listener. A successful swap preserves pause state and running commands, discards queued old-config frames, and requires active fingers to lift before dispatch; a failure keeps the previous config and shows an error in the menu. The `debug_command_output` setting follows the active configuration and affects future command launches; a running command keeps its original output destination. For a Nix-managed LaunchAgent marked with `AEROSPACE_GESTURES_NIX_MANAGED=1`, reload rereads the trusted root-owned plist and stable `/etc/aerospace-gestures/config.toml` symlink on each request, so a rebuilt store config is picked up without changing plist argv. Foreground/manual runs keep their original config path. Listen and dry-run have no reload control. Duplicate bindings are rejected. Only use configuration/scripts you trust: commands run with your account's permissions.
+`check` validates without starting input. Dry-run tests recognition without running commands. Normal run loads the file at startup; use **Reload configuration** in the menu after edits. Invalid replacements leave the previous configuration active. See [validate and apply changes](CONFIGURATION.md#validate-and-apply-changes) for a safe edit cycle.
 
 ## Pause command actions
 

@@ -50,34 +50,7 @@ aerospace-gestures listen start
 
 Swipe **three fingers down**. The generated config binds that swipe to an “It's hooked!” popup; it has no pinch binding. Lift all fingers before another gesture; press Ctrl-C to stop. Use `listen start` to observe without running commands. Pinch bindings do not suppress macOS pinch-to-zoom, so test on a trackpad before assigning important commands.
 
-To bind a pinch, edit `config.toml`. Every binding uses `fingers` and `direction`: swipes use 3–5 with `left`/`right`/`up`/`down`; pinches use 2–5 with `in`/`out`. The counts may overlap. For example:
-
-```toml
-# Top-level, independent from the swipe threshold.
-pinch_threshold = 0.2
-
-[[bindings]]
-fingers = 3
-direction = "down"
-command = ["/usr/bin/open", "-a", "Calculator"]
-
-[[bindings]]
-fingers = 3
-direction = "in"
-command = ["/usr/bin/open", "-a", "Calculator"]
-
-[[bindings]]
-fingers = 4
-direction = "out"
-command = ["/usr/bin/open", "-a", "Calendar"]
-```
-
-Run the CLI with that file:
-
-```sh
-aerospace-gestures check ./config.toml
-aerospace-gestures run ./config.toml
-```
+To customize bindings, follow the [Configuration guide](docs/CONFIGURATION.md): complete examples, all properties and defaults, AeroSpace commands, opt-in pinches, and sensitivity tuning.
 
 ## Uninstall
 
@@ -103,7 +76,8 @@ If no events appear in `listen start`, check that a multitouch trackpad is conne
 
 ## Guides
 
-- [Usage](docs/USAGE.md): configure commands, listen safely, pause/reload from the menu, install, run a service, and troubleshoot.
+- [Configuration](docs/CONFIGURATION.md): properties, examples, command recipes, sensitivity tuning, and debugging.
+- [Usage](docs/USAGE.md): listen safely, use menu controls, install, run a service, and troubleshoot.
 - [Development](DEVELOPMENT.md): build, test, and contribute.
 - [Architecture](docs/ARCHITECTURE.md): design and known risks.
 - [Brand assets](docs/brand/README.md): Triple Swipe logo and menu-bar treatment.

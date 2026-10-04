@@ -10,7 +10,7 @@ Use plain, direct language inspired by STE100 and the Minto Pyramid Principle:
 2. Use short sentences, active verbs, and one instruction per step. Explain a technical term when the reader first needs it.
 3. Use the same names as the CLI and config (`fingers`, `direction`, `pinch_threshold`). Keep commands copyable and say which mode runs them.
 4. Separate observed behavior from synthetic tests and untested hardware assumptions. State risks where a reader makes a decision, not only at the end.
-5. Keep each guide focused: README for first use, Usage for operating the app, Architecture for boundaries and risks, Development for contributors. Link to the detailed guide instead of copying its paragraphs.
+5. Keep each guide focused: README for first use, [Configuration](docs/CONFIGURATION.md) for properties and recipes, Usage for operating the app, Architecture for boundaries and risks, Development for contributors. Link to the detailed guide instead of copying its paragraphs.
 
 These are writing practices, not a claim that the documents conform to the full STE100 specification.
 
