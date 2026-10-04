@@ -78,6 +78,6 @@ If no events appear in `listen start`, check that a multitouch trackpad is conne
 
 - [Configuration](docs/CONFIGURATION.md): properties, examples, command recipes, sensitivity tuning, and debugging.
 - [Usage](docs/USAGE.md): listen safely, use menu controls, install, run a service, and troubleshoot.
-- [Development](DEVELOPMENT.md): build, test, and contribute.
+- [Development](docs/DEVELOPMENT.md): build, test, and contribute.
 - [Architecture](docs/ARCHITECTURE.md): design and known risks.
 - [Brand assets](docs/brand/README.md): Triple Swipe logo and menu-bar treatment.
