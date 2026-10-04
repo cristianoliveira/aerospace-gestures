@@ -11,9 +11,9 @@ cd "$root"
 
 swift build >/dev/null 2>&1
 bin="$(swift build --show-bin-path)/aerospace-gestures"
-# Independent expected version for the planned v0.3.0 release. The release
+# Independent expected version for the planned v0.4.0 release. The release
 # workflow also checks the packaged binary against the pushed tag.
-version="0.3.0"
+version="0.4.0"
 
 failures=0
 expect_stdout() { # description expected_substring command...

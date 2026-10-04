@@ -34,7 +34,7 @@ Or from Homebrew:
 brew install cristianoliveira/tap/aerospace-gestures
 ```
 
-**Version note:** The v0.3.0 release does not include pinch bindings; this checkout does. To try it without replacing an installed binary, use `swift run aerospace-gestures` from this checkout (see [Usage](docs/USAGE.md)). `make install` refuses to replace an existing binary. Use `type -a aerospace-gestures` to identify an installed command; `--version` alone cannot distinguish this checkout from v0.3.0.
+**Version note:** The v0.3.0 release does not include pinch bindings; the v0.4.0 source does. To try the current source without replacing an installed binary, use `swift run aerospace-gestures` from this checkout (see [Usage](docs/USAGE.md)). `make install` refuses to replace an existing binary. Check `aerospace-gestures --version` and `type -a aerospace-gestures` before using an installed command. Nix-managed installs must update the pinned package source and rebuild.
 
 ## Try it
 
