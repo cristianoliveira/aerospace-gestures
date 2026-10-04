@@ -50,7 +50,18 @@ aerospace-gestures listen start
 
 Swipe **three fingers down**. The generated config binds that swipe to an “It's hooked!” popup; it has no pinch binding. Lift all fingers before another gesture; press Ctrl-C to stop. Use `listen start` to observe without running commands. Pinch bindings do not suppress macOS pinch-to-zoom, so test on a trackpad before assigning important commands.
 
-To customize bindings, follow the [Configuration guide](docs/CONFIGURATION.md): complete examples, all properties and defaults, AeroSpace commands, opt-in pinches, and sensitivity tuning.
+## Example config
+
+Save this as `config.toml` to open Calculator with a three-finger left swipe:
+
+```toml
+[[bindings]]
+fingers = 3
+direction = "left"
+command = ["/usr/bin/open", "-a", "Calculator"]
+```
+
+Run `aerospace-gestures check ./config.toml` before using it. For AeroSpace commands, pinch bindings, and sensitivity settings, see the [Configuration guide](docs/CONFIGURATION.md).
 
 ## Uninstall
 
