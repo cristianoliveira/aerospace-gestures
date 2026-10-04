@@ -42,7 +42,7 @@ The [Configuration guide](CONFIGURATION.md) owns the user-facing schema, default
 
 ## Manual checks and risks
 
-The private ABI, callback lifecycle, physical recognition, and macOS version compatibility still require manual hardware checks; service process state never proves frame delivery. Two-to-five-finger pinches have synthetic detector tests, but their delivery and native system-gesture interactions have not been validated on a real trackpad. Pinch bindings do not suppress native macOS pinch-to-zoom. Conservative all-contact detection can reject asymmetric physical pinches.
+The private ABI, callback lifecycle, physical recognition, and macOS version compatibility still require manual hardware checks; service process state never proves frame delivery. Pinch recognition has synthetic detector tests and a v0.4.0 real-trackpad smoke test. Coverage across macOS versions, finger counts, and native system-gesture interactions remains unverified. Pinch bindings do not suppress native macOS pinch-to-zoom. Conservative all-contact detection can reject asymmetric physical pinches.
 
 LaunchAgent stdout/stderr use `/dev/null` (zero retained output). A single mode-0600 diagnostic record, capped at 128 bytes, retains only a fixed startup stage/category and is cleared after successful input initialization; it contains no detailed error text. Status reports that category and launchd's last exit status. Login/logout, live crash recovery, binary replacement/TCC identity, trackpad reconnect, sleep/wake, and other OS/hardware combinations remain unverified.
 

@@ -6,7 +6,7 @@
 
 <p align="center"><strong>Small gesture. Your command.</strong></p>
 
-macOS trackpad gestures do not directly run your [AeroSpace WM](https://github.com/nikitabobko/AeroSpace) commands. AeroSpace Gestures maps three-to-five-finger swipes and opt-in two-to-five-finger pinch-in/spread-out gestures to commands. Native macOS gestures still run; pinch delivery on real hardware has not been verified.
+macOS trackpad gestures do not directly run your [AeroSpace WM](https://github.com/nikitabobko/AeroSpace) commands. AeroSpace Gestures maps three-to-five-finger swipes and opt-in two-to-five-finger pinch-in/spread-out gestures to commands.
 
 The **Triple Swipe** menu-bar icon gives you access to pause/resume and configuration reload. A small pause badge means actions are paused; the listener remains active. The icon follows the macOS menu-bar appearance.
 
@@ -48,9 +48,20 @@ aerospace-gestures run ./config.toml
 aerospace-gestures listen start
 ```
 
-Swipe **three fingers down**. The generated config binds that swipe to an “It's hooked!” popup; it has no pinch binding. Lift all fingers before another gesture; press Ctrl-C to stop. Use `listen start` to observe without running commands. Pinch bindings do not suppress macOS pinch-to-zoom, so test on a trackpad before assigning important commands.
+Swipe **three fingers down**. The generated config binds that swipe to an “It's hooked!” popup; it has no pinch binding. Lift all fingers before another gesture; press Ctrl-C to stop. Use `listen start` to observe without running commands.
 
-To customize bindings, follow the [Configuration guide](docs/CONFIGURATION.md): complete examples, all properties and defaults, AeroSpace commands, opt-in pinches, and sensitivity tuning.
+## Example config
+
+Save this as `config.toml` to open Calculator with a three-finger left swipe:
+
+```toml
+[[bindings]]
+fingers = 3
+direction = "left"
+command = ["/usr/bin/open", "-a", "Calculator"]
+```
+
+Run `aerospace-gestures check ./config.toml` before using it. For AeroSpace commands, pinch bindings, and sensitivity settings, see the [Configuration guide](docs/CONFIGURATION.md).
 
 ## Uninstall
 
