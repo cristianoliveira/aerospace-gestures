@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.4.0
+
+**Upgrade note:** v0.3.0 rejects `direction = "in"` or `"out"` bindings. Upgrade the installed binary before adding pinch bindings; Nix-managed installs must update their pinned package source and rebuild.
+
 - Added opt-in `debug_command_output = true` to show gesture-command stdout/stderr in foreground runs or a private, bounded log for managed services; output remains discarded by default.
 - Added opt-in two-to-five-finger pinch-in and spread-out bindings using `fingers` with `direction = "in"` or `"out"`, plus an independent centroid-relative threshold; native macOS pinch-to-zoom is not suppressed.
 
