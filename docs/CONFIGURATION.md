@@ -97,6 +97,32 @@ Every `[[bindings]]` entry requires all three properties:
 
 A finger-count/direction pair may have multiple bindings only when their modifier sets differ. Matching is exact: holding extra modifiers does not fall back to a partial or unmodified binding. The modifier set is pinned when a contact sequence starts; a change or unknown state cancels that sequence until all fingers lift. Fn remains unsupported and fails closed; Caps Lock is ignored because it is toggled state, not a held modifier. Listen and dry-run output shows the recognized modifier combination but never runs commands. Two-finger swipes are unsupported. Unknown binding properties are rejected to catch typos; the obsolete `gesture` property is also rejected.
 
+Modifiers require v0.5.0 or later. The property is always plural, `modifiers`, even for one key; singular `modifier` is invalid and rejected. Before using this config, check the version of the binary that will run it. Nix-managed installs may still point to an older pinned build: update the Nix declaration, rebuild and deploy that binary separately, then confirm it reports v0.5.0 or later. Changing the config symlink alone does not upgrade the executable.
+
+This valid example defines a plain and Command-modified three-finger right swipe:
+
+```toml
+[[bindings]]
+fingers = 3
+direction = "right"
+command = ["/bin/echo", "three-finger right"]
+
+[[bindings]]
+fingers = 3
+direction = "right"
+modifiers = ["command"]
+command = ["/bin/echo", "Command-three-finger right"]
+```
+
+After updating the declarative config, safely validate the active path with the v0.5.0+ binary:
+
+```sh
+aerospace-gestures --version
+aerospace-gestures check /etc/aerospace-gestures/config.toml
+```
+
+`check` reads and validates the file; it does not start the listener or run binding commands. If multiple binaries are installed, use `type -a aerospace-gestures` and invoke the intended binary explicitly.
+
 ## TOML placement rules
 
 Put all root settings **before the first `[[bindings]]`**. A blank line or comment does not end a TOML table.
