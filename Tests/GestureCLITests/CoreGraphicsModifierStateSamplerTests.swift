@@ -33,9 +33,26 @@ final class CoreGraphicsModifierStateSamplerTests: XCTestCase {
       "3-finger left (modifier state unknown) (listen only)")
   }
 
-  func testIgnoresNonCoalescedEventMetadata() {
+  func testIgnoresObservedReservedSessionBit() {
+    let flags: CGEventFlags = [
+      .maskCommand, .maskNonCoalesced, CGEventFlags(rawValue: 0x8),
+    ]
+
     XCTAssertEqual(
-      CoreGraphicsModifierStateSampler.modifierSample(for: .maskNonCoalesced), .known(.none))
+      CoreGraphicsModifierStateSampler.modifierSample(for: flags),
+      .known(ModifierSet([.command])))
+  }
+
+  func testOtherUnknownFlagsFailClosed() {
+    let flags: [CGEventFlags] = [
+      [.maskCommand, .maskHelp],
+      [.maskCommand, .maskNumericPad],
+      [.maskCommand, CGEventFlags(rawValue: 0x10)],
+    ]
+
+    for flagSet in flags {
+      XCTAssertEqual(CoreGraphicsModifierStateSampler.modifierSample(for: flagSet), .unknown)
+    }
   }
 
   func testCapsLockStateIsIgnoredButUnsupportedFnFailsClosed() {
@@ -46,5 +63,8 @@ final class CoreGraphicsModifierStateSamplerTests: XCTestCase {
       .known(ModifierSet([.command])))
     XCTAssertEqual(
       CoreGraphicsModifierStateSampler.modifierSample(for: .maskSecondaryFn), .unknown)
+    XCTAssertEqual(
+      CoreGraphicsModifierStateSampler.modifierSample(for: [.maskCommand, .maskSecondaryFn]),
+      .unknown)
   }
 }

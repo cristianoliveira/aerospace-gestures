@@ -13,7 +13,10 @@ struct CoreGraphicsModifierStateSampler: ModifierStateSampling {
       .maskCommand, .maskAlternate, .maskControl, .maskShift,
     ]
     // Caps Lock is toggled state; event coalescing is metadata. Neither changes the held modifier set.
-    let ignoredEventFlags: CGEventFlags = [.maskAlphaShift, .maskNonCoalesced]
+    // combinedSessionState also reports reserved bit 0x8 with Command on the tested OS.
+    let ignoredEventFlags: CGEventFlags = [
+      .maskAlphaShift, .maskNonCoalesced, CGEventFlags(rawValue: 0x8),
+    ]
     guard flags.subtracting(supportedFlags).subtracting(ignoredEventFlags).isEmpty else {
       return .unknown
     }
