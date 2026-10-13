@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added privacy-safe, aggregate input diagnostics in Unified Logging every 60 seconds, including bridge callback/rejection counts, frame filtering and queue delivery, device lifecycle counts, and callback age. Idle input remains unclassified.
+
 ## v0.4.0
 
 **Upgrade note:** v0.3.0 rejects `direction = "in"` or `"out"` bindings. Upgrade the installed binary before adding pinch bindings; Nix-managed installs must update their pinned package source and rebuild.

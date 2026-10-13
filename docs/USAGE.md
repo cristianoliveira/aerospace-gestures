@@ -69,6 +69,16 @@ Installation starts the service and enables it at GUI login. It uses the [defaul
 
 Only one listener can run at a time. Stop the service before running a foreground listener. Service permissions may differ from your terminal's permissions.
 
+### Input diagnostics
+
+The listener emits an aggregate input summary every 60 seconds to Unified Logging (`com.aerospace-gestures`, category `input`), including callback age and bridge, filtering, queue, and device-transition counts. It contains no contact coordinates, IDs, or command data. LaunchAgent stdout/stderr remain discarded.
+
+```sh
+log show --last 1h --style compact --predicate 'subsystem == "com.aerospace-gestures" AND category == "input"'
+```
+
+`input_state=unclassified` is intentional: no callbacks can mean either an idle trackpad or a lost input stream. Compare callback, rejection, stale-drop, and main-queue counts; do not treat callback age alone as a failure signal.
+
 ### Service troubleshooting and updates
 
 - **Running, but no gestures:** check Input Monitoring for the service executable. A running process does not prove input is working.

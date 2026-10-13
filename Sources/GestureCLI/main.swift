@@ -219,7 +219,9 @@ var receivedFrame = false
 
 let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
   let frameToken = actionPolicy.captureFrame(device: device, contactCount: contacts.count)
+  MultitouchInput.recordMainQueueScheduled()
   DispatchQueue.main.async {
+    MultitouchInput.recordMainQueueProcessed()
     guard actionPolicy.isCurrent(frameToken) else {
       if contacts.isEmpty { detectors.removeValue(forKey: device) }
       return
@@ -267,6 +269,14 @@ if let error = MultitouchInput.start(onFrame: onFrame) {
   fail(error)
 }
 try? managedStartupDiagnostics?.clear()
+let inputDiagnosticsLogger = Logger(subsystem: "com.aerospace-gestures", category: "input")
+let inputDiagnosticsTimer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+inputDiagnosticsTimer.schedule(deadline: .now() + 60, repeating: 60)
+inputDiagnosticsTimer.setEventHandler {
+  let summary = MultitouchInput.diagnosticsSnapshot().summary
+  inputDiagnosticsLogger.info("\(summary, privacy: .public)")
+}
+inputDiagnosticsTimer.resume()
 print("Listening. Private API is experimental; system gestures are NOT suppressed. Ctrl-C to stop.")
 fflush(stdout)
 DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
@@ -278,7 +288,12 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
   }
 }
 let shutdown = ListenerShutdown(
-  stopInput: { MultitouchInput.stop() },
+  stopInput: {
+    MultitouchInput.stop()
+    inputDiagnosticsLogger.info(
+      "\(MultitouchInput.diagnosticsSnapshot().summary, privacy: .public)")
+    inputDiagnosticsTimer.cancel()
+  },
   stopCommands: { completion in runner.stop(completion: completion) })
 var signals: [DispatchSourceSignal] = []
 for number in [SIGINT, SIGTERM] {
