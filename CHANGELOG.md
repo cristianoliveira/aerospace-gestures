@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed modifier sampling reporting an unknown state when macOS includes left/right device modifier bits alongside the corresponding generic Command, Option, Control, or Shift flag. Orphan device bits and unsupported Fn remain fail-closed.
+
 ## v0.5.0
 
 **Compatibility:** Existing valid configurations need no migration; missing or empty `modifiers` means no modifiers. Matching is exact, so holding a supported modifier does not trigger an unmodified binding. Unknown root and binding properties now fail validation instead of being ignored.
