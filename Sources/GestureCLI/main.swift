@@ -215,6 +215,7 @@ let commandOutputHandler: (CommandOutputStream, Data) -> Void = { stream, data i
 }
 let runner = CommandRunner()
 var detectors: [UInt: GestureDetector] = [:]
+var modifierSequenceTracker = ModifierSequenceTracker()
 var receivedFrame = false
 let modifierStateSampler: any ModifierStateSampling = CoreGraphicsModifierStateSampler()
 
@@ -223,7 +224,11 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
   let frameToken = actionPolicy.captureFrame(device: device, contactCount: contacts.count)
   DispatchQueue.main.async {
     guard actionPolicy.isCurrent(frameToken) else {
-      if contacts.isEmpty { detectors.removeValue(forKey: device) }
+      if contacts.isEmpty {
+        detectors.removeValue(forKey: device)
+        _ = modifierSequenceTracker.observe(
+          device: device, contactCount: 0, sample: .unknown)
+      }
       return
     }
     if !receivedFrame {
@@ -231,6 +236,9 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
       print("Receiving trackpad frames")
       fflush(stdout)
     }
+    let sequenceModifierSample =
+      modifierSequenceTracker.observe(
+        device: device, contactCount: contacts.count, sample: modifierSample) ?? .unknown
     let activeConfiguration = reloadPolicy.activeConfiguration
     var detector =
       detectors[device]
@@ -244,13 +252,13 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
       dryRun ? " (listen only)" : actionPolicy.state == .paused ? " (actions paused)" : ""
     print(
       GestureOutputFormatter.describe(
-        gesture: gesture, modifiers: modifierSample, actionContext: actionContext))
+        gesture: gesture, modifiers: sequenceModifierSample, actionContext: actionContext))
     fflush(stdout)
     guard
       let binding = CommandDecision.binding(
         for: gesture,
         in: activeConfiguration?.bindings ?? [],
-        modifiers: modifierSample,
+        modifiers: sequenceModifierSample,
         dryRun: dryRun),
       actionPolicy.mayDispatch(gesture, from: frameToken)
     else { return }

@@ -95,7 +95,7 @@ Every `[[bindings]]` entry requires all three properties:
 | `command` | Array of strings | Nonempty list: absolute executable path first, then separate arguments. No NUL bytes. The CLI checks that the executable is executable. |
 | `modifiers` | Array of strings | Optional exact set: `command`, `option`, `control`, and/or `shift`. Missing or empty means no modifiers. Values cannot repeat. |
 
-A finger-count/direction pair may have multiple bindings only when their modifier sets differ. Matching is exact: holding extra modifiers does not fall back to a partial or unmodified binding. If modifier state is unavailable or contains an unsupported modifier (such as Fn or Caps Lock), no binding runs. Listen and dry-run output shows the recognized modifier combination but never runs commands. Two-finger swipes are unsupported. Unknown binding properties are rejected to catch typos; the obsolete `gesture` property is also rejected.
+A finger-count/direction pair may have multiple bindings only when their modifier sets differ. Matching is exact: holding extra modifiers does not fall back to a partial or unmodified binding. The modifier set is pinned when a contact sequence starts; a change or unknown state cancels that sequence until all fingers lift. Fn remains unsupported and fails closed; Caps Lock is ignored because it is toggled state, not a held modifier. Listen and dry-run output shows the recognized modifier combination but never runs commands. Two-finger swipes are unsupported. Unknown binding properties are rejected to catch typos; the obsolete `gesture` property is also rejected.
 
 ## TOML placement rules
 

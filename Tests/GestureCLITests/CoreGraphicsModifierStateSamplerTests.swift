@@ -38,10 +38,13 @@ final class CoreGraphicsModifierStateSamplerTests: XCTestCase {
       CoreGraphicsModifierStateSampler.modifierSample(for: .maskNonCoalesced), .known(.none))
   }
 
-  func testUnsupportedFlagsFailClosedInsteadOfBecomingNoModifiers() {
+  func testCapsLockStateIsIgnoredButUnsupportedFnFailsClosed() {
+    XCTAssertEqual(
+      CoreGraphicsModifierStateSampler.modifierSample(for: .maskAlphaShift), .known(.none))
+    XCTAssertEqual(
+      CoreGraphicsModifierStateSampler.modifierSample(for: [.maskAlphaShift, .maskCommand]),
+      .known(ModifierSet([.command])))
     XCTAssertEqual(
       CoreGraphicsModifierStateSampler.modifierSample(for: .maskSecondaryFn), .unknown)
-    XCTAssertEqual(
-      CoreGraphicsModifierStateSampler.modifierSample(for: .maskAlphaShift), .unknown)
   }
 }

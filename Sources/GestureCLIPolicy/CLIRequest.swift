@@ -189,8 +189,8 @@ public enum CLIHelp {
       """
       Bindings use fingers and direction: 2–5 with 'in'/'out', or 3–5 with 'left'/'right'/'up'/'down'.
       Optional modifiers are exact sets of command, option, control, and shift; omitted or empty means none.
-      Extra held modifiers never fall back to a partial or unmodified binding; unknown state selects no command.
-      Pinch and swipe bindings may coexist at one finger count; pinch_threshold is independent from swipe threshold.
+      Extra held modifiers never fall back to a partial or unmodified binding. The set is latched at first contact; changes cancel until full lift.
+      Fn/unknown state fails closed, while Caps Lock is ignored. Pinch and swipe bindings may coexist at one finger count; pinch_threshold is independent from swipe threshold.
       The obsolete gesture field is rejected.
       """
     )
