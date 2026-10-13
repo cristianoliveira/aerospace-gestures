@@ -97,6 +97,34 @@ Every `[[bindings]]` entry requires all three properties:
 
 A finger-count/direction pair may have multiple bindings only when their modifier sets differ. Matching is exact: holding extra modifiers does not fall back to a partial or unmodified binding. The modifier set is pinned when a contact sequence starts; a change or unknown state cancels that sequence until all fingers lift. Fn remains unsupported and fails closed; Caps Lock is ignored because it is toggled state, not a held modifier. Listen and dry-run output shows the recognized modifier combination but never runs commands. Two-finger swipes are unsupported. Unknown binding properties are rejected to catch typos; the obsolete `gesture` property is also rejected.
 
+Modifiers require v0.5.0 or later. The property is always plural, `modifiers`, even for one key; singular `modifier` is invalid and rejected. Check the exact executable that will validate and run this config: an older v0.4.0 binary such as `~/.local/bin/aerospace-gestures` does not distinguish modified from unmodified bindings, so a valid plain/Command pair can fail `check` as a duplicate gesture. `type -a aerospace-gestures` lists installed binaries, but the LaunchAgent may use a different path; check its configured executable too. Nix-managed installs may still point to an older source pin: update the Nix declaration, rebuild and deploy that binary separately, then confirm it reports v0.5.0 or later. Changing the config symlink alone does not upgrade the executable.
+
+This valid example defines a plain and Command-modified three-finger right swipe:
+
+```toml
+[[bindings]]
+fingers = 3
+direction = "right"
+command = ["/bin/echo", "three-finger right"]
+
+[[bindings]]
+fingers = 3
+direction = "right"
+modifiers = ["command"]
+command = ["/bin/echo", "Command-three-finger right"]
+```
+
+After updating the declarative config, list available binaries and set `BIN` to the exact v0.5.0+ executable (also verify the LaunchAgent is configured to use the intended version):
+
+```sh
+type -a aerospace-gestures
+BIN="/absolute/path/to/aerospace-gestures"
+"$BIN" --version # Must report v0.5.0 or later.
+"$BIN" check /etc/aerospace-gestures/config.toml
+```
+
+`check` reads and validates the file; it does not start the listener or run binding commands. Do not rely on whichever binary a bare `aerospace-gestures` command finds first on `PATH`.
+
 ## TOML placement rules
 
 Put all root settings **before the first `[[bindings]]`**. A blank line or comment does not end a TOML table.

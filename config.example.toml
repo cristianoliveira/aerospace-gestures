@@ -28,12 +28,12 @@ fingers = 4
 direction = "down"
 command = ["/bin/echo", "four-finger down"]
 
-# Modifier sets match exactly; extra held modifiers never fall back to another binding.
+# Pair with the unmodified three-finger right binding above.
 [[bindings]]
 fingers = 3
 direction = "right"
-modifiers = ["command", "shift"]
-command = ["/bin/echo", "command-shift three-finger right"]
+modifiers = ["command"]
+command = ["/bin/echo", "Command-three-finger right"]
 
 # Optional pinches: uncomment a whole table to enable it (v0.5.0 source).
 # Real-trackpad delivery is unverified; native macOS pinch-to-zoom still runs.
