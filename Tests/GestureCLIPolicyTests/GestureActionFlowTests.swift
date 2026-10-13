@@ -57,7 +57,7 @@ final class GestureActionFlowTests: XCTestCase {
       let gesture = detector.update(contacts)
       if let gesture,
         let binding = CommandDecision.binding(
-          for: gesture, in: configuration.bindings, dryRun: false),
+          for: gesture, in: configuration.bindings, modifiers: .known(.none), dryRun: false),
         policy.mayDispatch(gesture, from: token)
       {
         dispatched.append(binding.command)
@@ -110,7 +110,9 @@ final class GestureActionFlowTests: XCTestCase {
     XCTAssertEqual(gesture.displayName, "3-finger pinch in")
     XCTAssertTrue(policy.mayDispatch(gesture, from: frame))
     XCTAssertEqual(
-      CommandDecision.binding(for: gesture, in: configuration.bindings, dryRun: false)?.command,
+      CommandDecision.binding(
+        for: gesture, in: configuration.bindings, modifiers: .known(.none),
+        dryRun: false)?.command,
       ["/bin/echo", "pinch"])
     XCTAssertNil(detector.update(radialContacts(count: 3, radius: 0.12)))
   }

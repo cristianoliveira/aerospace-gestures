@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added exact Command/Option/Control/Shift modifier matching for swipe and pinch bindings. Modifier sets are pinned per device contact sequence; changes cancel until full lift. Caps Lock is ignored and unsupported Fn state fails closed. State is sampled from the current login session; no keyboard events are captured.
 - Added privacy-safe, aggregate input diagnostics in Unified Logging every 60 seconds, including bridge callback/rejection counts, frame filtering and queue delivery, device lifecycle counts, and callback age. Idle input remains unclassified.
 
 ## v0.4.0

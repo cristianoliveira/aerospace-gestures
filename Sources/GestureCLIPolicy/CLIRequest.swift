@@ -186,7 +186,13 @@ public enum CLIHelp {
         \(example)
       """)
     sections.append(
-      "Bindings use fingers and direction: 2–5 with 'in'/'out', or 3–5 with 'left'/'right'/'up'/'down'. Pinch and swipe bindings may coexist at one finger count; pinch_threshold is independent from the swipe threshold. The obsolete gesture field is rejected."
+      """
+      Bindings use fingers and direction: 2–5 with 'in'/'out', or 3–5 with 'left'/'right'/'up'/'down'.
+      Optional modifiers are exact sets of command, option, control, and shift; omitted or empty means none.
+      Extra held modifiers never fall back to a partial or unmodified binding. The set is latched at first contact; changes cancel until full lift.
+      Fn/unknown state fails closed, while Caps Lock is ignored. Pinch and swipe bindings may coexist at one finger count; pinch_threshold is independent from swipe threshold.
+      The obsolete gesture field is rejected.
+      """
     )
     sections.append(
       "Private MultitouchSupport API is experimental and system gestures are not suppressed. Pinch bindings do not suppress macOS pinch-to-zoom; real-trackpad delivery and interaction require manual validation."

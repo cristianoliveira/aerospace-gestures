@@ -230,13 +230,37 @@ public struct GestureDetector {
   }
 }
 
+private struct DynamicCodingKey: CodingKey {
+  let stringValue: String
+  let intValue: Int? = nil
+
+  init?(stringValue: String) { self.stringValue = stringValue }
+  init?(intValue: Int) { return nil }
+}
+
 public struct Binding: Decodable, Sendable {
   public let gesture: Gesture
+  public let modifiers: ModifierSet
   public let command: [String]
 
-  enum CodingKeys: String, CodingKey { case fingers, direction, gesture, command }
+  enum CodingKeys: String, CodingKey { case fingers, direction, gesture, modifiers, command }
 
   public init(from decoder: Decoder) throws {
+    let allValues = try decoder.container(keyedBy: DynamicCodingKey.self)
+    let supportedProperties: Set<String> = [
+      "fingers", "direction", "gesture", "modifiers", "command",
+    ]
+    if let unknownProperty = allValues.allKeys.map(\.stringValue).sorted().first(where: {
+      !supportedProperties.contains($0)
+    }) {
+      let suggestion =
+        unknownProperty.hasPrefix("modif")
+        ? "; did you mean 'modifiers'?"
+        : "; supported properties are fingers, direction, modifiers, and command"
+      throw ConfigurationError.invalid(
+        "unknown binding property '\(unknownProperty)'\(suggestion)")
+    }
+
     let values = try decoder.container(keyedBy: CodingKeys.self)
     guard !values.contains(.gesture) else {
       throw ConfigurationError.invalid(
@@ -248,6 +272,28 @@ public struct Binding: Decodable, Sendable {
     else {
       throw ConfigurationError.invalid("bindings must specify both fingers and direction")
     }
+    var decodedModifiers: [GestureModifier] = []
+    if values.contains(.modifiers) {
+      let names: [String]
+      do {
+        names = try values.decode([String].self, forKey: .modifiers)
+      } catch {
+        throw ConfigurationError.invalid("modifiers must be an array of strings")
+      }
+
+      var seenModifiers = Set<GestureModifier>()
+      for name in names {
+        guard let modifier = GestureModifier(rawValue: name) else {
+          throw ConfigurationError.invalid(
+            "unknown modifier '\(name)'; expected command, option, control, or shift")
+        }
+        guard seenModifiers.insert(modifier).inserted else {
+          throw ConfigurationError.invalid("duplicate modifier '\(name)' in binding")
+        }
+        decodedModifiers.append(modifier)
+      }
+    }
+    modifiers = ModifierSet(decodedModifiers)
     command = try values.decode([String].self, forKey: .command)
 
     switch direction {
@@ -266,6 +312,11 @@ public struct Binding: Decodable, Sendable {
   }
 }
 
+private struct GestureBindingIdentity: Hashable {
+  let gesture: Gesture
+  let modifiers: ModifierSet
+}
+
 public struct Configuration: Decodable, Sendable {
   public let threshold: Double
   public let pinchThreshold: Double
@@ -278,6 +329,20 @@ public struct Configuration: Decodable, Sendable {
     case debugCommandOutput = "debug_command_output"
   }
   public init(from decoder: Decoder) throws {
+    let allValues = try decoder.container(keyedBy: DynamicCodingKey.self)
+    let supportedProperties: Set<String> = [
+      "threshold", "pinch_threshold", "bindings", "debug_command_output",
+    ]
+    if let unknownProperty = allValues.allKeys.map(\.stringValue).sorted().first(where: {
+      !supportedProperties.contains($0)
+    }) {
+      let reason =
+        unknownProperty.hasPrefix("modif")
+        ? "; modifiers belong inside each [[bindings]] table"
+        : "; supported root properties are threshold, pinch_threshold, bindings, and debug_command_output"
+      throw ConfigurationError.invalid("unknown root property '\(unknownProperty)'\(reason)")
+    }
+
     let values = try decoder.container(keyedBy: CodingKeys.self)
     threshold = try values.decodeIfPresent(Double.self, forKey: .threshold) ?? 0.15
     pinchThreshold = try values.decodeIfPresent(Double.self, forKey: .pinchThreshold) ?? 0.2
@@ -307,7 +372,7 @@ public struct Configuration: Decodable, Sendable {
     guard config.pinchThreshold.isFinite, (0.05...0.5).contains(config.pinchThreshold) else {
       throw ConfigurationError.invalid("pinch_threshold must be between 0.05 and 0.5")
     }
-    var seen = Set<Gesture>()
+    var seen = Set<GestureBindingIdentity>()
     for binding in config.bindings {
       if binding.gesture.kind == .swipe {
         guard (3...5).contains(binding.gesture.fingers) else {
@@ -320,8 +385,10 @@ public struct Configuration: Decodable, Sendable {
         throw ConfigurationError.invalid(
           "command must be an argv array starting with an absolute executable path")
       }
-      guard seen.insert(binding.gesture).inserted else {
-        throw ConfigurationError.invalid("duplicate gesture binding")
+      let identity = GestureBindingIdentity(gesture: binding.gesture, modifiers: binding.modifiers)
+      guard seen.insert(identity).inserted else {
+        throw ConfigurationError.invalid(
+          "duplicate gesture binding for the same modifier set")
       }
     }
     return config

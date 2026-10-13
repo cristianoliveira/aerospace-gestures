@@ -93,8 +93,9 @@ Every `[[bindings]]` entry requires all three properties:
 | `fingers` | Integer | Swipes: `3`, `4`, or `5`. Pinches: `2`, `3`, `4`, or `5`. |
 | `direction` | String | Swipes: `"left"`, `"right"`, `"up"`, `"down"`. Pinches: `"in"` (together), `"out"` (apart). Physical finger motion, independent of Natural Scrolling. |
 | `command` | Array of strings | Nonempty list: absolute executable path first, then separate arguments. No NUL bytes. The CLI checks that the executable is executable. |
+| `modifiers` | Array of strings | Optional exact set: `command`, `option`, `control`, and/or `shift`. Missing or empty means no modifiers. Values cannot repeat. |
 
-A finger-count/direction pair can appear only once. Two-finger swipes are unsupported. The obsolete `gesture` property is rejected; use `fingers` and `direction` instead.
+A finger-count/direction pair may have multiple bindings only when their modifier sets differ. Matching is exact: holding extra modifiers does not fall back to a partial or unmodified binding. The modifier set is pinned when a contact sequence starts; a change or unknown state cancels that sequence until all fingers lift. Fn remains unsupported and fails closed; Caps Lock is ignored because it is toggled state, not a held modifier. Listen and dry-run output shows the recognized modifier combination but never runs commands. Two-finger swipes are unsupported. Unknown binding properties are rejected to catch typos; the obsolete `gesture` property is also rejected.
 
 ## TOML placement rules
 
@@ -122,7 +123,7 @@ direction = "left"
 command = ["/bin/echo", "left"]
 ```
 
-Unknown properties can be ignored. A successful `check` does not prove that a misspelled or misplaced setting took effect. Check spelling and scope against the reference above.
+Unknown root and binding properties are rejected. Put `modifiers` inside each `[[bindings]]` table; a root-level setting or misspelling fails validation rather than silently running an unmodified binding.
 
 ## Command recipes
 
@@ -251,13 +252,14 @@ rm "$HOME/Library/Application Support/aerospace-gestures/command-output.log"
 | --- | --- |
 | TOML parse error | Run `check` and inspect the reported line/column. Check quotes, brackets, and table placement. |
 | Missing bindings | Add at least one complete `[[bindings]]` table, or use `bindings = []` for no actions. |
-| Duplicate binding | Keep only one entry for each finger-count/direction pair. |
+| Duplicate binding | Keep only one entry for each finger-count/direction/modifier-set combination. |
 | Executable rejected | Use an absolute executable path. Check that it exists and has execute permission; use `chmod +x` for your own script. |
-| Setting has no effect | Check spelling, root placement, active file path, and reload result. Restart dry-run after edits. |
+| Setting has no effect | Check spelling, supported modifier names, root placement, active file path, and reload result. Restart dry-run after edits. |
 | Gesture appears but no command runs | Check the matching binding, enabled/paused state, and execution mode. Listen/dry-run never execute. Busy commands cause new gestures to be dropped. |
 | Command exits unsuccessfully | Test the same executable and arguments with stdin closed; temporarily enable output debugging. `check` does not validate a tool's arguments or runtime dependencies. |
 | Echo produces no visible text | Enable `debug_command_output`; successful execution normally shows only `Command exited with status 0`. |
 | No gesture events | Follow [input and permission checks](USAGE.md#try-safely). Config validation does not prove hardware delivery. |
+| Modifier gesture does nothing | Confirm the exact modifier set, release all other modifiers, and test with `run <config.toml> --dry-run`. Unsupported or unknown modifier state deliberately selects no command. |
 | macOS also performs an action | Disable conflicting gestures in System Settings if desired. This app cannot suppress system gestures. |
 
 For service lifecycle, permissions, and hardware limitations, continue with [Usage](USAGE.md).
