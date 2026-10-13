@@ -285,6 +285,142 @@ final class GestureCoreTests: XCTestCase {
     }
   }
 
+  func testBindingModifiersDefaultToNoneAndDecodeSwipeAndPinchCombinations() throws {
+    let configuration = try Configuration.load(
+      Data(
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        command = ["/bin/echo", "plain"]
+
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        modifiers = ["command", "shift"]
+        command = ["/bin/echo", "modified swipe"]
+
+        [[bindings]]
+        fingers = 2
+        direction = "in"
+        modifiers = ["option", "control"]
+        command = ["/bin/echo", "modified pinch"]
+
+        [[bindings]]
+        fingers = 4
+        direction = "out"
+        modifiers = []
+        command = ["/bin/echo", "empty modifiers"]
+        """.utf8))
+
+    XCTAssertEqual(configuration.bindings[0].modifiers, .none)
+    XCTAssertEqual(
+      configuration.bindings[1].modifiers, ModifierSet([.command, .shift]))
+    XCTAssertEqual(
+      configuration.bindings[2].modifiers, ModifierSet([.option, .control]))
+    XCTAssertEqual(configuration.bindings[3].modifiers, .none)
+  }
+
+  func testInvalidModifierDefinitionsAndMisspelledBindingPropertiesFailActionably() {
+    let invalid: [(toml: String, message: String)] = [
+      (
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        modifiers = ["commmand"]
+        command = ["/bin/echo"]
+        """,
+        "unknown modifier 'commmand'"
+      ),
+      (
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        modifiers = ["command", "command"]
+        command = ["/bin/echo"]
+        """,
+        "duplicate modifier 'command'"
+      ),
+      (
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        modifiers = "command"
+        command = ["/bin/echo"]
+        """,
+        "modifiers must be an array of strings"
+      ),
+      (
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        modifiers = ["command", 1]
+        command = ["/bin/echo"]
+        """,
+        "modifiers must be an array of strings"
+      ),
+      (
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        modifers = ["command"]
+        command = ["/bin/echo"]
+        """,
+        "unknown binding property 'modifers'; did you mean 'modifiers'?"
+      ),
+    ]
+
+    for (toml, message) in invalid {
+      XCTAssertThrowsError(try Configuration.load(Data(toml.utf8))) { error in
+        XCTAssertTrue(String(describing: error).contains(message), String(describing: error))
+      }
+    }
+
+    XCTAssertThrowsError(
+      try Configuration.load(
+        Data(
+          """
+          modifiers = ["command"]
+          bindings = []
+          """.utf8))
+    ) { error in
+      XCTAssertTrue(
+        String(describing: error).contains("modifiers belong inside each [[bindings]] table"))
+    }
+  }
+
+  func testDuplicateGestureModifierSetIsRejectedRegardlessOfOrder() {
+    let toml = """
+      [[bindings]]
+      fingers = 3
+      direction = "left"
+      modifiers = ["command", "shift"]
+      command = ["/bin/echo"]
+
+      [[bindings]]
+      fingers = 3
+      direction = "left"
+      modifiers = ["shift", "command"]
+      command = ["/bin/true"]
+      """
+
+    XCTAssertThrowsError(try Configuration.load(Data(toml.utf8))) { error in
+      XCTAssertTrue(
+        String(describing: error).contains("duplicate gesture binding for the same modifier set"))
+    }
+  }
+
+  func testModifierDisplayNamesAreStableAndReadable() {
+    XCTAssertEqual(ModifierSet.none.displayName, "no modifiers")
+    XCTAssertEqual(
+      ModifierSet([.command, .option, .shift]).displayName, "Command+Option+Shift")
+  }
+
   func testDuplicatePinchBindingIsRejected() {
     let toml = """
       [[bindings]]
@@ -321,16 +457,20 @@ final class GestureCoreTests: XCTestCase {
       Data("debug_command_output = true\nbindings = []".utf8))
     XCTAssertTrue(enabledConfiguration.debugCommandOutput)
 
-    let bindingScopedConfiguration = try Configuration.load(
-      Data(
-        """
-        [[bindings]]
-        fingers = 3
-        direction = "down"
-        command = ["/bin/echo"]
-        debug_command_output = true
-        """.utf8))
-    XCTAssertFalse(bindingScopedConfiguration.debugCommandOutput)
+    XCTAssertThrowsError(
+      try Configuration.load(
+        Data(
+          """
+          [[bindings]]
+          fingers = 3
+          direction = "down"
+          command = ["/bin/echo"]
+          debug_command_output = true
+          """.utf8))
+    ) { error in
+      XCTAssertTrue(
+        String(describing: error).contains("unknown binding property 'debug_command_output'"))
+    }
   }
 
   func testConfigurationRejectsMalformedTOMLAndLegacyJSON() {

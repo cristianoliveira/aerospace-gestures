@@ -6,7 +6,7 @@ debug_command_output = false # Set true temporarily to see echo output; may expo
 
 # Commands are literal argv arrays: absolute executable, then separate arguments.
 # Echo output is discarded by default; normal run logs only the exit status.
-# One binding per finger-count/direction pair. Lift all fingers between gestures.
+# One binding per finger-count/direction/modifier set. Lift all fingers between gestures.
 
 [[bindings]]
 fingers = 3
@@ -27,6 +27,13 @@ command = ["/bin/echo", "four-finger up"]
 fingers = 4
 direction = "down"
 command = ["/bin/echo", "four-finger down"]
+
+# Modifier sets match exactly; extra held modifiers never fall back to another binding.
+[[bindings]]
+fingers = 3
+direction = "right"
+modifiers = ["command", "shift"]
+command = ["/bin/echo", "command-shift three-finger right"]
 
 # Optional pinches: uncomment a whole table to enable it (v0.4.0 source).
 # Real-trackpad delivery is unverified; native macOS pinch-to-zoom still runs.

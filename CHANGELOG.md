@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added exact Command/Option/Control/Shift modifier matching for swipe and pinch bindings. Modifier state is sampled from the current login session only; no keyboard events are captured.
+
 ## v0.4.0
 
 **Upgrade note:** v0.3.0 rejects `direction = "in"` or `"out"` bindings. Upgrade the installed binary before adding pinch bindings; Nix-managed installs must update their pinned package source and rebuild.

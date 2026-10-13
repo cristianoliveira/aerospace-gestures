@@ -216,8 +216,10 @@ let commandOutputHandler: (CommandOutputStream, Data) -> Void = { stream, data i
 let runner = CommandRunner()
 var detectors: [UInt: GestureDetector] = [:]
 var receivedFrame = false
+let modifierStateSampler: any ModifierStateSampling = CoreGraphicsModifierStateSampler()
 
 let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
+  let modifierSample = contacts.isEmpty ? .unknown : modifierStateSampler.sample()
   let frameToken = actionPolicy.captureFrame(device: device, contactCount: contacts.count)
   DispatchQueue.main.async {
     guard actionPolicy.isCurrent(frameToken) else {
@@ -240,11 +242,16 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
     guard let gesture else { return }
     let actionContext =
       dryRun ? " (listen only)" : actionPolicy.state == .paused ? " (actions paused)" : ""
-    print("\(gesture.displayName)\(actionContext)")
+    print(
+      GestureOutputFormatter.describe(
+        gesture: gesture, modifiers: modifierSample, actionContext: actionContext))
     fflush(stdout)
     guard
       let binding = CommandDecision.binding(
-        for: gesture, in: activeConfiguration?.bindings ?? [], dryRun: dryRun),
+        for: gesture,
+        in: activeConfiguration?.bindings ?? [],
+        modifiers: modifierSample,
+        dryRun: dryRun),
       actionPolicy.mayDispatch(gesture, from: frameToken)
     else { return }
     if !runner.run(

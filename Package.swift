@@ -17,8 +17,15 @@ let package = Package(
         .target(name: "GestureCLIPolicy", dependencies: ["GestureCore"]),
         .target(name: "MultitouchBridge", linkerSettings: [.linkedFramework("CoreFoundation")]),
         .target(name: "MultitouchInput", dependencies: ["GestureCore", "MultitouchBridge"]),
-        .executableTarget(name: "GestureCLI", dependencies: ["GestureCore", "GestureInfrastructure", "GestureCLIPolicy", "MultitouchInput"]),
-        .testTarget(name: "GestureCLITests", dependencies: ["GestureCLI"]),
+        .executableTarget(
+            name: "GestureCLI",
+            dependencies: ["GestureCore", "GestureInfrastructure", "GestureCLIPolicy", "MultitouchInput"],
+            linkerSettings: [.linkedFramework("CoreGraphics")]
+        ),
+        .testTarget(
+            name: "GestureCLITests",
+            dependencies: ["GestureCLI", "GestureCore", "GestureCLIPolicy"]
+        ),
         .testTarget(name: "GestureCoreTests", dependencies: ["GestureCore"]),
         .testTarget(name: "GestureInfrastructureTests", dependencies: ["GestureInfrastructure"]),
         .testTarget(name: "GestureCLIPolicyTests", dependencies: ["GestureCLIPolicy", "GestureCore", "GestureInfrastructure"]),
