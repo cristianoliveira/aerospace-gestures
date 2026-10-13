@@ -2,7 +2,13 @@
 
 ## Unreleased
 
-- Added exact Command/Option/Control/Shift modifier matching for swipe and pinch bindings. Modifier sets are pinned per device contact sequence; changes cancel until full lift. Caps Lock is ignored and unsupported Fn state fails closed. State is sampled from the current login session; no keyboard events are captured.
+## v0.5.0
+
+**Compatibility:** Existing valid configurations need no migration; missing or empty `modifiers` means no modifiers. Matching is exact, so holding a supported modifier does not trigger an unmodified binding. Unknown root and binding properties now fail validation instead of being ignored.
+
+**Hardware note:** Modifier flags are sampled from the current login session without capturing keyboard events. Modifier behavior in the GUI LaunchAgent/private multitouch callback path still needs hardware validation. Fn remains unsupported and fails closed; Caps Lock is ignored. Pinch gestures do not suppress native macOS pinch-to-zoom.
+
+- Added exact Command/Option/Control/Shift modifier matching for swipe and pinch bindings. Modifier sets are pinned per device contact sequence; changes cancel until full lift.
 - Added privacy-safe, aggregate input diagnostics in Unified Logging every 60 seconds, including bridge callback/rejection counts, frame filtering and queue delivery, device lifecycle counts, and callback age. Idle input remains unclassified.
 
 ## v0.4.0
