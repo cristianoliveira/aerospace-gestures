@@ -71,7 +71,7 @@ Only one listener can run at a time. Stop the service before running a foregroun
 
 ### Input diagnostics
 
-The listener emits an aggregate input summary every 60 seconds to Unified Logging (`com.aerospace-gestures`, category `input`), including callback age and bridge, filtering, queue, and device-transition counts. It contains no contact coordinates, IDs, or command data. LaunchAgent stdout/stderr remain discarded.
+The listener emits an aggregate input summary every 60 seconds to Unified Logging (`com.aerospace-gestures`, category `input`), including callback age and aggregate counts for bridge callbacks/rejections, frame filtering, queue delivery, and bridge registration/stop calls. It contains no contact coordinates, IDs, or command data. LaunchAgent stdout/stderr remain discarded.
 
 ```sh
 log show --last 1h --style compact --predicate 'subsystem == "com.aerospace-gestures" AND category == "input"'
