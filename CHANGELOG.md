@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.5.1
+
 - Fixed modifier sampling reporting an unknown state when macOS includes left/right device modifier bits alongside the corresponding generic Command, Option, Control, or Shift flag. Orphan device bits and unsupported Fn remain fail-closed.
 
 ## v0.5.0
