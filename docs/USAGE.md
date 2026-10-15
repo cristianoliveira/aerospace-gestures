@@ -76,8 +76,13 @@ The listener emits the existing aggregate input summary every 60 seconds to Unif
 Stop any existing listener first, including the service if it is running; restart it after the foreground capture. `listen start` observes input without loading gesture commands or executing actions.
 
 ```sh
-mkdir -p .tmp/validation
-AEROSPACE_INPUT_DIAGNOSTICS=1 .build/release/aerospace-gestures listen start 2>&1 | tee .tmp/validation/input-diagnostics.log
+AEROSPACE_INPUT_DIAGNOSTICS=1 .build/release/aerospace-gestures listen start
+```
+
+After stopping with Ctrl-C, retrieve the persistent diagnostics without copying other process output:
+
+```sh
+tail -n 20 ~/Library/Logs/aerospace-gestures/input-diagnostics.log
 ```
 
 The persistent file contains only fixed aggregate diagnostic lines—not gesture output, configured commands, or configuration contents. The existing Unified Logging summary and the opt-in expansion contain only fixed aggregate fields; the expansion adds raw HID publish/termination counts, Touch Pad filter match/nonmatch/invalid counts, tracked Touch Pad terminations, snapshot successes/last device count, and rebind attempts by reason. `snapshot_last_count=0` means the last successful snapshot was empty; `none` means no snapshot succeeded yet. Counters are cumulative for the process. No device IDs, GUIDs, addresses, product names, contact data, configuration contents, or command data are emitted. LaunchAgent stdout/stderr remain discarded; use Unified Logging for the existing summary in service runs.

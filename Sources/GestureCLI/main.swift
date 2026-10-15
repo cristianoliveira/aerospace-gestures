@@ -343,7 +343,9 @@ inputDiagnosticsTimer.setEventHandler {
   inputDiagnosticsLogger.info("\(snapshot.summary, privacy: .public)")
   writeInputDiagnostics(snapshot)
 }
-writeInputDiagnostics(MultitouchInput.diagnosticsSnapshot())
+if inputDiagnosticsEnabled {
+  writeInputDiagnostics(MultitouchInput.diagnosticsSnapshot())
+}
 inputDiagnosticsTimer.resume()
 print("Listening. Private API is experimental; system gestures are NOT suppressed. Ctrl-C to stop.")
 fflush(stdout)
