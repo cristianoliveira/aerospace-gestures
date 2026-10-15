@@ -26,6 +26,12 @@ static int observerStarted;
 static _Atomic uint64_t topologyEventNotifications;
 static _Atomic uint64_t topologyCallbackDeliveries;
 static _Atomic uint64_t topologyObserverFailures;
+static _Atomic uint64_t publishedServices;
+static _Atomic uint64_t terminatedServices;
+static _Atomic uint64_t touchPadMatches;
+static _Atomic uint64_t usagePairsNonmatches;
+static _Atomic uint64_t usagePairsInvalid;
+static _Atomic uint64_t trackedTouchPadTerminations;
 
 static void noteObserverFailure(void) {
     atomic_fetch_add_explicit(&topologyObserverFailures, 1, memory_order_relaxed);
@@ -60,16 +66,34 @@ static int numberValue(CFTypeRef value, int *out) {
         && CFNumberGetValue((CFNumberRef)value, kCFNumberIntType, out);
 }
 
+int AGClassifyHIDUsagePairs(int usagePairsIsArray, int hasTouchPadMatch, int hasInvalidPair) {
+    if (!usagePairsIsArray) return -1;
+    if (hasTouchPadMatch) return 1;
+    return hasInvalidPair ? -1 : 0;
+}
+
+static void recordUsagePairsClassification(int classification) {
+    if (classification > 0) {
+        atomic_fetch_add_explicit(&touchPadMatches, 1, memory_order_relaxed);
+    } else if (classification == 0) {
+        atomic_fetch_add_explicit(&usagePairsNonmatches, 1, memory_order_relaxed);
+    } else {
+        atomic_fetch_add_explicit(&usagePairsInvalid, 1, memory_order_relaxed);
+    }
+}
+
 static int isTouchPadService(io_service_t service) {
     CFMutableDictionaryRef properties = NULL;
     if (IORegistryEntryCreateCFProperties(
             service, &properties, kCFAllocatorDefault, 0) != KERN_SUCCESS) {
+        recordUsagePairsClassification(-1);
         noteObserverFailure();
         return -1;
     }
 
     CFTypeRef pairsValue = CFDictionaryGetValue(properties, CFSTR(kIOHIDDeviceUsagePairsKey));
     if (!pairsValue || CFGetTypeID(pairsValue) != CFArrayGetTypeID()) {
+        recordUsagePairsClassification(-1);
         CFRelease(properties);
         noteObserverFailure();
         return -1;
@@ -77,21 +101,27 @@ static int isTouchPadService(io_service_t service) {
 
     CFArrayRef pairs = (CFArrayRef)pairsValue;
     int matched = 0;
+    int hasInvalidPair = 0;
     for (CFIndex i = 0; i < CFArrayGetCount(pairs); ++i) {
         CFTypeRef pairValue = CFArrayGetValueAtIndex(pairs, i);
-        if (!pairValue || CFGetTypeID(pairValue) != CFDictionaryGetTypeID()) continue;
+        if (!pairValue || CFGetTypeID(pairValue) != CFDictionaryGetTypeID()) {
+            hasInvalidPair = 1;
+            continue;
+        }
         CFDictionaryRef pair = (CFDictionaryRef)pairValue;
         int usagePage = 0, usage = 0;
-        // HID Digitizer page 0x0d, Touch Pad usage 0x05.
-        if (numberValue(CFDictionaryGetValue(pair, CFSTR(kIOHIDDeviceUsagePageKey)), &usagePage)
-            && numberValue(CFDictionaryGetValue(pair, CFSTR(kIOHIDDeviceUsageKey)), &usage)
-            && usagePage == 0x0d && usage == 0x05) {
-            matched = 1;
-            break;
+        if (!numberValue(CFDictionaryGetValue(pair, CFSTR(kIOHIDDeviceUsagePageKey)), &usagePage)
+            || !numberValue(CFDictionaryGetValue(pair, CFSTR(kIOHIDDeviceUsageKey)), &usage)) {
+            hasInvalidPair = 1;
+            continue;
         }
+        // HID Digitizer page 0x0d, Touch Pad usage 0x05.
+        if (usagePage == 0x0d && usage == 0x05) matched = 1;
     }
+    int classification = AGClassifyHIDUsagePairs(1, matched, hasInvalidPair);
+    recordUsagePairsClassification(classification);
     CFRelease(properties);
-    return matched;
+    return classification;
 }
 
 static int serviceID(io_service_t service, uint64_t *identifier) {
@@ -118,6 +148,7 @@ static void noteTopologyChange(void) {
 static void drainPublished(io_iterator_t iterator, int reportChanges) {
     io_service_t service = IO_OBJECT_NULL;
     while ((service = IOIteratorNext(iterator)) != IO_OBJECT_NULL) {
+        atomic_fetch_add_explicit(&publishedServices, 1, memory_order_relaxed);
         uint64_t identifier = 0;
         int touchPadMatch = isTouchPadService(service);
         if (touchPadMatch > 0) {
@@ -139,11 +170,13 @@ static void drainPublished(io_iterator_t iterator, int reportChanges) {
 static void drainTerminated(io_iterator_t iterator, int reportChanges) {
     io_service_t service = IO_OBJECT_NULL;
     while ((service = IOIteratorNext(iterator)) != IO_OBJECT_NULL) {
+        atomic_fetch_add_explicit(&terminatedServices, 1, memory_order_relaxed);
         uint64_t identifier = 0;
         if (!serviceID(service, &identifier)) {
             noteObserverFailure();
-        } else if (removeService(identifier) && reportChanges) {
-            noteTopologyChange();
+        } else if (removeService(identifier)) {
+            atomic_fetch_add_explicit(&trackedTouchPadTerminations, 1, memory_order_relaxed);
+            if (reportChanges) noteTopologyChange();
         }
         IOObjectRelease(service);
     }
@@ -251,11 +284,16 @@ void AGStopDeviceTopologyObserver(void) {
     releaseObserverResources();
 }
 
-void AGReadDeviceTopologyDiagnostics(uint64_t *eventNotifications, uint64_t *observerFailures) {
-    if (eventNotifications)
-        *eventNotifications = atomic_load_explicit(&topologyEventNotifications, memory_order_relaxed);
-    if (observerFailures)
-        *observerFailures = atomic_load_explicit(&topologyObserverFailures, memory_order_relaxed);
+void AGReadDeviceTopologyDiagnostics(AGDeviceTopologyDiagnostics *diagnostics) {
+    if (!diagnostics) return;
+    diagnostics->event_notifications = atomic_load_explicit(&topologyEventNotifications, memory_order_relaxed);
+    diagnostics->published_services = atomic_load_explicit(&publishedServices, memory_order_relaxed);
+    diagnostics->terminated_services = atomic_load_explicit(&terminatedServices, memory_order_relaxed);
+    diagnostics->touchpad_matches = atomic_load_explicit(&touchPadMatches, memory_order_relaxed);
+    diagnostics->usage_pairs_nonmatches = atomic_load_explicit(&usagePairsNonmatches, memory_order_relaxed);
+    diagnostics->usage_pairs_invalid = atomic_load_explicit(&usagePairsInvalid, memory_order_relaxed);
+    diagnostics->tracked_touchpad_terminations = atomic_load_explicit(&trackedTouchPadTerminations, memory_order_relaxed);
+    diagnostics->observer_failures = atomic_load_explicit(&topologyObserverFailures, memory_order_relaxed);
 }
 
 void AGReadTopologyCallbackDeliveries(uint64_t *callbackDeliveries) {

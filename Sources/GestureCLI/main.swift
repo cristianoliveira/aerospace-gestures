@@ -304,7 +304,7 @@ func writeInputDiagnostics(_ snapshot: InputDiagnosticsSnapshot) {
   let formatter = ISO8601DateFormatter()
   formatter.timeZone = TimeZone(secondsFromGMT: 0)
   formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-  print("timestamp_utc=\(formatter.string(from: Date())) \(snapshot.summary)")
+  print("timestamp_utc=\(formatter.string(from: Date())) \(snapshot.reconnectDiagnosticsSummary)")
   fflush(stdout)
 }
 let deviceRefreshTimer = DispatchSource.makeTimerSource(queue: .main)

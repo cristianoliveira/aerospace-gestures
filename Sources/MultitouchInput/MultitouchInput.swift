@@ -159,6 +159,9 @@ final class MultitouchInputController {
   private var topologyRebindBegins: UInt64 = 0
   private var topologyRebindEnds: UInt64 = 0
   private var deviceTopologyRebinds: UInt64 = 0
+  private var topologyEventRebindAttempts: UInt64 = 0
+  private var topologyRetryRebindAttempts: UInt64 = 0
+  private var countChangeRebindAttempts: UInt64 = 0
   private var forceTopologyRebindPending = false
   private var pendingRegistrationRetries: [String: (InputDeviceDescriptor, InputDeviceSnapshot)] =
     [:]
@@ -358,6 +361,9 @@ final class MultitouchInputController {
     let rebindBegins = topologyRebindBegins
     let rebindEnds = topologyRebindEnds
     let topologyRebinds = deviceTopologyRebinds
+    let eventRebindAttempts = topologyEventRebindAttempts
+    let retryRebindAttempts = topologyRetryRebindAttempts
+    let countChangeRebindAttempts = self.countChangeRebindAttempts
     let countWatchdogRuns = deviceCountWatchdogRuns
     let deviceCountChanges = deviceCountChanges
     diagnosticsLock.unlock()
@@ -372,6 +378,16 @@ final class MultitouchInputController {
       bridgeCallbackArrivals: bridge.callback_arrivals,
       bridgeInvalidFrameRejects: bridge.invalid_frame_rejects,
       deviceSnapshotEnumerations: bridge.device_snapshot_enumerations,
+      deviceSnapshotSuccesses: bridge.device_snapshot_successes,
+      deviceSnapshotLastCount: bridge.device_snapshot_successes == 0
+        ? nil
+        : bridge.device_snapshot_last_count,
+      topologyPublishedServices: bridge.iohid_published_services,
+      topologyTerminatedServices: bridge.iohid_terminated_services,
+      topologyTrackedTerminations: bridge.tracked_touchpad_terminations,
+      topologyTouchPadMatches: bridge.touchpad_matches,
+      topologyUsagePairNonmatches: bridge.usage_pairs_nonmatches,
+      topologyUsagePairInvalid: bridge.usage_pairs_invalid,
       topologyCallbackDeliveries: bridge.topology_callback_deliveries,
       deviceRegistrationCalls: bridge.device_registration_calls,
       deviceStopCalls: bridge.device_stop_calls,
@@ -382,6 +398,9 @@ final class MultitouchInputController {
       topologyRebindBegins: rebindBegins,
       topologyRebindEnds: rebindEnds,
       deviceTopologyRebinds: topologyRebinds,
+      topologyEventRebindAttempts: eventRebindAttempts,
+      topologyRetryRebindAttempts: retryRebindAttempts,
+      countChangeRebindAttempts: countChangeRebindAttempts,
       deviceCountWatchdogRuns: countWatchdogRuns,
       deviceCountChanges: deviceCountChanges,
       topologyRebindPending: topologyRebindPending,
@@ -404,6 +423,16 @@ final class MultitouchInputController {
     let forceRebind = reason.forcesRebind
     if forceRebind {
       diagnosticsLock.lock()
+      switch reason {
+      case .startup:
+        break
+      case .topologyEvent:
+        topologyEventRebindAttempts &+= 1
+      case .topologyRecoveryRetry:
+        topologyRetryRebindAttempts &+= 1
+      case .observerUnavailableCountChange:
+        countChangeRebindAttempts &+= 1
+      }
       topologyRebindBegins &+= 1
       diagnosticsLock.unlock()
     }

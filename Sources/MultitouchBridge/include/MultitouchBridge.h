@@ -11,6 +11,14 @@ typedef struct {
     uint64_t callback_arrivals;
     uint64_t invalid_frame_rejects;
     uint64_t device_snapshot_enumerations;
+    uint64_t device_snapshot_successes;
+    uint64_t device_snapshot_last_count;
+    uint64_t iohid_published_services;
+    uint64_t iohid_terminated_services;
+    uint64_t touchpad_matches;
+    uint64_t usage_pairs_nonmatches;
+    uint64_t usage_pairs_invalid;
+    uint64_t tracked_touchpad_terminations;
     uint64_t topology_callback_deliveries;
     uint64_t device_registration_calls;
     uint64_t device_stop_calls;
@@ -20,12 +28,24 @@ typedef struct {
     uint64_t registered_devices;
     uint64_t last_callback_age_nanoseconds;
 } AGBridgeDiagnostics;
+typedef struct {
+    uint64_t event_notifications;
+    uint64_t published_services;
+    uint64_t terminated_services;
+    uint64_t touchpad_matches;
+    uint64_t usage_pairs_nonmatches;
+    uint64_t usage_pairs_invalid;
+    uint64_t tracked_touchpad_terminations;
+    uint64_t observer_failures;
+} AGDeviceTopologyDiagnostics;
 // Returns aggregate counters only; no device identifiers or contact data are exposed.
 void AGReadBridgeDiagnostics(AGBridgeDiagnostics *diagnostics);
 // Observes HID digitizer/TouchPad topology only; it does not open or read input reports.
 int AGStartDeviceTopologyObserver(AGDeviceTopologyCallback callback);
 void AGStopDeviceTopologyObserver(void);
-void AGReadDeviceTopologyDiagnostics(uint64_t *eventNotifications, uint64_t *observerFailures);
+void AGReadDeviceTopologyDiagnostics(AGDeviceTopologyDiagnostics *diagnostics);
+// Internal test seam: -1 invalid/missing pairs, 0 valid nonmatch, 1 TouchPad match.
+int AGClassifyHIDUsagePairs(int usagePairsIsArray, int hasTouchPadMatch, int hasInvalidPair);
 void AGReadTopologyCallbackDeliveries(uint64_t *callbackDeliveries);
 // Internal test seam: callback slots are monotonic and never recycled during a process lifetime.
 AGCallbackGenerationTable *AGCreateCallbackGenerationTable(size_t capacity);

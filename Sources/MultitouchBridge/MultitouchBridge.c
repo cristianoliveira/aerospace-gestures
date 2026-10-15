@@ -79,6 +79,8 @@ static _Atomic uint64_t deviceRegistrationCalls;
 static _Atomic uint64_t deviceStopCalls;
 static _Atomic uint64_t callbackGenerationExhaustions;
 static _Atomic uint64_t deviceSnapshotEnumerations;
+static _Atomic uint64_t deviceSnapshotSuccesses;
+static _Atomic uint64_t deviceSnapshotLastCount;
 static _Atomic uint64_t registeredDevices;
 static _Atomic uint64_t lastCallbackNanoseconds;
 
@@ -101,8 +103,18 @@ void AGReadBridgeDiagnostics(AGBridgeDiagnostics *diagnostics) {
     diagnostics->device_stop_calls = atomic_load_explicit(&deviceStopCalls, memory_order_relaxed);
     diagnostics->callback_generation_exhaustions = atomic_load_explicit(&callbackGenerationExhaustions, memory_order_relaxed);
     diagnostics->device_snapshot_enumerations = atomic_load_explicit(&deviceSnapshotEnumerations, memory_order_relaxed);
-    AGReadDeviceTopologyDiagnostics(&diagnostics->topology_event_notifications,
-                                    &diagnostics->topology_observer_failures);
+    diagnostics->device_snapshot_successes = atomic_load_explicit(&deviceSnapshotSuccesses, memory_order_relaxed);
+    diagnostics->device_snapshot_last_count = atomic_load_explicit(&deviceSnapshotLastCount, memory_order_relaxed);
+    AGDeviceTopologyDiagnostics topology = {0};
+    AGReadDeviceTopologyDiagnostics(&topology);
+    diagnostics->topology_event_notifications = topology.event_notifications;
+    diagnostics->topology_observer_failures = topology.observer_failures;
+    diagnostics->iohid_published_services = topology.published_services;
+    diagnostics->iohid_terminated_services = topology.terminated_services;
+    diagnostics->touchpad_matches = topology.touchpad_matches;
+    diagnostics->usage_pairs_nonmatches = topology.usage_pairs_nonmatches;
+    diagnostics->usage_pairs_invalid = topology.usage_pairs_invalid;
+    diagnostics->tracked_touchpad_terminations = topology.tracked_touchpad_terminations;
     AGReadTopologyCallbackDeliveries(&diagnostics->topology_callback_deliveries);
     diagnostics->registered_devices = atomic_load_explicit(&registeredDevices, memory_order_relaxed);
     uint64_t lastCallback = atomic_load_explicit(&lastCallbackNanoseconds, memory_order_relaxed);
@@ -286,6 +298,8 @@ AGDeviceSnapshot *AGCreateDeviceSnapshot(void) {
             snprintf(snapshot->entries[i].identity, sizeof(snapshot->entries[i].identity), "handle:%p", device);
         }
     }
+    atomic_store_explicit(&deviceSnapshotLastCount, count, memory_order_relaxed);
+    atomic_fetch_add_explicit(&deviceSnapshotSuccesses, 1, memory_order_relaxed);
     return snapshot;
 }
 

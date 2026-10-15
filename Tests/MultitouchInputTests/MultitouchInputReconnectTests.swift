@@ -256,6 +256,7 @@ final class MultitouchInputReconnectTests: XCTestCase {
       Set(oldRegistrations.map(\.token)).isDisjoint(with: Set(newRegistrations.map(\.token))))
     XCTAssertEqual(deliveredTokens, newRegistrations.map(\.token))
     XCTAssertEqual(input.diagnosticsSnapshot().deviceTopologyRebinds, 1)
+    XCTAssertEqual(input.diagnosticsSnapshot().topologyEventRebindAttempts, 1)
     input.stop()
   }
 
@@ -299,6 +300,8 @@ final class MultitouchInputReconnectTests: XCTestCase {
     XCTAssertEqual(registered.map(\.token), [original.token, rebound.token])
     XCTAssertFalse(input.diagnosticsSnapshot().topologyRebindPending)
     XCTAssertEqual(input.diagnosticsSnapshot().deviceTopologyRebinds, 1)
+    XCTAssertEqual(input.diagnosticsSnapshot().topologyEventRebindAttempts, 1)
+    XCTAssertEqual(input.diagnosticsSnapshot().topologyRetryRebindAttempts, 1)
     input.stop()
   }
 
@@ -458,6 +461,7 @@ final class MultitouchInputReconnectTests: XCTestCase {
     XCTAssertEqual(input.diagnosticsSnapshot().topologyRebindBegins, 1)
     XCTAssertEqual(input.diagnosticsSnapshot().topologyRebindEnds, 1)
     XCTAssertEqual(input.diagnosticsSnapshot().deviceTopologyRebinds, 1)
+    XCTAssertEqual(input.diagnosticsSnapshot().topologyEventRebindAttempts, 1)
     input.stop()
   }
 
@@ -497,6 +501,7 @@ final class MultitouchInputReconnectTests: XCTestCase {
     XCTAssertEqual(input.diagnosticsSnapshot().deviceCountWatchdogRuns, 2)
     XCTAssertEqual(input.diagnosticsSnapshot().deviceCountChanges, 1)
     XCTAssertEqual(input.diagnosticsSnapshot().deviceTopologyRebinds, 1)
+    XCTAssertEqual(input.diagnosticsSnapshot().countChangeRebindAttempts, 1)
     input.stop()
   }
 

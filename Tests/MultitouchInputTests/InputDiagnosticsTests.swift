@@ -8,6 +8,14 @@ final class InputDiagnosticsTests: XCTestCase {
       bridgeCallbackArrivals: 0,
       bridgeInvalidFrameRejects: 0,
       deviceSnapshotEnumerations: 0,
+      deviceSnapshotSuccesses: 0,
+      deviceSnapshotLastCount: nil,
+      topologyPublishedServices: 0,
+      topologyTerminatedServices: 0,
+      topologyTrackedTerminations: 0,
+      topologyTouchPadMatches: 0,
+      topologyUsagePairNonmatches: 0,
+      topologyUsagePairInvalid: 0,
       topologyCallbackDeliveries: 0,
       deviceRegistrationCalls: 0,
       deviceStopCalls: 0,
@@ -18,6 +26,9 @@ final class InputDiagnosticsTests: XCTestCase {
       topologyRebindBegins: 0,
       topologyRebindEnds: 0,
       deviceTopologyRebinds: 0,
+      topologyEventRebindAttempts: 0,
+      topologyRetryRebindAttempts: 0,
+      countChangeRebindAttempts: 0,
       deviceCountWatchdogRuns: 0,
       deviceCountChanges: 0,
       topologyRebindPending: false,
@@ -35,6 +46,10 @@ final class InputDiagnosticsTests: XCTestCase {
       snapshot.summary,
       "input-diagnostics snapshot_enumerations=0 callbacks=0 invalid_frames=0 topology_event_notifications=0 topology_callback_deliveries=0 topology_observer_failures=0 topology_observer_armed=0 topology_rebind_begins=0 topology_rebind_ends=0 topology_rebinds=0 count_watchdog_runs=0 count_changes=0 topology_rebind_pending=0 register_calls=0 stop_calls=0 registered_devices=0 generation_exhaustions=0 enumeration_failures=0 registration_failures=0 identity_getters_available=0 last_callback_age_s=none sequence_stale_drops=0 accepted_frames=0 main_queue_scheduled=0 main_queue_processed=0 input_state=unclassified"
     )
+    XCTAssertEqual(
+      snapshot.reconnectDiagnosticsSummary,
+      "\(snapshot.summary) snapshot_successes=0 snapshot_last_count=none iohid_published_services=0 iohid_terminated_services=0 touchpad_matches=0 usage_pairs_nonmatches=0 usage_pairs_invalid=0 tracked_touchpad_terminations=0 rebind_event_attempts=0 rebind_retry_attempts=0 rebind_count_change_attempts=0"
+    )
   }
 
   func testSummaryFormatsOnlyAggregateCountsAndCallbackAge() {
@@ -42,6 +57,14 @@ final class InputDiagnosticsTests: XCTestCase {
       bridgeCallbackArrivals: 12,
       bridgeInvalidFrameRejects: 2,
       deviceSnapshotEnumerations: 27,
+      deviceSnapshotSuccesses: 26,
+      deviceSnapshotLastCount: 0,
+      topologyPublishedServices: 5,
+      topologyTerminatedServices: 4,
+      topologyTrackedTerminations: 2,
+      topologyTouchPadMatches: 3,
+      topologyUsagePairNonmatches: 1,
+      topologyUsagePairInvalid: 1,
       topologyCallbackDeliveries: 3,
       deviceRegistrationCalls: 3,
       deviceStopCalls: 1,
@@ -52,6 +75,9 @@ final class InputDiagnosticsTests: XCTestCase {
       topologyRebindBegins: 4,
       topologyRebindEnds: 4,
       deviceTopologyRebinds: 2,
+      topologyEventRebindAttempts: 2,
+      topologyRetryRebindAttempts: 1,
+      countChangeRebindAttempts: 1,
       deviceCountWatchdogRuns: 3,
       deviceCountChanges: 1,
       topologyRebindPending: true,
@@ -68,6 +94,10 @@ final class InputDiagnosticsTests: XCTestCase {
     XCTAssertEqual(
       snapshot.summary,
       "input-diagnostics snapshot_enumerations=27 callbacks=12 invalid_frames=2 topology_event_notifications=8 topology_callback_deliveries=3 topology_observer_failures=1 topology_observer_armed=1 topology_rebind_begins=4 topology_rebind_ends=4 topology_rebinds=2 count_watchdog_runs=3 count_changes=1 topology_rebind_pending=1 register_calls=3 stop_calls=1 registered_devices=2 generation_exhaustions=2 enumeration_failures=3 registration_failures=1 identity_getters_available=1 last_callback_age_s=3456 sequence_stale_drops=4 accepted_frames=6 main_queue_scheduled=6 main_queue_processed=5 input_state=unclassified"
+    )
+    XCTAssertEqual(
+      snapshot.reconnectDiagnosticsSummary,
+      "\(snapshot.summary) snapshot_successes=26 snapshot_last_count=0 iohid_published_services=5 iohid_terminated_services=4 touchpad_matches=3 usage_pairs_nonmatches=1 usage_pairs_invalid=1 tracked_touchpad_terminations=2 rebind_event_attempts=2 rebind_retry_attempts=1 rebind_count_change_attempts=1"
     )
   }
 
