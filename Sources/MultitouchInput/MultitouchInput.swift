@@ -105,6 +105,27 @@ private final class BridgeDeviceSnapshotOwner {
 }
 
 final class MultitouchInputController {
+  private enum ReconciliationReason {
+    case startup
+    case topologyEvent
+    case topologyRecoveryRetry
+    case observerUnavailableCountChange
+
+    var forcesRebind: Bool {
+      switch self {
+      case .startup:
+        return false
+      case .topologyEvent, .topologyRecoveryRetry, .observerUnavailableCountChange:
+        return true
+      }
+    }
+  }
+
+  private enum SnapshotSource {
+    case enumerate
+    case provided(InputDeviceSnapshot)
+  }
+
   private let startTopologyObserver: () -> Bool
   private let stopTopologyObserver: () -> Void
   private let startBridge: () -> String?
@@ -191,7 +212,7 @@ final class MultitouchInputController {
       identityGettersAvailable = true
       self.deviceTopologyObserverArmed = topologyObserverArmed
       diagnosticsLock.unlock()
-      refreshDevicesLocked(allowUnstableInitialSnapshot: true)
+      refreshDevicesLocked(for: .startup)
       return nil
     }
 
@@ -208,7 +229,7 @@ final class MultitouchInputController {
     defer { lifecycleLock.unlock() }
     guard isStarted else { return }
     if forceTopologyRebindPending {
-      refreshDevicesLocked(allowUnstableInitialSnapshot: true, forceRebind: true)
+      refreshDevicesLocked(for: .topologyRecoveryRetry)
       return
     }
     retryPendingUnstableRegistrations()
@@ -241,10 +262,8 @@ final class MultitouchInputController {
     deviceCountChanges &+= 1
     diagnosticsLock.unlock()
     refreshDevicesLocked(
-      allowUnstableInitialSnapshot: true,
-      forceRebind: true,
-      providedSnapshot: snapshot,
-      hasProvidedSnapshot: true)
+      for: .observerUnavailableCountChange,
+      using: .provided(snapshot))
   }
 
   func handleDeviceTopologyChange() {
@@ -252,7 +271,7 @@ final class MultitouchInputController {
     defer { lifecycleLock.unlock() }
     guard isStarted else { return }
     forceTopologyRebindPending = true
-    refreshDevicesLocked(allowUnstableInitialSnapshot: true, forceRebind: true)
+    refreshDevicesLocked(for: .topologyEvent)
   }
 
   func stop() {
@@ -379,12 +398,10 @@ final class MultitouchInputController {
 
   @discardableResult
   private func refreshDevicesLocked(
-    allowUnstableInitialSnapshot: Bool = false,
-    forceRebind: Bool = false,
-    providedSnapshot: InputDeviceSnapshot? = nil,
-    hasProvidedSnapshot: Bool = false
+    for reason: ReconciliationReason,
+    using snapshotSource: SnapshotSource = .enumerate
   ) -> Bool {
-    guard allowUnstableInitialSnapshot || identityGettersAvailable else { return false }
+    let forceRebind = reason.forcesRebind
     if forceRebind {
       diagnosticsLock.lock()
       topologyRebindBegins &+= 1
@@ -397,7 +414,13 @@ final class MultitouchInputController {
         diagnosticsLock.unlock()
       }
     }
-    let snapshot = hasProvidedSnapshot ? providedSnapshot : enumerateDevices()
+    let snapshot: InputDeviceSnapshot?
+    switch snapshotSource {
+    case .enumerate:
+      snapshot = enumerateDevices()
+    case .provided(let providedSnapshot):
+      snapshot = providedSnapshot
+    }
     guard let snapshot else {
       diagnosticsLock.lock()
       deviceEnumerationFailures &+= 1

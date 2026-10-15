@@ -30,7 +30,14 @@ public struct InputDiagnosticsSnapshot: Equatable, Sendable {
 
   public var summary: String {
     let callbackAge = lastCallbackAgeSeconds.map(String.init) ?? "none"
-    return
-      "input-diagnostics snapshot_enumerations=\(deviceSnapshotEnumerations) callbacks=\(bridgeCallbackArrivals) invalid_frames=\(bridgeInvalidFrameRejects) topology_event_notifications=\(topologyEventNotifications) topology_callback_deliveries=\(topologyCallbackDeliveries) topology_observer_failures=\(topologyObserverFailures) topology_observer_armed=\(topologyObserverArmed ? 1 : 0) topology_rebind_begins=\(topologyRebindBegins) topology_rebind_ends=\(topologyRebindEnds) topology_rebinds=\(deviceTopologyRebinds) count_watchdog_runs=\(deviceCountWatchdogRuns) count_changes=\(deviceCountChanges) topology_rebind_pending=\(topologyRebindPending ? 1 : 0) register_calls=\(deviceRegistrationCalls) stop_calls=\(deviceStopCalls) registered_devices=\(registeredDevices) generation_exhaustions=\(callbackGenerationExhaustions) enumeration_failures=\(deviceEnumerationFailures) registration_failures=\(deviceRegistrationFailures) identity_getters_available=\(identityGettersAvailable ? 1 : 0) last_callback_age_s=\(callbackAge) sequence_stale_drops=\(sequenceStaleDrops) accepted_frames=\(acceptedDeliveries) main_queue_scheduled=\(mainQueueScheduled) main_queue_processed=\(mainQueueProcessed) input_state=unclassified"
+    return [
+      "input-diagnostics",
+      "snapshot_enumerations=\(deviceSnapshotEnumerations) callbacks=\(bridgeCallbackArrivals) invalid_frames=\(bridgeInvalidFrameRejects)",
+      "topology_event_notifications=\(topologyEventNotifications) topology_callback_deliveries=\(topologyCallbackDeliveries) topology_observer_failures=\(topologyObserverFailures) topology_observer_armed=\(topologyObserverArmed ? 1 : 0)",
+      "topology_rebind_begins=\(topologyRebindBegins) topology_rebind_ends=\(topologyRebindEnds) topology_rebinds=\(deviceTopologyRebinds) count_watchdog_runs=\(deviceCountWatchdogRuns) count_changes=\(deviceCountChanges) topology_rebind_pending=\(topologyRebindPending ? 1 : 0)",
+      "register_calls=\(deviceRegistrationCalls) stop_calls=\(deviceStopCalls) registered_devices=\(registeredDevices) generation_exhaustions=\(callbackGenerationExhaustions)",
+      "enumeration_failures=\(deviceEnumerationFailures) registration_failures=\(deviceRegistrationFailures) identity_getters_available=\(identityGettersAvailable ? 1 : 0)",
+      "last_callback_age_s=\(callbackAge) sequence_stale_drops=\(sequenceStaleDrops) accepted_frames=\(acceptedDeliveries) main_queue_scheduled=\(mainQueueScheduled) main_queue_processed=\(mainQueueProcessed) input_state=unclassified",
+    ].joined(separator: " ")
   }
 }

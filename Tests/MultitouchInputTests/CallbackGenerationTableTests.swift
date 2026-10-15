@@ -1,6 +1,5 @@
-import XCTest
-
 import MultitouchBridge
+import XCTest
 
 final class CallbackGenerationTableTests: XCTestCase {
   func testSlotsKeepTheirOriginalTokensAndAreNeverReused() {
