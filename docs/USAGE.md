@@ -71,11 +71,13 @@ Only one listener can run at a time. Stop the service before running a foregroun
 
 ### Input diagnostics
 
-The listener emits an aggregate input summary every 60 seconds to Unified Logging (`com.aerospace-gestures`, category `input`), including callback age and aggregate counts for bridge callbacks/rejections, frame filtering, queue delivery, and bridge registration/stop calls. It contains no contact coordinates, IDs, or command data. LaunchAgent stdout/stderr remain discarded.
+The listener emits an aggregate input summary every 60 seconds to Unified Logging (`com.aerospace-gestures`, category `input`). Set `AEROSPACE_INPUT_DIAGNOSTICS=1` for a timestamped stdout copy every 10 seconds and at shutdown, suitable for a foreground run log:
 
 ```sh
-log show --last 1h --style compact --predicate 'subsystem == "com.aerospace-gestures" AND category == "input"'
+AEROSPACE_INPUT_DIAGNOSTICS=1 aerospace-gestures run 2>&1 | tee .tmp/validation/input-diagnostics.log
 ```
+
+The fixed summary contains snapshot-enumeration counts, raw topology notifications, debounced callback deliveries, forced-rebind begin/end/success counts, count-watchdog runs/changes, registration/stop calls, current registered count, observer/enumeration/registration failures, generation exhaustion, callback arrivals/rejections, and accepted frames. It contains no device IDs, contact data, configuration contents, or command data. LaunchAgent stdout/stderr remain discarded; use Unified Logging for service runs.
 
 `input_state=unclassified` is intentional: no callbacks can mean either an idle trackpad or a lost input stream. Compare callback, rejection, stale-drop, and main-queue counts; do not treat callback age alone as a failure signal.
 
@@ -84,7 +86,7 @@ log show --last 1h --style compact --predicate 'subsystem == "com.aerospace-gest
 - **Running, but no gestures:** check Input Monitoring for the service executable. A running process does not prove input is working.
 - **Wrong config:** use the path from `service status`. Reinstall the service if you change `XDG_CONFIG_HOME`.
 - **Repeated exits:** stop the service, inspect `service status`, and validate its config before starting again.
-- **Input stops after reconnect or sleep:** restart the service.
+- **Input stops after reconnect or sleep:** a public IORegistry observer watches HID Digitizer/Touch Pad topology events and coalesces them before rebinding all active Multitouch registrations. The listener process stays running, but unaffected trackpads may pause briefly during the rebind. Routine 5-second ticks retry failed registrations using retained handles; they do not enumerate or rebind active devices. If the observer is unavailable, a 60-second count-only watchdog globally rebinds only when the device count changes; a same-count swap can be missed. Check `snapshot_enumerations`, `count_watchdog_runs`, `count_changes`, `topology_event_notifications`, `topology_callback_deliveries`, `topology_rebind_begins`, `topology_rebind_ends`, `topology_rebinds`, `register_calls`, `stop_calls`, and `registered_devices` together. Failed registrations retry up to three times; a later topology event starts a fresh retry budget. Observer failures include unreadable/missing usage properties or capacity exhaustion. The observer/filter and private Multitouch callback ABI are not verified across trackpad models or macOS versions; restart only if frames do not resume.
 - **Updating the binary:** stop the service, back up the old binary, replace it at the same path, then validate the config and restart. If it fails, restore the backup. Permissions may need attention after replacement.
 
 For configuration errors or missing command output, see [configuration troubleshooting](CONFIGURATION.md#troubleshooting). For private-API risks and test coverage, see [Architecture](ARCHITECTURE.md#manual-checks-and-risks).

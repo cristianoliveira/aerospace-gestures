@@ -6,7 +6,7 @@ import XCTest
 final class MultitouchInputLifecycleTests: XCTestCase {
   func testRepeatedStartKeepsOriginalHandlerAndDoesNotRestartBridge() throws {
     var startCount = 0
-    let input = MultitouchInputController(
+    let input = makeInput(
       startBridge: {
         startCount += 1
         return nil
@@ -25,10 +25,51 @@ final class MultitouchInputLifecycleTests: XCTestCase {
     XCTAssertEqual(secondHandlerCalls, 0)
   }
 
+  func testTopologyObserverIsArmedBeforeInitialEnumerationAndStoppedWithListener() {
+    var events: [String] = []
+    let input = MultitouchInputController(
+      startTopologyObserver: {
+        events.append("observer-start")
+        return true
+      },
+      stopTopologyObserver: { events.append("observer-stop") },
+      startBridge: {
+        events.append("bridge-start")
+        return nil
+      },
+      stopBridge: { events.append("bridge-stop") },
+      enumerateDevices: {
+        events.append("enumerate")
+        return InputDeviceSnapshot(devices: [])
+      })
+
+    XCTAssertNil(input.start(onFrame: { _, _, _ in }))
+    input.stop()
+
+    XCTAssertEqual(
+      events, ["observer-start", "bridge-start", "enumerate", "observer-stop", "bridge-stop"])
+  }
+
+  func testFailedBridgeStartStopsTheArmedTopologyObserver() {
+    var events: [String] = []
+    let input = MultitouchInputController(
+      startTopologyObserver: {
+        events.append("observer-start")
+        return true
+      },
+      stopTopologyObserver: { events.append("observer-stop") },
+      startBridge: { "Private API unavailable" },
+      stopBridge: { events.append("bridge-stop") })
+
+    XCTAssertEqual(input.start(onFrame: { _, _, _ in }), "Private API unavailable")
+    XCTAssertEqual(events, ["observer-start", "observer-stop"])
+    XCTAssertFalse(input.diagnosticsSnapshot().topologyObserverArmed)
+  }
+
   func testFailedStartClearsHandlerAndStopDetachesTheActiveHandler() throws {
     var startCount = 0
     var stopCount = 0
-    let input = MultitouchInputController(
+    let input = makeInput(
       startBridge: {
         startCount += 1
         return startCount == 1 ? "Private API unavailable" : nil
@@ -51,7 +92,7 @@ final class MultitouchInputLifecycleTests: XCTestCase {
   }
 
   func testOutOfOrderFramesCannotReachHandlerAfterNewerLiftFrame() throws {
-    let input = MultitouchInputController(startBridge: { nil }, stopBridge: {})
+    let input = makeInput()
     var deliveredFrames: [UInt32] = []
     var deliveredContactCounts: [Int] = []
     XCTAssertNil(
@@ -70,7 +111,7 @@ final class MultitouchInputLifecycleTests: XCTestCase {
   }
 
   func testConcurrentCallbacksReachHandlerInMonotonicSequenceOrder() {
-    let input = MultitouchInputController(startBridge: { nil }, stopBridge: {})
+    let input = makeInput()
     var deliveredFrames: [UInt32] = []
     XCTAssertNil(input.start { _, frame, _ in deliveredFrames.append(frame) })
 
@@ -84,7 +125,7 @@ final class MultitouchInputLifecycleTests: XCTestCase {
   }
 
   func testFrameSequenceOrderingHandlesWraparound() throws {
-    let input = MultitouchInputController(startBridge: { nil }, stopBridge: {})
+    let input = makeInput()
     var deliveredFrames: [UInt32] = []
     XCTAssertNil(input.start { _, frame, _ in deliveredFrames.append(frame) })
 
@@ -93,5 +134,17 @@ final class MultitouchInputLifecycleTests: XCTestCase {
     input.receive(device: 1, frame: UInt32.max, contacts: [])
 
     XCTAssertEqual(deliveredFrames, [UInt32.max, 0])
+  }
+
+  private func makeInput(
+    startBridge: @escaping () -> String? = { nil },
+    stopBridge: @escaping () -> Void = {}
+  ) -> MultitouchInputController {
+    MultitouchInputController(
+      startBridge: startBridge,
+      stopBridge: stopBridge,
+      enumerateDevices: {
+        InputDeviceSnapshot(devices: [InputDeviceDescriptor(identity: "test-device", handle: 1)])
+      })
   }
 }

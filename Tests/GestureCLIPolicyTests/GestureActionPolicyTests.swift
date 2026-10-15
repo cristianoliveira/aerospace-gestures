@@ -105,6 +105,23 @@ final class GestureActionPolicyTests: XCTestCase {
     XCTAssertFalse(policy.mayDispatch(gesture, from: heldOtherDeviceFrame))
   }
 
+  func testRetiringDeviceClearsItsLiftStateWithoutChangingOtherDevices() {
+    let policy = GestureActionPolicy(mode: .run)
+    _ = policy.captureFrame(device: 7, contactCount: 3)
+    _ = policy.captureFrame(device: 9, contactCount: 3)
+    policy.setActionsEnabled(false)
+    policy.setActionsEnabled(true)
+
+    policy.retireDevice(7)
+    let replacementFrame = policy.captureFrame(device: 7, contactCount: 3)
+    let otherHeldFrame = policy.captureFrame(device: 9, contactCount: 3)
+
+    XCTAssertTrue(policy.isCurrent(replacementFrame))
+    XCTAssertTrue(policy.mayDispatch(gesture, from: replacementFrame))
+    XCTAssertTrue(policy.isCurrent(otherHeldFrame))
+    XCTAssertFalse(policy.mayDispatch(gesture, from: otherHeldFrame))
+  }
+
   func testListenAndDryRunCannotBeUpgradedByToggles() {
     for mode in [GestureExecutionMode.listen, .dryRun] {
       let policy = GestureActionPolicy(mode: mode)
