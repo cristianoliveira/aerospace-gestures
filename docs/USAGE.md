@@ -71,7 +71,7 @@ Only one listener can run at a time. Stop the service before running a foregroun
 
 ### Input diagnostics
 
-The listener emits the existing aggregate input summary every 60 seconds to Unified Logging (`com.aerospace-gestures`, category `input`). Set `AEROSPACE_INPUT_DIAGNOSTICS=1` for an expanded, timestamped stdout summary every 10 seconds and at shutdown, suitable for a foreground repro log:
+The listener emits the existing aggregate input summary every 60 seconds to Unified Logging (`com.aerospace-gestures`, category `input`). Set `AEROSPACE_INPUT_DIAGNOSTICS=1` for an expanded, timestamped summary at startup, every 10 seconds, and at shutdown. It prints the exact persistent log path at startup and writes only diagnostic lines to `~/Library/Logs/aerospace-gestures/input-diagnostics.log` (0600 permissions, bounded to 1 MiB; old contents are cleared when the limit is reached). Stdout diagnostics continue if the file is unavailable:
 
 Stop any existing listener first, including the service if it is running; restart it after the foreground capture. `listen start` observes input without loading gesture commands or executing actions.
 
@@ -80,7 +80,7 @@ mkdir -p .tmp/validation
 AEROSPACE_INPUT_DIAGNOSTICS=1 .build/release/aerospace-gestures listen start 2>&1 | tee .tmp/validation/input-diagnostics.log
 ```
 
-The existing summary and the opt-in expansion contain only fixed aggregate fields; the expansion adds raw HID publish/termination counts, Touch Pad filter match/nonmatch/invalid counts, tracked Touch Pad terminations, snapshot successes/last device count, and rebind attempts by reason. `snapshot_last_count=0` means the last successful snapshot was empty; `none` means no snapshot succeeded yet. Counters are cumulative for the process. No device IDs, GUIDs, addresses, product names, contact data, configuration contents, or command data are emitted. LaunchAgent stdout/stderr remain discarded; use Unified Logging for the existing summary in service runs.
+The persistent file contains only fixed aggregate diagnostic lines—not gesture output, configured commands, or configuration contents. The existing Unified Logging summary and the opt-in expansion contain only fixed aggregate fields; the expansion adds raw HID publish/termination counts, Touch Pad filter match/nonmatch/invalid counts, tracked Touch Pad terminations, snapshot successes/last device count, and rebind attempts by reason. `snapshot_last_count=0` means the last successful snapshot was empty; `none` means no snapshot succeeded yet. Counters are cumulative for the process. No device IDs, GUIDs, addresses, product names, contact data, configuration contents, or command data are emitted. LaunchAgent stdout/stderr remain discarded; use Unified Logging for the existing summary in service runs.
 
 `input_state=unclassified` is intentional: no callbacks can mean either an idle trackpad or a lost input stream. Compare callback, rejection, stale-drop, and main-queue counts; do not treat callback age alone as a failure signal.
 

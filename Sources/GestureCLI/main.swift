@@ -295,17 +295,32 @@ try? managedStartupDiagnostics?.clear()
 let inputDiagnosticsLogger = Logger(subsystem: "com.aerospace-gestures", category: "input")
 let inputDiagnosticsEnabled =
   ProcessInfo.processInfo.environment["AEROSPACE_INPUT_DIAGNOSTICS"] == "1"
-let inputDiagnosticsOutputLock = NSLock()
+let inputDiagnosticsLog: InputDiagnosticsLog?
+if inputDiagnosticsEnabled {
+  let log = InputDiagnosticsLog(
+    homeDirectory: environment.homeDirectory,
+    writeToStdout: { try? FileHandle.standardOutput.write(contentsOf: Data($0.utf8)) },
+    writeToStderr: { try? FileHandle.standardError.write(contentsOf: Data($0.utf8)) })
+  inputDiagnosticsLog = log
+  print("Input diagnostics file: \(log.fileURL.path)")
+  fflush(stdout)
+} else {
+  inputDiagnosticsLog = nil
+}
 func writeInputDiagnostics(_ snapshot: InputDiagnosticsSnapshot) {
   guard inputDiagnosticsEnabled else { return }
-  inputDiagnosticsOutputLock.lock()
-  defer { inputDiagnosticsOutputLock.unlock() }
 
   let formatter = ISO8601DateFormatter()
   formatter.timeZone = TimeZone(secondsFromGMT: 0)
   formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-  print("timestamp_utc=\(formatter.string(from: Date())) \(snapshot.reconnectDiagnosticsSummary)")
-  fflush(stdout)
+  let line =
+    "timestamp_utc=\(formatter.string(from: Date())) \(snapshot.reconnectDiagnosticsSummary)"
+  if let inputDiagnosticsLog {
+    inputDiagnosticsLog.emit(line)
+  } else {
+    print(line)
+    fflush(stdout)
+  }
 }
 let deviceRefreshTimer = DispatchSource.makeTimerSource(queue: .main)
 deviceRefreshTimer.schedule(deadline: .now() + 5, repeating: 5)
@@ -328,6 +343,7 @@ inputDiagnosticsTimer.setEventHandler {
   inputDiagnosticsLogger.info("\(snapshot.summary, privacy: .public)")
   writeInputDiagnostics(snapshot)
 }
+writeInputDiagnostics(MultitouchInput.diagnosticsSnapshot())
 inputDiagnosticsTimer.resume()
 print("Listening. Private API is experimental; system gestures are NOT suppressed. Ctrl-C to stop.")
 fflush(stdout)
