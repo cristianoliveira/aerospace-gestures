@@ -28,6 +28,7 @@ final class InputDiagnosticsTests: XCTestCase {
       deviceTopologyRebinds: 0,
       topologyEventRebindAttempts: 0,
       topologyRetryRebindAttempts: 0,
+      deferredTopologyRebindAttempts: 0,
       countChangeRebindAttempts: 0,
       deviceCountWatchdogRuns: 0,
       deviceCountChanges: 0,
@@ -48,7 +49,7 @@ final class InputDiagnosticsTests: XCTestCase {
     )
     XCTAssertEqual(
       snapshot.reconnectDiagnosticsSummary,
-      "\(snapshot.summary) snapshot_successes=0 snapshot_last_count=none iohid_published_services=0 iohid_terminated_services=0 touchpad_matches=0 usage_pairs_nonmatches=0 usage_pairs_invalid=0 tracked_touchpad_terminations=0 rebind_event_attempts=0 rebind_retry_attempts=0 rebind_count_change_attempts=0"
+      "\(snapshot.summary) snapshot_successes=0 snapshot_last_count=none iohid_published_services=0 iohid_terminated_services=0 touchpad_matches=0 usage_pairs_nonmatches=0 usage_pairs_invalid=0 tracked_touchpad_terminations=0 rebind_event_attempts=0 rebind_retry_attempts=0 rebind_deferred_count_attempts=0 rebind_count_change_attempts=0"
     )
   }
 
@@ -77,6 +78,7 @@ final class InputDiagnosticsTests: XCTestCase {
       deviceTopologyRebinds: 2,
       topologyEventRebindAttempts: 2,
       topologyRetryRebindAttempts: 1,
+      deferredTopologyRebindAttempts: 3,
       countChangeRebindAttempts: 1,
       deviceCountWatchdogRuns: 3,
       deviceCountChanges: 1,
@@ -97,7 +99,7 @@ final class InputDiagnosticsTests: XCTestCase {
     )
     XCTAssertEqual(
       snapshot.reconnectDiagnosticsSummary,
-      "\(snapshot.summary) snapshot_successes=26 snapshot_last_count=0 iohid_published_services=5 iohid_terminated_services=4 touchpad_matches=3 usage_pairs_nonmatches=1 usage_pairs_invalid=1 tracked_touchpad_terminations=2 rebind_event_attempts=2 rebind_retry_attempts=1 rebind_count_change_attempts=1"
+      "\(snapshot.summary) snapshot_successes=26 snapshot_last_count=0 iohid_published_services=5 iohid_terminated_services=4 touchpad_matches=3 usage_pairs_nonmatches=1 usage_pairs_invalid=1 tracked_touchpad_terminations=2 rebind_event_attempts=2 rebind_retry_attempts=1 rebind_deferred_count_attempts=3 rebind_count_change_attempts=1"
     )
   }
 

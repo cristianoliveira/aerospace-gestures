@@ -260,6 +260,260 @@ final class MultitouchInputReconnectTests: XCTestCase {
     input.stop()
   }
 
+  func testDeferredTopologyRefreshRebindsWhenSnapshotCountGrows() {
+    let builtIn = device("built-in", handle: 1)
+    let external = device("external", handle: 2)
+    var snapshots: [InputDeviceSnapshot?] = [
+      InputDeviceSnapshot(devices: [builtIn]),
+      InputDeviceSnapshot(devices: [builtIn]),
+      InputDeviceSnapshot(devices: [builtIn, external]),
+    ]
+    var workItems: [DispatchWorkItem] = []
+    var delays: [TimeInterval] = []
+    var registered: [UInt] = []
+    var unregistered: [UInt] = []
+    var delivered: [UInt] = []
+    let input = MultitouchInputController(
+      startBridge: { nil },
+      stopBridge: {},
+      enumerateDevices: { snapshots.removeFirst() },
+      registerDevice: { handle, _ in
+        registered.append(handle)
+        return true
+      },
+      unregisterDevice: { handle, _ in unregistered.append(handle) },
+      scheduleDeferredTopologyRefresh: { workItem, delay in
+        workItems.append(workItem)
+        delays.append(delay)
+      })
+
+    XCTAssertNil(input.start(onFrame: { device, _, _ in delivered.append(device) }))
+    input.handleDeviceTopologyChange()
+
+    XCTAssertEqual(workItems.count, 1)
+    XCTAssertEqual(delays, [2])
+    XCTAssertEqual(input.registry.registrations.count, 1)
+
+    workItems[0].perform()
+
+    XCTAssertEqual(registered, [1, 1, 1, 2])
+    XCTAssertEqual(unregistered.count, 2)
+    XCTAssertEqual(
+      input.registry.registrations.map(\.descriptor.identity), ["built-in", "external"])
+    let externalToken = try! XCTUnwrap(input.registry.registration(for: "external")).token
+    input.receive(device: externalToken, frame: 1, contacts: [])
+    XCTAssertEqual(delivered, [externalToken])
+    XCTAssertEqual(input.diagnosticsSnapshot().deferredTopologyRebindAttempts, 1)
+    XCTAssertEqual(input.diagnosticsSnapshot().topologyRetryRebindAttempts, 0)
+    input.stop()
+  }
+
+  func testDeferredTopologyRefreshDoesNotRebindWhenSnapshotCountIsUnchanged() {
+    let builtIn = device("built-in", handle: 1)
+    var snapshots: [InputDeviceSnapshot?] = [
+      InputDeviceSnapshot(devices: [builtIn]),
+      InputDeviceSnapshot(devices: [builtIn]),
+      InputDeviceSnapshot(devices: [builtIn]),
+    ]
+    var workItems: [DispatchWorkItem] = []
+    var enumerationCount = 0
+    var registered: [UInt] = []
+    var unregistered: [UInt] = []
+    let input = MultitouchInputController(
+      startBridge: { nil },
+      stopBridge: {},
+      enumerateDevices: {
+        enumerationCount += 1
+        return snapshots.removeFirst()
+      },
+      registerDevice: { handle, _ in
+        registered.append(handle)
+        return true
+      },
+      unregisterDevice: { handle, _ in unregistered.append(handle) },
+      scheduleDeferredTopologyRefresh: { workItem, _ in workItems.append(workItem) })
+
+    XCTAssertNil(input.start(onFrame: { _, _, _ in }))
+    input.handleDeviceTopologyChange()
+    let registrationsAfterEvent = registered
+    let unregistrationsAfterEvent = unregistered
+
+    workItems[0].perform()
+
+    XCTAssertEqual(registered, registrationsAfterEvent)
+    XCTAssertEqual(unregistered, unregistrationsAfterEvent)
+    XCTAssertEqual(input.diagnosticsSnapshot().deferredTopologyRebindAttempts, 0)
+    XCTAssertEqual(enumerationCount, 3)
+    input.stop()
+  }
+
+  func testDeferredCheckIsScheduledAfterFailedEventRecoverySucceeds() {
+    let builtIn = device("built-in", handle: 1)
+    var snapshots: [InputDeviceSnapshot?] = [
+      InputDeviceSnapshot(devices: [builtIn]),
+      nil,
+      InputDeviceSnapshot(devices: [builtIn]),
+    ]
+    var workItems: [DispatchWorkItem] = []
+    var delays: [TimeInterval] = []
+    let input = MultitouchInputController(
+      startBridge: { nil },
+      stopBridge: {},
+      enumerateDevices: { snapshots.removeFirst() },
+      scheduleDeferredTopologyRefresh: { workItem, delay in
+        workItems.append(workItem)
+        delays.append(delay)
+      })
+
+    XCTAssertNil(input.start(onFrame: { _, _, _ in }))
+    input.handleDeviceTopologyChange()
+    XCTAssertTrue(input.diagnosticsSnapshot().topologyRebindPending)
+    XCTAssertTrue(workItems.isEmpty)
+
+    input.refreshDevices()
+
+    XCTAssertFalse(input.diagnosticsSnapshot().topologyRebindPending)
+    XCTAssertEqual(workItems.count, 1)
+    XCTAssertEqual(delays, [2])
+    input.stop()
+  }
+
+  func testDeferredCountCheckUsesSnapshotCountWhenRegistrationFailed() {
+    let builtIn = device("built-in", handle: 1)
+    let external = device("external", handle: 2)
+    var snapshots: [InputDeviceSnapshot?] = [
+      InputDeviceSnapshot(devices: [builtIn, external]),
+      InputDeviceSnapshot(devices: [builtIn, external]),
+      InputDeviceSnapshot(devices: [builtIn, external]),
+    ]
+    var workItems: [DispatchWorkItem] = []
+    var registered: [UInt] = []
+    let input = MultitouchInputController(
+      startBridge: { nil },
+      stopBridge: {},
+      enumerateDevices: { snapshots.removeFirst() },
+      registerDevice: { handle, _ in
+        registered.append(handle)
+        return handle == builtIn.handle
+      },
+      scheduleDeferredTopologyRefresh: { workItem, _ in workItems.append(workItem) })
+
+    XCTAssertNil(input.start(onFrame: { _, _, _ in }))
+    XCTAssertEqual(input.registry.registrations.count, 1)
+    input.handleDeviceTopologyChange()
+    let registrationsAfterEvent = registered
+
+    workItems[0].perform()
+
+    XCTAssertEqual(registered, registrationsAfterEvent)
+    XCTAssertEqual(input.registry.registrations.count, 1)
+    XCTAssertEqual(input.diagnosticsSnapshot().deviceRegistrationFailures, 2)
+    XCTAssertEqual(input.diagnosticsSnapshot().deferredTopologyRebindAttempts, 0)
+    input.stop()
+  }
+
+  func testDeferredTopologyRefreshFailureDoesNotRebindOrScheduleAnotherRetry() {
+    let builtIn = device("built-in", handle: 1)
+    var snapshots: [InputDeviceSnapshot?] = [
+      InputDeviceSnapshot(devices: [builtIn]),
+      InputDeviceSnapshot(devices: [builtIn]),
+      nil,
+    ]
+    var workItems: [DispatchWorkItem] = []
+    var registered: [UInt] = []
+    var unregistered: [UInt] = []
+    let input = MultitouchInputController(
+      startBridge: { nil },
+      stopBridge: {},
+      enumerateDevices: { snapshots.removeFirst() },
+      registerDevice: { handle, _ in
+        registered.append(handle)
+        return true
+      },
+      unregisterDevice: { handle, _ in unregistered.append(handle) },
+      scheduleDeferredTopologyRefresh: { workItem, _ in workItems.append(workItem) })
+
+    XCTAssertNil(input.start(onFrame: { _, _, _ in }))
+    input.handleDeviceTopologyChange()
+    workItems[0].perform()
+
+    XCTAssertEqual(registered, [1, 1])
+    XCTAssertEqual(unregistered.count, 1)
+    XCTAssertEqual(input.diagnosticsSnapshot().deviceEnumerationFailures, 1)
+    XCTAssertEqual(input.diagnosticsSnapshot().deferredTopologyRebindAttempts, 0)
+    XCTAssertEqual(workItems.count, 1)
+    input.stop()
+  }
+
+  func testDeferredTopologyRefreshCoalescesTopologyEvents() {
+    let builtIn = device("built-in", handle: 1)
+    var snapshots: [InputDeviceSnapshot?] = [
+      InputDeviceSnapshot(devices: [builtIn]),
+      InputDeviceSnapshot(devices: [builtIn]),
+      InputDeviceSnapshot(devices: [builtIn]),
+      InputDeviceSnapshot(devices: [builtIn]),
+    ]
+    var workItems: [DispatchWorkItem] = []
+    var enumerationCount = 0
+    let input = MultitouchInputController(
+      startBridge: { nil },
+      stopBridge: {},
+      enumerateDevices: {
+        enumerationCount += 1
+        return snapshots.removeFirst()
+      },
+      scheduleDeferredTopologyRefresh: { workItem, _ in workItems.append(workItem) })
+
+    XCTAssertNil(input.start(onFrame: { _, _, _ in }))
+    input.handleDeviceTopologyChange()
+    input.handleDeviceTopologyChange()
+
+    XCTAssertEqual(workItems.count, 2)
+    XCTAssertTrue(workItems[0].isCancelled)
+    workItems[1].perform()
+
+    XCTAssertEqual(input.diagnosticsSnapshot().topologyEventRebindAttempts, 2)
+    XCTAssertEqual(input.diagnosticsSnapshot().deferredTopologyRebindAttempts, 0)
+    XCTAssertEqual(enumerationCount, 4)
+    input.stop()
+  }
+
+  func testStopCancelsDeferredTopologyRefresh() {
+    let builtIn = device("built-in", handle: 1)
+    var snapshots: [InputDeviceSnapshot?] = [
+      InputDeviceSnapshot(devices: [builtIn]),
+      InputDeviceSnapshot(devices: [builtIn]),
+      InputDeviceSnapshot(devices: [device("external", handle: 2)]),
+    ]
+    var workItems: [DispatchWorkItem] = []
+    var enumerationCount = 0
+    var registered: [UInt] = []
+    let input = MultitouchInputController(
+      startBridge: { nil },
+      stopBridge: {},
+      enumerateDevices: {
+        enumerationCount += 1
+        return snapshots.removeFirst()
+      },
+      registerDevice: { handle, _ in
+        registered.append(handle)
+        return true
+      },
+      scheduleDeferredTopologyRefresh: { workItem, _ in workItems.append(workItem) })
+
+    XCTAssertNil(input.start(onFrame: { _, _, _ in }))
+    input.handleDeviceTopologyChange()
+    input.stop()
+    XCTAssertNil(input.start(onFrame: { _, _, _ in }))
+    workItems[0].perform()
+
+    XCTAssertTrue(workItems[0].isCancelled)
+    XCTAssertEqual(enumerationCount, 3)
+    XCTAssertEqual(registered, [1, 1, 2])
+    XCTAssertEqual(input.registry.registrations.map(\.descriptor.identity), ["external"])
+    input.stop()
+  }
+
   func testFailedTopologySnapshotRetriesAsForcedRebindOnNextPoll() {
     let oldDevice = device("external", handle: 1)
     let reconnectedDevice = device("external", handle: 2)

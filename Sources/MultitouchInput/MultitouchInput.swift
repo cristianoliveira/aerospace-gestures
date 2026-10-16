@@ -1,3 +1,4 @@
+import Dispatch
 import Foundation
 import GestureCore
 import MultitouchBridge
@@ -109,13 +110,15 @@ final class MultitouchInputController {
     case startup
     case topologyEvent
     case topologyRecoveryRetry
+    case deferredTopologyCountChange
     case observerUnavailableCountChange
 
     var forcesRebind: Bool {
       switch self {
       case .startup:
         return false
-      case .topologyEvent, .topologyRecoveryRetry, .observerUnavailableCountChange:
+      case .topologyEvent, .topologyRecoveryRetry, .deferredTopologyCountChange,
+        .observerUnavailableCountChange:
         return true
       }
     }
@@ -133,6 +136,7 @@ final class MultitouchInputController {
   private let enumerateDevices: () -> InputDeviceSnapshot?
   private let registerDevice: (UInt, UInt) -> Bool
   private let unregisterDevice: (UInt, UInt) -> Void
+  private let scheduleDeferredTopologyRefresh: (DispatchWorkItem, TimeInterval) -> Void
   private let lifecycleLock = NSRecursiveLock()
   private let handlerLock = NSLock()
   // Keep sequence validation and handler submission atomic across concurrent callbacks.
@@ -161,8 +165,11 @@ final class MultitouchInputController {
   private var deviceTopologyRebinds: UInt64 = 0
   private var topologyEventRebindAttempts: UInt64 = 0
   private var topologyRetryRebindAttempts: UInt64 = 0
+  private var deferredTopologyRebindAttempts: UInt64 = 0
   private var countChangeRebindAttempts: UInt64 = 0
   private var forceTopologyRebindPending = false
+  private var deferredTopologyRefresh: DispatchWorkItem?
+  private var deferredTopologyGeneration: UInt64 = 0
   private var pendingRegistrationRetries: [String: (InputDeviceDescriptor, InputDeviceSnapshot)] =
     [:]
   private var registrationRetryAttempts: [String: Int] = [:]
@@ -178,7 +185,11 @@ final class MultitouchInputController {
       InputDeviceSnapshot(devices: [])
     },
     registerDevice: @escaping (UInt, UInt) -> Bool = { _, _ in true },
-    unregisterDevice: @escaping (UInt, UInt) -> Void = { _, _ in }
+    unregisterDevice: @escaping (UInt, UInt) -> Void = { _, _ in },
+    scheduleDeferredTopologyRefresh: @escaping (DispatchWorkItem, TimeInterval) -> Void = {
+      workItem, delay in
+      DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
   ) {
     self.startTopologyObserver = startTopologyObserver
     self.stopTopologyObserver = stopTopologyObserver
@@ -187,6 +198,7 @@ final class MultitouchInputController {
     self.enumerateDevices = enumerateDevices
     self.registerDevice = registerDevice
     self.unregisterDevice = unregisterDevice
+    self.scheduleDeferredTopologyRefresh = scheduleDeferredTopologyRefresh
   }
 
   func start(
@@ -232,7 +244,9 @@ final class MultitouchInputController {
     defer { lifecycleLock.unlock() }
     guard isStarted else { return }
     if forceTopologyRebindPending {
-      refreshDevicesLocked(for: .topologyRecoveryRetry)
+      if refreshDevicesLocked(for: .topologyRecoveryRetry) {
+        scheduleDeferredTopologyRefreshIfNeeded()
+      }
       return
     }
     retryPendingUnstableRegistrations()
@@ -273,8 +287,41 @@ final class MultitouchInputController {
     lifecycleLock.lock()
     defer { lifecycleLock.unlock() }
     guard isStarted else { return }
+    cancelDeferredTopologyRefresh()
     forceTopologyRebindPending = true
-    refreshDevicesLocked(for: .topologyEvent)
+    if refreshDevicesLocked(for: .topologyEvent) {
+      scheduleDeferredTopologyRefreshIfNeeded()
+    }
+  }
+
+  // IOHID publication can precede private Multitouch enumeration; sample once after the list settles.
+  private func scheduleDeferredTopologyRefreshIfNeeded() {
+    deferredTopologyGeneration &+= 1
+    let generation = deferredTopologyGeneration
+    let workItem = DispatchWorkItem { [weak self] in
+      self?.performDeferredTopologyRefresh(generation: generation)
+    }
+    deferredTopologyRefresh = workItem
+    scheduleDeferredTopologyRefresh(workItem, 2)
+  }
+
+  private func performDeferredTopologyRefresh(generation: UInt64) {
+    lifecycleLock.lock()
+    defer { lifecycleLock.unlock() }
+    guard isStarted, generation == deferredTopologyGeneration else { return }
+    deferredTopologyRefresh = nil
+
+    guard let snapshot = enumerateDevices() else {
+      diagnosticsLock.lock()
+      deviceEnumerationFailures &+= 1
+      diagnosticsLock.unlock()
+      return
+    }
+    // Compare snapshots, not successful registrations; a registration failure is not a topology delta.
+    let knownCount = lastKnownDeviceCount ?? registry.registrations.count
+    guard snapshot.devices.count != knownCount else { return }
+
+    _ = refreshDevicesLocked(for: .deferredTopologyCountChange, using: .provided(snapshot))
   }
 
   func stop() {
@@ -363,6 +410,7 @@ final class MultitouchInputController {
     let topologyRebinds = deviceTopologyRebinds
     let eventRebindAttempts = topologyEventRebindAttempts
     let retryRebindAttempts = topologyRetryRebindAttempts
+    let deferredRebindAttempts = deferredTopologyRebindAttempts
     let countChangeRebindAttempts = self.countChangeRebindAttempts
     let countWatchdogRuns = deviceCountWatchdogRuns
     let deviceCountChanges = deviceCountChanges
@@ -400,6 +448,7 @@ final class MultitouchInputController {
       deviceTopologyRebinds: topologyRebinds,
       topologyEventRebindAttempts: eventRebindAttempts,
       topologyRetryRebindAttempts: retryRebindAttempts,
+      deferredTopologyRebindAttempts: deferredRebindAttempts,
       countChangeRebindAttempts: countChangeRebindAttempts,
       deviceCountWatchdogRuns: countWatchdogRuns,
       deviceCountChanges: deviceCountChanges,
@@ -430,6 +479,8 @@ final class MultitouchInputController {
         topologyEventRebindAttempts &+= 1
       case .topologyRecoveryRetry:
         topologyRetryRebindAttempts &+= 1
+      case .deferredTopologyCountChange:
+        deferredTopologyRebindAttempts &+= 1
       case .observerUnavailableCountChange:
         countChangeRebindAttempts &+= 1
       }
@@ -568,7 +619,14 @@ final class MultitouchInputController {
     exhaustedRegistrationRetries.remove(identity)
   }
 
+  private func cancelDeferredTopologyRefresh() {
+    deferredTopologyGeneration &+= 1
+    deferredTopologyRefresh?.cancel()
+    deferredTopologyRefresh = nil
+  }
+
   private func clearPendingRecovery() {
+    cancelDeferredTopologyRefresh()
     forceTopologyRebindPending = false
     pendingRegistrationRetries.removeAll()
     registrationRetryAttempts.removeAll()

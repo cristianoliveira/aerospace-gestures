@@ -25,6 +25,7 @@ public struct InputDiagnosticsSnapshot: Equatable, Sendable {
   public let deviceTopologyRebinds: UInt64
   public let topologyEventRebindAttempts: UInt64
   public let topologyRetryRebindAttempts: UInt64
+  public let deferredTopologyRebindAttempts: UInt64
   public let countChangeRebindAttempts: UInt64
   public let deviceCountWatchdogRuns: UInt64
   public let deviceCountChanges: UInt64
@@ -58,7 +59,7 @@ public struct InputDiagnosticsSnapshot: Equatable, Sendable {
       summary,
       "snapshot_successes=\(deviceSnapshotSuccesses) snapshot_last_count=\(snapshotLastCount)",
       "iohid_published_services=\(topologyPublishedServices) iohid_terminated_services=\(topologyTerminatedServices) touchpad_matches=\(topologyTouchPadMatches) usage_pairs_nonmatches=\(topologyUsagePairNonmatches) usage_pairs_invalid=\(topologyUsagePairInvalid) tracked_touchpad_terminations=\(topologyTrackedTerminations)",
-      "rebind_event_attempts=\(topologyEventRebindAttempts) rebind_retry_attempts=\(topologyRetryRebindAttempts) rebind_count_change_attempts=\(countChangeRebindAttempts)",
+      "rebind_event_attempts=\(topologyEventRebindAttempts) rebind_retry_attempts=\(topologyRetryRebindAttempts) rebind_deferred_count_attempts=\(deferredTopologyRebindAttempts) rebind_count_change_attempts=\(countChangeRebindAttempts)",
     ].joined(separator: " ")
   }
 }
