@@ -3,11 +3,30 @@ import GestureCLIPolicy
 import GestureInfrastructure
 
 @MainActor
+final class MenuBarQuitAction: NSObject {
+  private let onQuit: () -> Void
+  let menuItem: NSMenuItem
+
+  init(onQuit: @escaping () -> Void) {
+    self.onQuit = onQuit
+    menuItem = NSMenuItem(
+      title: "Quit AeroSpace Gestures", action: #selector(quit), keyEquivalent: "")
+    super.init()
+    menuItem.target = self
+  }
+
+  @objc func quit() {
+    onQuit()
+  }
+}
+
+@MainActor
 final class MenuBarControl: NSObject, NSMenuDelegate {
   private let actionPolicy: GestureActionPolicy
   private let reloadPolicy: ConfigurationReloadPolicy
   private let reloadAdapter: ConfigurationReloadAdapter
   private let onSuccessfulReload: () -> Void
+  private let quitAction: MenuBarQuitAction
   private let statusItem: NSStatusItem
   private let stateItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
   private let toggleItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -18,13 +37,15 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
     actionPolicy: GestureActionPolicy,
     reloadPolicy: ConfigurationReloadPolicy,
     reloadAdapter: ConfigurationReloadAdapter,
-    onSuccessfulReload: @escaping () -> Void
+    onSuccessfulReload: @escaping () -> Void,
+    onQuit: @escaping () -> Void
   ) {
     precondition(actionPolicy.showsMenuBarControl && reloadPolicy.canReload)
     self.actionPolicy = actionPolicy
     self.reloadPolicy = reloadPolicy
     self.reloadAdapter = reloadAdapter
     self.onSuccessfulReload = onSuccessfulReload
+    quitAction = MenuBarQuitAction(onQuit: onQuit)
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     super.init()
 
@@ -43,6 +64,8 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
     menu.addItem(.separator())
     menu.addItem(reloadItem)
     menu.addItem(reloadFeedbackItem)
+    menu.addItem(.separator())
+    menu.addItem(quitAction.menuItem)
     statusItem.menu = menu
     updatePresentation()
   }

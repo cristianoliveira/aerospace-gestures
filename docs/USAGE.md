@@ -41,8 +41,9 @@ Normal `run` adds a menu-bar icon:
 - **Disable actions** pauses new commands but keeps listening. A running command is not cancelled.
 - **Enable actions** resumes commands after you lift all fingers. Pause state resets on restart.
 - **Reload configuration** applies edits to the active file. If validation fails, the previous configuration stays active; check the menu for the result.
+- **Quit AeroSpace Gestures** stops input, terminates any active command, writes final diagnostics, and exits.
 
-Listen and dry-run modes never execute commands and have no enable or reload controls.
+Listen and dry-run modes never execute commands and have no menu-bar status item. Quitting a listener started by the built-in LaunchAgent leaves it stopped for this login because the agent does not restart successful exits. An external service manager may restart it.
 
 ## Optional per-user service
 
