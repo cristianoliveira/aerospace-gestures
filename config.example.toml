@@ -35,7 +35,7 @@ direction = "right"
 modifiers = ["command"]
 command = ["/bin/echo", "Command-three-finger right"]
 
-# Optional pinches: uncomment a whole table to enable it (v0.5.1 source).
+# Optional pinches: uncomment a whole table to enable it (v0.6.0 source).
 # Real-trackpad delivery is unverified; native macOS pinch-to-zoom still runs.
 # Pinches support 2–5 fingers and may share a finger count with swipes.
 # [[bindings]]

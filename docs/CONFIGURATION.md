@@ -2,7 +2,7 @@
 
 Use a TOML file to map trackpad gestures to commands. Start with one harmless binding, validate the file, then test recognition before enabling commands.
 
-This guide covers the v0.5.1 source. The v0.3.0 release does not support pinch bindings. Check `aerospace-gestures --version` and `type -a aerospace-gestures`. From a checkout, replace `aerospace-gestures` in the commands below with `swift run aerospace-gestures` to use that source.
+This guide covers the v0.6.0 source. The v0.3.0 release does not support pinch bindings. Check `aerospace-gestures --version` and `type -a aerospace-gestures`. From a checkout, replace `aerospace-gestures` in the commands below with `swift run aerospace-gestures` to use that source.
 
 ## Contents
 

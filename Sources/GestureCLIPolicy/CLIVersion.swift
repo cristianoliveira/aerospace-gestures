@@ -5,5 +5,5 @@ import Foundation
 /// Set this to the release version before tagging: the release workflow compares
 /// the packaged binary against the actual tag. There is no runtime git lookup.
 public enum CLIVersion {
-  public static let current = "0.5.1"
+  public static let current = "0.6.0"
 }

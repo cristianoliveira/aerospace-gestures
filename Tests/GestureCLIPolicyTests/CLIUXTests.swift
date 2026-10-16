@@ -20,7 +20,7 @@ final class CLIUXTests: XCTestCase {
   func testVersionConstantMatchesTheCurrentDevelopmentLine() {
     // Independent release expectation; the workflow also checks the packaged
     // binary's version against the pushed tag.
-    XCTAssertEqual(CLIVersion.current, "0.5.1")
+    XCTAssertEqual(CLIVersion.current, "0.6.0")
   }
 
   // MARK: help routing
