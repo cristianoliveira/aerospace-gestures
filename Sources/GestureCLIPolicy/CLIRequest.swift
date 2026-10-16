@@ -69,7 +69,7 @@ public enum CLIHelp {
           init      Create the popup example configuration; never overwrites
           listen    Observe gestures; try `listen --help` for actions
           check     Validate configuration and executable paths
-          run       Run with menu-bar pause and configuration reload
+          run       Run with menu-bar pause, reload, and quit controls
           service   Manage the per-user GUI LaunchAgent
           help      Show help for a command
           version   Print the binary version
@@ -122,7 +122,7 @@ public enum CLIHelp {
         """
       commandDetails = nil
       description =
-        "Normal run starts enabled with a menu-bar action toggle and Reload configuration; pausing keeps listening but blocks new commands. Reload validates before swapping without restarting input. --dry-run observes only and never enables command execution."
+        "Normal run starts enabled with menu-bar action toggle, Reload configuration, and Quit controls; pausing keeps listening but blocks new commands. Reload validates before swapping without restarting input. --dry-run observes only and never enables command execution."
       example = "\(command) run /path/to/config.toml --dry-run"
     case .service:
       usage = "Usage: \(command) service <install|status|start|stop|restart|uninstall>"

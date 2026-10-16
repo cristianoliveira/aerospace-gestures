@@ -82,6 +82,7 @@ final class CLIConfigurationTests: XCTestCase {
     XCTAssertTrue(rootHelp.contains("obsolete gesture field is rejected"))
     let runHelp = CLIHelp.text(for: .run, defaultConfigurationURL: defaultURL)
     XCTAssertTrue(runHelp.contains("Reload configuration"))
+    XCTAssertTrue(runHelp.contains("Quit controls"))
     XCTAssertTrue(runHelp.contains("without restarting input"))
 
     let serviceHelp = CLIHelp.text(for: .service, defaultConfigurationURL: defaultURL)

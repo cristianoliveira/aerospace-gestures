@@ -389,7 +389,8 @@ withExtendedLifetime(listenerLock) {
         onSuccessfulReload: {
           actionPolicy.invalidateFramesForConfigurationReload()
           detectors.removeAll()
-        })
+        },
+        onQuit: { shutdown.stop { exit(0) } })
     }
   } else {
     // IORegistry notifications are attached to the main CFRunLoop.
@@ -402,7 +403,8 @@ func runMenuBarApplication(
   actionPolicy: GestureActionPolicy,
   reloadPolicy: ConfigurationReloadPolicy,
   reloadAdapter: ConfigurationReloadAdapter,
-  onSuccessfulReload: @escaping () -> Void
+  onSuccessfulReload: @escaping () -> Void,
+  onQuit: @escaping () -> Void
 ) {
   let application = NSApplication.shared
   guard application.setActivationPolicy(.accessory) else {
@@ -412,7 +414,8 @@ func runMenuBarApplication(
     actionPolicy: actionPolicy,
     reloadPolicy: reloadPolicy,
     reloadAdapter: reloadAdapter,
-    onSuccessfulReload: onSuccessfulReload)
+    onSuccessfulReload: onSuccessfulReload,
+    onQuit: onQuit)
   withExtendedLifetime(menuBarControl) {
     application.run()
   }
