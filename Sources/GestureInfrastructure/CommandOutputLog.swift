@@ -25,14 +25,30 @@ public final class CommandOutputLog {
 
   public func append(_ data: Data, from stream: CommandOutputStream) throws {
     guard !data.isEmpty else { return }
-    lock.lock()
-    defer { lock.unlock() }
-
     let prefix = Data((stream == .stdout ? "[stdout] " : "[stderr] ").utf8)
     let payload = Data(data.prefix(max(0, maximumBytes - prefix.count - 1)))
     var record = prefix
     record.append(payload)
     record.append(0x0A)
+    try appendRecord(record)
+  }
+
+  func appendDiagnosticLine(_ line: String) throws {
+    let bytes = Array(line.utf8)
+    guard !bytes.isEmpty,
+      bytes.count < maximumBytes,
+      bytes.count <= 4096,
+      bytes.allSatisfy({ $0 >= 0x20 && $0 <= 0x7e })
+    else { throw CommandOutputLogError.invalidDiagnosticLine }
+
+    var record = Data(bytes)
+    record.append(0x0A)
+    try appendRecord(record)
+  }
+
+  private func appendRecord(_ record: Data) throws {
+    lock.lock()
+    defer { lock.unlock() }
 
     guard let directory = try openTrustedDirectory(create: true) else {
       throw CommandOutputLogError.directoryUnavailable
@@ -134,6 +150,7 @@ public final class CommandOutputLog {
 public enum CommandOutputLogError: Error {
   case directoryUnavailable
   case file(Int32)
+  case invalidDiagnosticLine
   case untrustedFile
   case untrustedLocation
 }

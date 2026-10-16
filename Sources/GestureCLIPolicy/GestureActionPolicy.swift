@@ -74,6 +74,14 @@ public final class GestureActionPolicy {
     return token.generation == generation
   }
 
+  /// Clears per-device policy state when the input registration disappears.
+  public func retireDevice(_ device: UInt) {
+    lock.lock()
+    defer { lock.unlock() }
+    activeDevices.remove(device)
+    devicesRequiringLift.remove(device)
+  }
+
   /// Invalidates work queued against the previous config without changing pause state.
   public func invalidateFramesForConfigurationReload() {
     lock.lock()

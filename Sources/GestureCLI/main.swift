@@ -225,6 +225,7 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
   MultitouchInput.recordMainQueueScheduled()
   DispatchQueue.main.async {
     MultitouchInput.recordMainQueueProcessed()
+    guard MultitouchInput.isDeviceRegistered(device) else { return }
     guard actionPolicy.isCurrent(frameToken) else {
       if contacts.isEmpty {
         detectors.removeValue(forKey: device)
@@ -278,18 +279,72 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
   }
 }
 
-if let error = MultitouchInput.start(onFrame: onFrame) {
+if let error = MultitouchInput.start(
+  onFrame: onFrame,
+  onDeviceRemoved: { device in
+    detectors.removeValue(forKey: device)
+    _ = modifierSequenceTracker.observe(device: device, contactCount: 0, sample: .unknown)
+    actionPolicy.retireDevice(device)
+  })
+{
   let diagnostic = StartupDiagnostic.inputInitializationFailure(for: error)
   try? managedStartupDiagnostics?.record(diagnostic)
   fail(error)
 }
 try? managedStartupDiagnostics?.clear()
 let inputDiagnosticsLogger = Logger(subsystem: "com.aerospace-gestures", category: "input")
+let inputDiagnosticsEnabled =
+  ProcessInfo.processInfo.environment["AEROSPACE_INPUT_DIAGNOSTICS"] == "1"
+let inputDiagnosticsLog: InputDiagnosticsLog?
+if inputDiagnosticsEnabled {
+  let log = InputDiagnosticsLog(
+    homeDirectory: environment.homeDirectory,
+    writeToStdout: { try? FileHandle.standardOutput.write(contentsOf: Data($0.utf8)) },
+    writeToStderr: { try? FileHandle.standardError.write(contentsOf: Data($0.utf8)) })
+  inputDiagnosticsLog = log
+  print("Input diagnostics file: \(log.fileURL.path)")
+  fflush(stdout)
+} else {
+  inputDiagnosticsLog = nil
+}
+func writeInputDiagnostics(_ snapshot: InputDiagnosticsSnapshot) {
+  guard inputDiagnosticsEnabled else { return }
+
+  let formatter = ISO8601DateFormatter()
+  formatter.timeZone = TimeZone(secondsFromGMT: 0)
+  formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+  let line =
+    "timestamp_utc=\(formatter.string(from: Date())) \(snapshot.reconnectDiagnosticsSummary)"
+  if let inputDiagnosticsLog {
+    inputDiagnosticsLog.emit(line)
+  } else {
+    print(line)
+    fflush(stdout)
+  }
+}
+let deviceRefreshTimer = DispatchSource.makeTimerSource(queue: .main)
+deviceRefreshTimer.schedule(deadline: .now() + 5, repeating: 5)
+deviceRefreshTimer.setEventHandler {
+  MultitouchInput.refreshDevices()
+}
+deviceRefreshTimer.resume()
+let deviceCountWatchdogTimer = DispatchSource.makeTimerSource(queue: .main)
+deviceCountWatchdogTimer.schedule(deadline: .now() + 60, repeating: 60)
+deviceCountWatchdogTimer.setEventHandler {
+  MultitouchInput.checkDeviceCountIfObserverUnavailable()
+}
+deviceCountWatchdogTimer.resume()
+let inputDiagnosticsInterval: TimeInterval = inputDiagnosticsEnabled ? 10 : 60
 let inputDiagnosticsTimer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
-inputDiagnosticsTimer.schedule(deadline: .now() + 60, repeating: 60)
+inputDiagnosticsTimer.schedule(
+  deadline: .now() + inputDiagnosticsInterval, repeating: inputDiagnosticsInterval)
 inputDiagnosticsTimer.setEventHandler {
-  let summary = MultitouchInput.diagnosticsSnapshot().summary
-  inputDiagnosticsLogger.info("\(summary, privacy: .public)")
+  let snapshot = MultitouchInput.diagnosticsSnapshot()
+  inputDiagnosticsLogger.info("\(snapshot.summary, privacy: .public)")
+  writeInputDiagnostics(snapshot)
+}
+if inputDiagnosticsEnabled {
+  writeInputDiagnostics(MultitouchInput.diagnosticsSnapshot())
 }
 inputDiagnosticsTimer.resume()
 print("Listening. Private API is experimental; system gestures are NOT suppressed. Ctrl-C to stop.")
@@ -304,9 +359,12 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
 }
 let shutdown = ListenerShutdown(
   stopInput: {
+    deviceRefreshTimer.cancel()
+    deviceCountWatchdogTimer.cancel()
     MultitouchInput.stop()
-    inputDiagnosticsLogger.info(
-      "\(MultitouchInput.diagnosticsSnapshot().summary, privacy: .public)")
+    let snapshot = MultitouchInput.diagnosticsSnapshot()
+    inputDiagnosticsLogger.info("\(snapshot.summary, privacy: .public)")
+    writeInputDiagnostics(snapshot)
     inputDiagnosticsTimer.cancel()
   },
   stopCommands: { completion in runner.stop(completion: completion) })
@@ -334,7 +392,8 @@ withExtendedLifetime(listenerLock) {
         })
     }
   } else {
-    dispatchMain()
+    // IORegistry notifications are attached to the main CFRunLoop.
+    CFRunLoopRun()
   }
 }
 
