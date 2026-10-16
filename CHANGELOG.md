@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## v0.6.0
+
+**Compatibility:** Existing valid configurations need no migration. The built-in LaunchAgent does not restart after a successful Quit; use `service start` to resume it. An external service manager may restart it.
+
+- Improved recovery after HID topology changes, including USB-to-Bluetooth trackpad reconnects. A single delayed Multitouch snapshot count check catches publication lag without adding idle device-list enumeration.
+- Added opt-in aggregate reconnect diagnostics, including persistent output when `AEROSPACE_INPUT_DIAGNOSTICS=1` is set.
+- Added **Quit AeroSpace Gestures** to the normal run menu. It stops input, terminates an active command, writes final diagnostics, then exits. Listen and dry-run modes still have no menu-bar status item.
+
+**Limitations:** Recovery still depends on the experimental public IOHID observer and private Multitouch API. If the observer is unavailable, the count-only watchdog may miss a same-count device swap; hardware support varies by device and macOS version.
+
 ## v0.5.1
 
 - Fixed modifier sampling reporting an unknown state when macOS includes left/right device modifier bits alongside the corresponding generic Command, Option, Control, or Shift flag. Orphan device bits and unsupported Fn remain fail-closed.

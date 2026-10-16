@@ -14,7 +14,7 @@
           generated = pkgs.swiftpm2nix.helpers ./nix;
           package = pkgs.swiftPackages.stdenv.mkDerivation {
             pname = "aerospace-gestures";
-            version = "0.5.1";
+            version = "0.6.0";
             src = self;
 
             nativeBuildInputs = [ pkgs.swift pkgs.swiftpm ];
