@@ -55,6 +55,47 @@ final class CommandDecisionTests: XCTestCase {
       ["/bin/echo", "pinch"])
   }
 
+  func testAppSpecificBindingOverridesGenericAndFallsBackForOtherAppsOrWhenDisabled() throws {
+    let configuration = try Configuration.load(Data(
+      """
+      [[bindings]]
+      fingers = 3
+      direction = "left"
+      command = ["/bin/echo", "generic"]
+
+      [[bindings]]
+      fingers = 3
+      direction = "left"
+      app = "com.example.Editor"
+      command = ["/bin/echo", "editor"]
+      """.utf8))
+    let gesture = Gesture(fingers: 3, direction: .left)
+    func select(_ app: String?, enabled: Bool = true) -> [String]? {
+      CommandDecision.binding(for: gesture, in: configuration.bindings,
+        modifiers: .known(.none), dryRun: false, frontmostApp: app,
+        appBindingsEnabled: enabled)?.command
+    }
+
+    XCTAssertEqual(select("com.example.Editor"), ["/bin/echo", "editor"])
+    XCTAssertEqual(select("com.example.editor"), ["/bin/echo", "generic"])
+    XCTAssertEqual(select(nil), ["/bin/echo", "generic"])
+    XCTAssertEqual(select("com.example.Editor", enabled: false), ["/bin/echo", "generic"])
+  }
+
+  func testScopedBindingNeverBecomesGlobalWhenAppToggleIsOff() throws {
+    let configuration = try Configuration.load(Data(
+      """
+      [[bindings]]
+      fingers = 3
+      direction = "left"
+      app = "com.example.Editor"
+      command = ["/bin/echo", "editor"]
+      """.utf8))
+    XCTAssertNil(CommandDecision.binding(for: Gesture(fingers: 3, direction: .left),
+      in: configuration.bindings, modifiers: .known(.none), dryRun: false,
+      frontmostApp: "com.example.Editor", appBindingsEnabled: false))
+  }
+
   func testHeldExtraModifierNeverFallsBackToPlainOrPartialBinding() throws {
     let configuration = try Configuration.load(
       Data(

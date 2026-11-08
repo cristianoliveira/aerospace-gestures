@@ -146,6 +146,11 @@ case .help, .version, .initialize, .check, .service:
   fatalError("Handled CLI request unexpectedly reached device startup")
 }
 let actionPolicy = GestureActionPolicy(mode: executionMode)
+let appGesturePreferenceKey = "appScopedGesturesEnabled"
+let savedAppGestureState = UserDefaults.standard.object(forKey: appGesturePreferenceKey) as? Bool
+let appGesturePolicy = AppGesturePolicy(
+  enabled: savedAppGestureState ?? true,
+  onChange: { UserDefaults.standard.set($0, forKey: appGesturePreferenceKey) })
 let reloadPolicy = ConfigurationReloadPolicy(
   initialConfiguration: configuration, mode: executionMode)
 let reloadAdapter: ConfigurationReloadAdapter?
@@ -216,11 +221,14 @@ let commandOutputHandler: (CommandOutputStream, Data) -> Void = { stream, data i
 let runner = CommandRunner()
 var detectors: [UInt: GestureDetector] = [:]
 var modifierSequenceTracker = ModifierSequenceTracker()
+var pinnedApps: [UInt: String] = [:]
 var receivedFrame = false
 let modifierStateSampler: any ModifierStateSampling = CoreGraphicsModifierStateSampler()
+let frontmostAppSampler: () -> String? = { NSWorkspace.shared.frontmostApplication?.bundleIdentifier }
 
 let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
   let modifierSample = contacts.isEmpty ? .unknown : modifierStateSampler.sample()
+  let frontmostApp = contacts.isEmpty ? nil : frontmostAppSampler()
   let frameToken = actionPolicy.captureFrame(device: device, contactCount: contacts.count)
   MultitouchInput.recordMainQueueScheduled()
   DispatchQueue.main.async {
@@ -242,6 +250,12 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
     let sequenceModifierSample =
       modifierSequenceTracker.observe(
         device: device, contactCount: contacts.count, sample: modifierSample) ?? .unknown
+    if contacts.isEmpty {
+      pinnedApps.removeValue(forKey: device)
+    } else if pinnedApps[device] == nil, let frontmostApp {
+      pinnedApps[device] = frontmostApp
+    }
+    let pinnedApp = pinnedApps[device]
     let activeConfiguration = reloadPolicy.activeConfiguration
     var detector =
       detectors[device]
@@ -262,7 +276,9 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
         for: gesture,
         in: activeConfiguration?.bindings ?? [],
         modifiers: sequenceModifierSample,
-        dryRun: dryRun),
+        dryRun: dryRun,
+        frontmostApp: pinnedApp == frontmostApp ? frontmostApp : nil,
+        appBindingsEnabled: appGesturePolicy.isEnabled),
       actionPolicy.mayDispatch(gesture, from: frameToken)
     else { return }
     if !runner.run(
@@ -283,6 +299,7 @@ if let error = MultitouchInput.start(
   onFrame: onFrame,
   onDeviceRemoved: { device in
     detectors.removeValue(forKey: device)
+    pinnedApps.removeValue(forKey: device)
     _ = modifierSequenceTracker.observe(device: device, contactCount: 0, sample: .unknown)
     actionPolicy.retireDevice(device)
   })
@@ -384,6 +401,8 @@ withExtendedLifetime(listenerLock) {
       guard let reloadAdapter else { fatalError("Normal run requires a config reload adapter") }
       runMenuBarApplication(
         actionPolicy: actionPolicy,
+        appGesturePolicy: appGesturePolicy,
+        hasAppBindings: configuration?.bindings.contains(where: { $0.app != nil }) == true,
         reloadPolicy: reloadPolicy,
         reloadAdapter: reloadAdapter,
         onSuccessfulReload: {
@@ -401,6 +420,8 @@ withExtendedLifetime(listenerLock) {
 @MainActor
 func runMenuBarApplication(
   actionPolicy: GestureActionPolicy,
+  appGesturePolicy: AppGesturePolicy,
+  hasAppBindings: Bool,
   reloadPolicy: ConfigurationReloadPolicy,
   reloadAdapter: ConfigurationReloadAdapter,
   onSuccessfulReload: @escaping () -> Void,
@@ -412,6 +433,8 @@ func runMenuBarApplication(
   }
   let menuBarControl = MenuBarControl(
     actionPolicy: actionPolicy,
+    appGesturePolicy: appGesturePolicy,
+    hasAppBindings: hasAppBindings,
     reloadPolicy: reloadPolicy,
     reloadAdapter: reloadAdapter,
     onSuccessfulReload: onSuccessfulReload,

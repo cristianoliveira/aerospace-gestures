@@ -23,6 +23,8 @@ final class MenuBarQuitAction: NSObject {
 @MainActor
 final class MenuBarControl: NSObject, NSMenuDelegate {
   private let actionPolicy: GestureActionPolicy
+  private let appGesturePolicy: AppGesturePolicy
+  private var hasAppBindings: Bool
   private let reloadPolicy: ConfigurationReloadPolicy
   private let reloadAdapter: ConfigurationReloadAdapter
   private let onSuccessfulReload: () -> Void
@@ -30,11 +32,14 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
   private let statusItem: NSStatusItem
   private let stateItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
   private let toggleItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+  private let appToggleItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
   private let reloadItem = NSMenuItem(title: "Reload configuration", action: nil, keyEquivalent: "")
   private let reloadFeedbackItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
 
   init(
     actionPolicy: GestureActionPolicy,
+    appGesturePolicy: AppGesturePolicy,
+    hasAppBindings: Bool,
     reloadPolicy: ConfigurationReloadPolicy,
     reloadAdapter: ConfigurationReloadAdapter,
     onSuccessfulReload: @escaping () -> Void,
@@ -42,6 +47,8 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
   ) {
     precondition(actionPolicy.showsMenuBarControl && reloadPolicy.canReload)
     self.actionPolicy = actionPolicy
+    self.appGesturePolicy = appGesturePolicy
+    self.hasAppBindings = hasAppBindings
     self.reloadPolicy = reloadPolicy
     self.reloadAdapter = reloadAdapter
     self.onSuccessfulReload = onSuccessfulReload
@@ -52,6 +59,8 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
     stateItem.isEnabled = false
     toggleItem.target = self
     toggleItem.action = #selector(toggleActions)
+    appToggleItem.target = self
+    appToggleItem.action = #selector(toggleAppGestures)
     reloadItem.target = self
     reloadItem.action = #selector(reloadConfiguration)
     reloadFeedbackItem.isEnabled = false
@@ -61,6 +70,7 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
     menu.addItem(stateItem)
     menu.addItem(.separator())
     menu.addItem(toggleItem)
+    menu.addItem(appToggleItem)
     menu.addItem(.separator())
     menu.addItem(reloadItem)
     menu.addItem(reloadFeedbackItem)
@@ -79,6 +89,11 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
     updatePresentation()
   }
 
+  @objc private func toggleAppGestures() {
+    appGesturePolicy.setEnabled(!appGesturePolicy.isEnabled)
+    updatePresentation()
+  }
+
   @objc private func reloadConfiguration() {
     guard let token = reloadPolicy.beginReload() else { return }
     updatePresentation()
@@ -92,6 +107,8 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
             self.reloadPolicy.completeReload(token, with: .success(configuration))
           else { return }
           self.onSuccessfulReload()
+          self.hasAppBindings = self.reloadPolicy.activeConfiguration?.bindings.contains(
+            where: { $0.app != nil }) == true
           self.updatePresentation()
         }
       } catch {
@@ -112,6 +129,10 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
     toggleItem.title = presentation.toggleTitle ?? ""
     toggleItem.state = presentation.toggleIsChecked ? .on : .off
     toggleItem.isHidden = presentation.toggleTitle == nil
+    appToggleItem.title = appGesturePolicy.isEnabled
+      ? "Disable app-specific gestures" : "Enable app-specific gestures"
+    appToggleItem.state = appGesturePolicy.isEnabled ? .on : .off
+    appToggleItem.isHidden = !hasAppBindings
 
     let reloadPresentation = ConfigurationReloadPresentation(
       state: reloadPolicy.state, canReload: reloadPolicy.canReload)
