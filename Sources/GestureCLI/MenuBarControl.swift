@@ -107,8 +107,9 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
             self.reloadPolicy.completeReload(token, with: .success(configuration))
           else { return }
           self.onSuccessfulReload()
-          self.hasAppBindings = self.reloadPolicy.activeConfiguration?.bindings.contains(
-            where: { $0.app != nil }) == true
+          self.hasAppBindings =
+            self.reloadPolicy.activeConfiguration?.bindings.contains(
+              where: { $0.app != nil }) == true
           self.updatePresentation()
         }
       } catch {
@@ -129,7 +130,8 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
     toggleItem.title = presentation.toggleTitle ?? ""
     toggleItem.state = presentation.toggleIsChecked ? .on : .off
     toggleItem.isHidden = presentation.toggleTitle == nil
-    appToggleItem.title = appGesturePolicy.isEnabled
+    appToggleItem.title =
+      appGesturePolicy.isEnabled
       ? "Disable app-specific gestures" : "Enable app-specific gestures"
     appToggleItem.state = appGesturePolicy.isEnabled ? .on : .off
     appToggleItem.isHidden = !hasAppBindings
