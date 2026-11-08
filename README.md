@@ -6,7 +6,7 @@
 
 <p align="center"><strong>Small gesture. Your command.</strong></p>
 
-macOS trackpad gestures do not directly run your [AeroSpace WM](https://github.com/nikitabobko/AeroSpace) commands. Cafuné maps three-to-five-finger swipes and opt-in two-to-five-finger pinch-in/spread-out gestures to commands.
+Cafuné maps three-to-five-finger swipes and opt-in two-to-five-finger pinch-in/spread-out gestures to macOS commands. Use it with [AeroSpace WM](https://github.com/nikitabobko/AeroSpace) or run scripts, apps, and other tools.
 
 Cafuné is the product name; `aerospace-gestures` remains the CLI command for compatibility.
 
