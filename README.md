@@ -47,4 +47,4 @@ If no gestures appear, grant your terminal **Input Monitoring** permission and r
 
 ## Guides
 
-[Configuration](docs/CONFIGURATION.md) · [Usage](docs/USAGE.md) · [Development](docs/DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md)
+[Configuration](docs/CONFIGURATION.md) · [App integrations: Herdr and Brave](docs/INTEGRATIONS.md) · [Usage](docs/USAGE.md) · [Development](docs/DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md)

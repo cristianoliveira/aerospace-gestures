@@ -156,6 +156,9 @@ Unknown root and binding properties are rejected. Put `modifiers` inside each `[
 
 ## Command recipes
 
+For app-scoped tab navigation, picker and inbox examples, see
+[App integrations: Herdr and Brave](INTEGRATIONS.md).
+
 Commands run with your account's permissions. Use only configuration and scripts you trust. Each array element is one literal argument: there is no shell expansion of `~`, `$HOME`, wildcards, pipes, or redirection. Spaces inside an argument do not require additional shell quotes.
 
 For example, `command = ["/bin/echo", "$HOME"]` prints the literal text `$HOME`, not your home directory. AeroSpace's `exec-and-forget` is its own configuration directive, not an executable for this app.

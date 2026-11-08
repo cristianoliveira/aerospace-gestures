@@ -1,4 +1,5 @@
 # Reference and tuning guide: docs/CONFIGURATION.md
+# App-specific Herdr and Brave recipes: docs/INTEGRATIONS.md
 # Root settings must come before every [[bindings]] table.
 threshold = 0.15           # Swipe displacement; 0.02–0.8. Lower is more sensitive.
 pinch_threshold = 0.2      # Relative spread change; 0.05–0.5. Independent of swipes.
