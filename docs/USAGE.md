@@ -2,7 +2,7 @@
 
 For installation, see [README](../README.md#install). For bindings and sensitivity, see [Configuration](CONFIGURATION.md).
 
-Commands below use an installed binary. From a checkout, use `swift run aerospace-gestures` instead.
+Cafuné is the product name; `aerospace-gestures` remains the CLI command for compatibility. Commands below use an installed binary. From a checkout, use `swift run aerospace-gestures` instead.
 
 ## Run
 
@@ -43,7 +43,7 @@ Normal `run` adds a menu-bar icon:
 - **Disable app-specific gestures / Enable app-specific gestures** affects only bindings with an `app` bundle ID; generic bindings remain active. This preference is remembered across restarts in the `com.aerospace-gestures` per-user defaults suite. It is separate from pause.
 - **App-specific bindings first / Global bindings first** (development source after v0.7.0-alpha.1) selects which matching binding wins when both exist for the same gesture and modifiers. App-specific-first is the default; global-first falls back to the app-specific binding when no generic binding exists. This runtime menu choice is persisted separately from the enable toggle and does not change TOML or Nix settings. The choices appear only when app-scoped bindings are configured. Both choices apply on the next contact sequence; lift all fingers after selecting.
 - **Reload configuration** applies edits to the active file. If validation fails, the previous configuration stays active; check the menu for the result.
-- **Quit AeroSpace Gestures** stops input, terminates any active command, writes final diagnostics, and exits.
+- **Quit Cafuné** stops input, terminates any active command, writes final diagnostics, and exits.
 
 Listen and dry-run modes never execute commands and have no menu-bar status item. Quitting a listener started by the built-in LaunchAgent leaves it stopped for this login because the agent does not restart successful exits. An external service manager may restart it.
 
