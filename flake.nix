@@ -1,5 +1,5 @@
 {
-  description = "AeroSpace trackpad gestures for macOS";
+  description = "Cafuné maps macOS trackpad gestures to commands";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
 
@@ -38,7 +38,7 @@
             '';
 
             meta = {
-              description = "Map macOS trackpad gestures to commands";
+              description = "Cafuné maps macOS trackpad gestures to commands";
               homepage = "https://github.com/cristianoliveira/aerospace-gestures";
               license = pkgs.lib.licenses.mit;
               mainProgram = "aerospace-gestures";

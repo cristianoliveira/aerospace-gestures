@@ -1,12 +1,14 @@
 <p align="center">
-  <img src="docs/brand/logo.svg" alt="AeroSpace Gestures — Triple Swipe logo" width="112" height="112">
+  <img src="docs/brand/logo.svg" alt="Cafuné — Triple Swipe logo" width="112" height="112">
 </p>
 
-<h1 align="center">AeroSpace Gestures</h1>
+<h1 align="center">Cafuné</h1>
 
 <p align="center"><strong>Small gesture. Your command.</strong></p>
 
-macOS trackpad gestures do not directly run your [AeroSpace WM](https://github.com/nikitabobko/AeroSpace) commands. AeroSpace Gestures maps three-to-five-finger swipes and opt-in two-to-five-finger pinch-in/spread-out gestures to commands.
+macOS trackpad gestures do not directly run your [AeroSpace WM](https://github.com/nikitabobko/AeroSpace) commands. Cafuné maps three-to-five-finger swipes and opt-in two-to-five-finger pinch-in/spread-out gestures to commands.
+
+Cafuné is the product name; `aerospace-gestures` remains the CLI command for compatibility.
 
 Use the menu-bar icon to pause commands or reload your configuration. The v0.7.0-alpha.1 pre-release also adds experimental app-scoped bindings and a separate persisted toggle.
 

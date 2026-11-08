@@ -2,6 +2,14 @@ import AppKit
 import GestureCLIPolicy
 import GestureInfrastructure
 
+enum MenuBarBranding {
+  static let productName = "Cafuné"
+
+  static func tooltip(for accessibilityLabel: String) -> String {
+    "\(productName) — \(accessibilityLabel)"
+  }
+}
+
 @MainActor
 final class MenuBarQuitAction: NSObject {
   private let onQuit: () -> Void
@@ -10,7 +18,7 @@ final class MenuBarQuitAction: NSObject {
   init(onQuit: @escaping () -> Void) {
     self.onQuit = onQuit
     menuItem = NSMenuItem(
-      title: "Quit AeroSpace Gestures", action: #selector(quit), keyEquivalent: "")
+      title: "Quit \(MenuBarBranding.productName)", action: #selector(quit), keyEquivalent: "")
     super.init()
     menuItem.target = self
   }
@@ -146,7 +154,7 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
 
     guard let button = statusItem.button else { return }
     button.setAccessibilityLabel(presentation.accessibilityLabel)
-    button.toolTip = "AeroSpace Gestures — \(presentation.accessibilityLabel)"
+    button.toolTip = MenuBarBranding.tooltip(for: presentation.accessibilityLabel)
     button.image = MenuBarIcon.image(
       isPaused: actionPolicy.state == .paused,
       accessibilityDescription: presentation.accessibilityLabel)
