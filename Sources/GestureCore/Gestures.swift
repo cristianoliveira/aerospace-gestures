@@ -302,8 +302,13 @@ public struct Binding: Decodable, Sendable {
       } catch {
         throw ConfigurationError.invalid("app must be a nonempty macOS bundle identifier")
       }
-      guard !identifier.isEmpty, identifier == identifier.trimmingCharacters(in: .whitespacesAndNewlines),
-        identifier.contains("."), identifier.split(separator: ".", omittingEmptySubsequences: false).allSatisfy({ !$0.isEmpty })
+      guard !identifier.isEmpty,
+        identifier == identifier.trimmingCharacters(in: .whitespacesAndNewlines),
+        identifier.contains("."),
+        identifier.split(separator: ".", omittingEmptySubsequences: false).allSatisfy({ segment in
+          !segment.isEmpty
+            && segment.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") }
+        })
       else {
         throw ConfigurationError.invalid("app must be a nonempty macOS bundle identifier")
       }

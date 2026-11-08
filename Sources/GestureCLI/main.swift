@@ -221,14 +221,15 @@ let commandOutputHandler: (CommandOutputStream, Data) -> Void = { stream, data i
 let runner = CommandRunner()
 var detectors: [UInt: GestureDetector] = [:]
 var modifierSequenceTracker = ModifierSequenceTracker()
-var pinnedApps: [UInt: String] = [:]
+var appFocusTrackers: [UInt: AppGestureFocusTracker] = [:]
 var receivedFrame = false
 let modifierStateSampler: any ModifierStateSampling = CoreGraphicsModifierStateSampler()
-let frontmostAppSampler: () -> String? = { NSWorkspace.shared.frontmostApplication?.bundleIdentifier }
+let frontmostAppSampler: () -> String? = {
+  NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+}
 
 let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
   let modifierSample = contacts.isEmpty ? .unknown : modifierStateSampler.sample()
-  let frontmostApp = contacts.isEmpty ? nil : frontmostAppSampler()
   let frameToken = actionPolicy.captureFrame(device: device, contactCount: contacts.count)
   MultitouchInput.recordMainQueueScheduled()
   DispatchQueue.main.async {
@@ -250,12 +251,12 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
     let sequenceModifierSample =
       modifierSequenceTracker.observe(
         device: device, contactCount: contacts.count, sample: modifierSample) ?? .unknown
-    if contacts.isEmpty {
-      pinnedApps.removeValue(forKey: device)
-    } else if pinnedApps[device] == nil, let frontmostApp {
-      pinnedApps[device] = frontmostApp
-    }
-    let pinnedApp = pinnedApps[device]
+    var appFocusTracker = appFocusTrackers[device] ?? AppGestureFocusTracker()
+    let frontmostApp = contacts.isEmpty ? nil : frontmostAppSampler()
+    _ = appFocusTracker.observe(
+      contactCount: contacts.count, frontmostApp: frontmostApp,
+      appBindingsEnabled: appGesturePolicy.isEnabled)
+    appFocusTrackers[device] = appFocusTracker
     let activeConfiguration = reloadPolicy.activeConfiguration
     var detector =
       detectors[device]
@@ -271,13 +272,18 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
       GestureOutputFormatter.describe(
         gesture: gesture, modifiers: sequenceModifierSample, actionContext: actionContext))
     fflush(stdout)
-    guard
+    let dispatchObservation = appFocusTracker.observe(
+      contactCount: contacts.count,
+      frontmostApp: contacts.isEmpty ? nil : frontmostAppSampler(),
+      appBindingsEnabled: appGesturePolicy.isEnabled)
+    appFocusTrackers[device] = appFocusTracker
+    guard dispatchObservation.mayDispatch,
       let binding = CommandDecision.binding(
         for: gesture,
         in: activeConfiguration?.bindings ?? [],
         modifiers: sequenceModifierSample,
         dryRun: dryRun,
-        frontmostApp: pinnedApp == frontmostApp ? frontmostApp : nil,
+        frontmostApp: dispatchObservation.matchingApp,
         appBindingsEnabled: appGesturePolicy.isEnabled),
       actionPolicy.mayDispatch(gesture, from: frameToken)
     else { return }
@@ -299,7 +305,7 @@ if let error = MultitouchInput.start(
   onFrame: onFrame,
   onDeviceRemoved: { device in
     detectors.removeValue(forKey: device)
-    pinnedApps.removeValue(forKey: device)
+    appFocusTrackers.removeValue(forKey: device)
     _ = modifierSequenceTracker.observe(device: device, contactCount: 0, sample: .unknown)
     actionPolicy.retireDevice(device)
   })

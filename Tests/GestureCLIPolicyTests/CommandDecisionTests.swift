@@ -56,22 +56,24 @@ final class CommandDecisionTests: XCTestCase {
   }
 
   func testAppSpecificBindingOverridesGenericAndFallsBackForOtherAppsOrWhenDisabled() throws {
-    let configuration = try Configuration.load(Data(
-      """
-      [[bindings]]
-      fingers = 3
-      direction = "left"
-      command = ["/bin/echo", "generic"]
+    let configuration = try Configuration.load(
+      Data(
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        command = ["/bin/echo", "generic"]
 
-      [[bindings]]
-      fingers = 3
-      direction = "left"
-      app = "com.example.Editor"
-      command = ["/bin/echo", "editor"]
-      """.utf8))
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        app = "com.example.Editor"
+        command = ["/bin/echo", "editor"]
+        """.utf8))
     let gesture = Gesture(fingers: 3, direction: .left)
     func select(_ app: String?, enabled: Bool = true) -> [String]? {
-      CommandDecision.binding(for: gesture, in: configuration.bindings,
+      CommandDecision.binding(
+        for: gesture, in: configuration.bindings,
         modifiers: .known(.none), dryRun: false, frontmostApp: app,
         appBindingsEnabled: enabled)?.command
     }
@@ -82,18 +84,70 @@ final class CommandDecisionTests: XCTestCase {
     XCTAssertEqual(select("com.example.Editor", enabled: false), ["/bin/echo", "generic"])
   }
 
+  func testUnknownFrontmostAppAtTouchDownCannotBecomeScopedMidGesture() {
+    var tracker = AppGestureFocusTracker()
+    XCTAssertEqual(
+      tracker.observe(contactCount: 2, frontmostApp: nil, appBindingsEnabled: true).matchingApp, nil
+    )
+    XCTAssertEqual(
+      tracker.observe(contactCount: 3, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .matchingApp, nil)
+    _ = tracker.observe(contactCount: 0, frontmostApp: nil, appBindingsEnabled: true)
+    XCTAssertEqual(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .matchingApp, "com.example.Editor")
+  }
+
+  func testFocusChangeInvalidatesScopeUntilFullLift() {
+    var tracker = AppGestureFocusTracker()
+    XCTAssertTrue(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .mayDispatch)
+    XCTAssertFalse(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Other", appBindingsEnabled: true)
+        .mayDispatch)
+    XCTAssertFalse(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .mayDispatch)
+    _ = tracker.observe(contactCount: 0, frontmostApp: nil, appBindingsEnabled: true)
+    XCTAssertTrue(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .mayDispatch)
+  }
+
+  func testTurningScopedGesturesBackOnRequiresANewContactSequence() {
+    var tracker = AppGestureFocusTracker()
+    XCTAssertEqual(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .matchingApp, "com.example.Editor")
+    XCTAssertNil(
+      tracker.observe(
+        contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: false
+      ).matchingApp)
+    XCTAssertNil(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .matchingApp)
+    _ = tracker.observe(contactCount: 0, frontmostApp: nil, appBindingsEnabled: true)
+    XCTAssertEqual(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .matchingApp, "com.example.Editor")
+  }
+
   func testScopedBindingNeverBecomesGlobalWhenAppToggleIsOff() throws {
-    let configuration = try Configuration.load(Data(
-      """
-      [[bindings]]
-      fingers = 3
-      direction = "left"
-      app = "com.example.Editor"
-      command = ["/bin/echo", "editor"]
-      """.utf8))
-    XCTAssertNil(CommandDecision.binding(for: Gesture(fingers: 3, direction: .left),
-      in: configuration.bindings, modifiers: .known(.none), dryRun: false,
-      frontmostApp: "com.example.Editor", appBindingsEnabled: false))
+    let configuration = try Configuration.load(
+      Data(
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        app = "com.example.Editor"
+        command = ["/bin/echo", "editor"]
+        """.utf8))
+    XCTAssertNil(
+      CommandDecision.binding(
+        for: Gesture(fingers: 3, direction: .left),
+        in: configuration.bindings, modifiers: .known(.none), dryRun: false,
+        frontmostApp: "com.example.Editor", appBindingsEnabled: false))
   }
 
   func testHeldExtraModifierNeverFallsBackToPlainOrPartialBinding() throws {

@@ -122,32 +122,35 @@ final class CLIConfigurationTests: XCTestCase {
   }
 
   func testAppBundleIdentifierIsOptionalExactAndScopedBindingsMayPairWithGeneric() throws {
-    let config = try Configuration.load(Data(
-      """
-      [[bindings]]
-      fingers = 3
-      direction = "left"
-      command = ["/bin/echo"]
-      [[bindings]]
-      fingers = 3
-      direction = "left"
-      app = "com.example.Editor"
-      command = ["/bin/echo"]
-      """.utf8))
+    let config = try Configuration.load(
+      Data(
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        command = ["/bin/echo"]
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        app = "com.example.Editor"
+        command = ["/bin/echo"]
+        """.utf8))
     XCTAssertNil(config.bindings[0].app)
     XCTAssertEqual(config.bindings[1].app, "com.example.Editor")
   }
 
   func testMalformedAppIdentifiersAndDuplicateScopedIdentityAreRejected() {
-    for invalid in ["", "Editor", "com..Editor", " com.example.Editor"] {
-      XCTAssertThrowsError(try Configuration.load(Data(
-        """
-        [[bindings]]
-        fingers = 3
-        direction = "left"
-        app = \"\(invalid)\"
-        command = ["/bin/echo"]
-        """.utf8)))
+    for invalid in ["", "Editor", "com..Editor", " com.example.Editor", "com.example/Editor"] {
+      XCTAssertThrowsError(
+        try Configuration.load(
+          Data(
+            """
+            [[bindings]]
+            fingers = 3
+            direction = "left"
+            app = \"\(invalid)\"
+            command = ["/bin/echo"]
+            """.utf8)))
     }
     let duplicate = """
       [[bindings]]
