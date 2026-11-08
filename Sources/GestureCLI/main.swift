@@ -7,11 +7,11 @@ import GestureInfrastructure
 import MultitouchInput
 import os
 
-let commandName = "aerospace-gestures"
+let commandName = "cafune"
 
 func fail(_ message: String) -> Never {
   FileHandle.standardError.write(
-    Data("Error: \(message)\nRun aerospace-gestures --help for usage and recovery steps.\n".utf8))
+    Data("Error: \(message)\nRun \(commandName) --help for usage and recovery steps.\n".utf8))
   exit(1)
 }
 
@@ -91,7 +91,7 @@ case .check(let configurationURL):
   exit(0)
 case .service(let action):
   let executableURL = environment.homeDirectory
-    .appendingPathComponent(".local/bin/aerospace-gestures")
+    .appendingPathComponent(".local/bin/cafune")
   let paths = LaunchAgentPaths(
     homeDirectory: environment.homeDirectory,
     executableURL: executableURL,

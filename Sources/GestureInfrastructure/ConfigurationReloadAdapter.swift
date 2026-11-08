@@ -118,7 +118,8 @@ public struct ConfigurationReloadSourceResolver: Sendable {
     else {
       throw ConfigurationReloadSourceError.unsafeConfigurationPath(
         configurationURL,
-        "target must be an aerospace-gestures TOML file under the trusted Nix store")
+        "target must be a Cafuné TOML file with the trusted `-aerospace-gestures.toml` suffix under the Nix store"
+      )
     }
     try validateRegularFile(resolvedURL, requireNonWritable: true)
   }

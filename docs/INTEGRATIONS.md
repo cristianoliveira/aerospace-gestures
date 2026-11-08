@@ -89,7 +89,9 @@ front window and wraps at either end. It does not read page content or send
 keyboard shortcuts. It does nothing when Brave is closed, not frontmost,
 has no windows, or the front window has fewer than two tabs.
 
-From this repository's root, copy the reviewed helper to a stable location:
+From this repository's root, copy the reviewed helper to a stable location. Its
+`~/.local/share/aerospace-gestures/` directory is user data and intentionally
+keeps its legacy name after the executable is renamed to `cafune`:
 
 ```sh
 install -d "$HOME/.local/share/aerospace-gestures"
@@ -155,7 +157,7 @@ AeroSpace is optional for the app-only examples.
 
 1. Merge only the bindings you want into your active config. Keep root settings
    such as `threshold` before the first `[[bindings]]` table.
-2. Run `aerospace-gestures check /absolute/path/to/config.toml` with the same
+2. Run `cafune check /absolute/path/to/config.toml` with the same
    executable version as your listener. This validates the config and executable
    paths, not Herdr arguments, script paths, Automation access or hardware input.
 3. Follow the [safe reload steps](CONFIGURATION.md#validate-and-apply-changes).

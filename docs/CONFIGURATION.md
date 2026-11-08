@@ -2,7 +2,7 @@
 
 Use a TOML file to map trackpad gestures to commands. Start with one harmless binding, validate the file, then test recognition before enabling commands.
 
-This guide covers the current development source. App-scoped bindings are experimental in v0.7.0-alpha.1; the menu-bar precedence choice described below is newer and not in that published alpha. v0.6.0 and earlier do not support `app`. The v0.3.0 release does not support pinch bindings. Check `aerospace-gestures --version` and `type -a aerospace-gestures`. From a checkout, replace `aerospace-gestures` in the commands below with `swift run aerospace-gestures` to use that source.
+This guide covers the current development source. The executable and CLI are named `cafune`; the default configuration path intentionally retains its legacy `aerospace-gestures` directory. App-scoped bindings are experimental in v0.7.0-alpha.1; the menu-bar precedence choice described below is newer and not in that published alpha. v0.6.0 and earlier do not support `app`. The v0.3.0 release does not support pinch bindings. Check `cafune --version` and `type -a cafune`. From a checkout, replace `cafune` in the commands below with `swift run cafune` to use that source.
 
 ## Contents
 
@@ -21,18 +21,18 @@ This guide covers the current development source. App-scoped bindings are experi
 For a first experiment:
 
 ```sh
-aerospace-gestures init ./config.toml
-aerospace-gestures check ./config.toml
+cafune init ./config.toml
+cafune check ./config.toml
 ```
 
 `init` refuses to overwrite an existing file or symlink. It creates a three-finger-down binding that shows an “It's hooked!” dialog. The same popup is in [config.probe.toml](../config.probe.toml). No AeroSpace installation is needed.
 
-Without a path, `aerospace-gestures init` writes to:
+Without a path, `cafune init` writes to:
 
 - `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` when `XDG_CONFIG_HOME` is nonempty and absolute.
 - Otherwise, `~/.config/aerospace-gestures/config.toml`.
 
-`check` and `run` require an explicit path. Relative paths resolve from your current directory. Neither `run` nor `listen start` creates a file. For an installed service, use the config path shown by `aerospace-gestures service status`; do not assume it uses the file in your current directory. See [service setup](USAGE.md#optional-per-user-service).
+`check` and `run` require an explicit path. Relative paths resolve from your current directory. Neither `run` nor `listen start` creates a file. For an installed service, use the config path shown by `cafune service status`; do not assume it uses the file in your current directory. See [service setup](USAGE.md#optional-per-user-service).
 
 ## Complete example
 
@@ -98,7 +98,7 @@ Every `[[bindings]]` entry requires all three properties:
 
 A finger-count/direction pair may have multiple bindings when their modifier sets or app scopes differ. The default menu-bar precedence is app-specific first, so app-specific bindings take precedence over a generic binding with the same gesture and modifiers. The runtime-only **Global bindings first** menu choice reverses that preference and uses the app-specific binding only when no generic binding exists. If the frontmost application does not match, the generic binding is used when present; otherwise no command runs. Unknown frontmost app identity never matches a scoped binding. The menu-bar control can disable app-specific gestures without disabling generic bindings; scoped commands never become global. The switch is persisted separately from the existing pause control. Matching is exact: holding extra modifiers does not fall back to a partial or unmodified binding. The modifier set is pinned when a contact sequence starts; a change or unknown state cancels that sequence until all fingers lift. Fn remains unsupported and fails closed; Caps Lock is ignored because it is toggled state, not a held modifier. Listen and dry-run output shows the recognized modifier combination but never runs commands. Two-finger swipes are unsupported. Unknown binding properties are rejected to catch typos; the obsolete `gesture` property is also rejected. The `app` property must be a dotted, nonempty bundle identifier; it does not request Accessibility or Screen Recording permission.
 
-The `modifiers` property was introduced in v0.5.0, but v0.5.0 can parse modifier bindings and still report the modifier state as unknown on macOS when device-specific left/right bits accompany a generic modifier flag. Modifier dispatch requires v0.5.1 or later. The property is always plural, `modifiers`, even for one key; singular `modifier` is invalid and rejected. An older v0.4.0 binary does not distinguish modified from unmodified bindings, so a valid plain/Command pair can fail `check` as a duplicate gesture. Check the exact executable that will validate and run this config: `type -a aerospace-gestures` lists installed binaries, but the LaunchAgent may use a different path; check its configured executable too. Nix-managed installs may still point to an older source pin: update the Nix declaration, rebuild and deploy that binary separately, then confirm it reports v0.5.1 or later. Changing the config symlink alone does not upgrade the executable.
+The `modifiers` property was introduced in v0.5.0, but v0.5.0 can parse modifier bindings and still report the modifier state as unknown on macOS when device-specific left/right bits accompany a generic modifier flag. Modifier dispatch requires v0.5.1 or later. The property is always plural, `modifiers`, even for one key; singular `modifier` is invalid and rejected. An older v0.4.0 binary does not distinguish modified from unmodified bindings, so a valid plain/Command pair can fail `check` as a duplicate gesture. Check the exact executable that will validate and run this config: `type -a cafune` lists installed binaries, but the LaunchAgent may use a different path; check its configured executable too. Nix-managed installs may still point to an older source pin: update the Nix declaration, rebuild and deploy that binary separately, then confirm it reports v0.5.1 or later. Changing the config symlink alone does not upgrade the executable.
 
 This valid example defines a plain and Command-modified three-finger right swipe:
 
@@ -118,13 +118,13 @@ command = ["/bin/echo", "Command-three-finger right"]
 After updating the declarative config, list available binaries and set `BIN` to the exact v0.5.1+ executable (also verify the LaunchAgent is configured to use the intended version):
 
 ```sh
-type -a aerospace-gestures
-BIN="/absolute/path/to/aerospace-gestures"
+type -a cafune
+BIN="/absolute/path/to/cafune"
 "$BIN" --version # Must report v0.5.1 or later.
 "$BIN" check /etc/aerospace-gestures/config.toml
 ```
 
-`check` reads and validates the file; it does not start the listener or run binding commands. Do not rely on whichever binary a bare `aerospace-gestures` command finds first on `PATH`.
+`check` reads and validates the file; it does not start the listener or run binding commands. Do not rely on whichever `cafune` binary a bare command finds first on `PATH`.
 
 ## TOML placement rules
 
@@ -232,8 +232,8 @@ There are no TOML timeout, queue, cooldown, or working-directory settings.
 ## Tune sensitivity
 
 1. Start with the defaults in the complete example.
-2. Run `aerospace-gestures check ./config.toml`.
-3. Run `aerospace-gestures run ./config.toml --dry-run`. This loads your thresholds without executing commands.
+2. Run `cafune check ./config.toml`.
+3. Run `cafune run ./config.toml --dry-run`. This loads your thresholds without executing commands.
 4. Repeat the same gesture, lifting all fingers between attempts.
 5. Press Ctrl-C. Change only one root threshold, then repeat steps 2–4. Dry-run has no reload control.
 
@@ -249,9 +249,9 @@ Sensitivity is not the only condition. Both contacts in a two-finger pinch must 
 
 | Command or control | What it proves or changes |
 | --- | --- |
-| `aerospace-gestures check ./config.toml` | Validates TOML, supported values, duplicate bindings, and executable permissions. Does not start input or run commands. |
-| `aerospace-gestures run ./config.toml --dry-run` | Observes recognition with this file's thresholds. Never launches commands; does not prove a binding's command works. |
-| `aerospace-gestures run ./config.toml` | Enables configured commands immediately. Use only after reviewing the file. |
+| `cafune check ./config.toml` | Validates TOML, supported values, duplicate bindings, and executable permissions. Does not start input or run commands. |
+| `cafune run ./config.toml --dry-run` | Observes recognition with this file's thresholds. Never launches commands; does not prove a binding's command works. |
+| `cafune run ./config.toml` | Enables configured commands immediately. Use only after reviewing the file. |
 | **Reload configuration** in the menu | Validates and applies the active file in normal run, including service runs. No automatic reload occurs when you save. |
 
 For a safe edit cycle, choose **Disable actions**, edit the active file, run `check` against that path, then choose **Reload configuration**. Check the menu result before enabling actions again. Lift all fingers before trying a fresh gesture.

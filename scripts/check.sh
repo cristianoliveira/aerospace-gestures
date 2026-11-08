@@ -16,7 +16,7 @@ fi
 : >"$log" || { printf 'false\nUnable to create gate log\n'; exit 1; }
 
 failed=0
-steps=(release-notes-test release-tag-test cli-ux-test build test install-test)
+steps=(release-notes-test release-tag-test release-package-test cli-ux-test build test install-test)
 if [[ "${CHECK_SKIP_GUARDRAILS:-0}" != 1 ]]; then
   steps=(guardrails "${steps[@]}")
 fi
@@ -25,6 +25,7 @@ for step in "${steps[@]}"; do
     guardrails) command=("$root/scripts/test-guardrails.sh") ;;
     release-notes-test) command=("$root/scripts/test-extract-release-notes.sh") ;;
     release-tag-test) command=("$root/scripts/test-release-tag-classification.sh") ;;
+    release-package-test) command=("$root/scripts/test-release-archive.sh") ;;
     cli-ux-test) command=("$root/scripts/test-cli-ux.sh") ;;
     build) command=("$swift_bin" build -Xswiftc -warnings-as-errors) ;;
     test) command=("$swift_bin" test) ;;

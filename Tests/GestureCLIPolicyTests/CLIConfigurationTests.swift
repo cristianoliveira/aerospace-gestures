@@ -72,8 +72,8 @@ final class CLIConfigurationTests: XCTestCase {
       XCTAssertTrue(text.contains(defaultURL.path))
       XCTAssertTrue(text.contains("Prerequisites:"))
       XCTAssertTrue(text.contains("Examples:"))
-      XCTAssertTrue(text.contains("aerospace-gestures init"))
-      XCTAssertTrue(text.contains("aerospace-gestures check <config.toml>"))
+      XCTAssertTrue(text.contains("cafune init"))
+      XCTAssertTrue(text.contains("cafune check <config.toml>"))
     }
     let rootHelp = CLIHelp.text(for: .root, defaultConfigurationURL: defaultURL)
     XCTAssertTrue(rootHelp.contains("pinch-to-zoom"))
@@ -231,7 +231,7 @@ final class CLIConfigurationTests: XCTestCase {
     }
     XCTAssertTrue(CLIConfigurationFailure.missing(at: resolvedPath).contains(resolvedPath.path))
     XCTAssertTrue(
-      CLIConfigurationFailure.missing(at: resolvedPath).contains("aerospace-gestures init"))
+      CLIConfigurationFailure.missing(at: resolvedPath).contains("cafune init"))
   }
 
   func testInvalidExplicitConfigurationErrorIncludesResolvedPath() throws {

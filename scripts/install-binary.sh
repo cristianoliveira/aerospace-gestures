@@ -3,7 +3,7 @@ set -eu
 
 source=${1:?Expected release binary path}
 directory=${2:?Expected installation directory}
-target="$directory/aerospace-gestures"
+target="$directory/cafune"
 
 if [ -L "$source" ] || [ ! -f "$source" ] || [ ! -x "$source" ]; then
   echo "Cannot install: build the release executable first: $source" >&2
@@ -19,7 +19,7 @@ if [ -e "$target" ] || [ -L "$target" ]; then
 fi
 
 mkdir -p "$directory"
-staged=$(mktemp "$directory/.aerospace-gestures.XXXXXX")
+staged=$(mktemp "$directory/.cafune.XXXXXX")
 trap 'rm -f "$staged"' EXIT HUP INT TERM
 cp "$source" "$staged"
 chmod 755 "$staged"

@@ -2,6 +2,7 @@ import Darwin
 import Foundation
 import GestureCore
 import XCTest
+
 @testable import GestureInfrastructure
 
 final class ConfigurationReloadAdapterTests: XCTestCase {

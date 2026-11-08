@@ -2,9 +2,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "aerospace-gestures",
+    name: "cafune",
     platforms: [.macOS(.v13)],
-    products: [.executable(name: "aerospace-gestures", targets: ["GestureCLI"])],
+    products: [.executable(name: "cafune", targets: ["GestureCLI"])],
     dependencies: [
         .package(url: "https://github.com/LebJe/TOMLKit.git", exact: "0.6.0")
     ],

@@ -10,7 +10,7 @@ trap 'rm -rf "$test_tmp"' EXIT
 cd "$root"
 
 swift build >/dev/null 2>&1
-bin="$(swift build --show-bin-path)/aerospace-gestures"
+bin="$(swift build --show-bin-path)/cafune"
 # Independent expected version for the planned v0.7.0-alpha.1 release. The release
 # workflow also checks the packaged binary against the pushed tag.
 version="0.7.0-alpha.1"
@@ -80,13 +80,13 @@ expect_exact_stdout "version subcommand prints the exact baked version" "$versio
 
 expect_stdout "root --help shows structured sections on stdout" "Available Commands:" "$bin" --help
 expect_stdout "root help includes flags and examples" "Examples:" "$bin" --help
-expect_stdout "help check shows per-command usage on stdout" "Usage: aerospace-gestures check" "$bin" help check
-expect_stdout "help listen documents explicit start action" "Usage: aerospace-gestures listen <start>" "$bin" help listen
+expect_stdout "help check shows per-command usage on stdout" "Usage: cafune check" "$bin" help check
+expect_stdout "help listen documents explicit start action" "Usage: cafune listen <start>" "$bin" help listen
 expect_stdout "help service lists service actions" "Actions:" "$bin" help service
-expect_stdout "help version is navigable" "Usage: aerospace-gestures version" "$bin" help version
-expect_stdout "version --help is navigable" "Usage: aerospace-gestures version" "$bin" version --help
-expect_stdout "help help is navigable" "Usage: aerospace-gestures help" "$bin" help help
-expect_stdout "help --help is navigable" "Usage: aerospace-gestures help" "$bin" help --help
+expect_stdout "help version is navigable" "Usage: cafune version" "$bin" help version
+expect_stdout "version --help is navigable" "Usage: cafune version" "$bin" version --help
+expect_stdout "help help is navigable" "Usage: cafune help" "$bin" help help
+expect_stdout "help --help is navigable" "Usage: cafune help" "$bin" help --help
 expect_stdout "service action help returns safe group help" "Actions:" "$bin" service status --help
 
 root_help="$("$bin" --help)"
@@ -129,7 +129,7 @@ missing_configuration="$test_tmp/missing.toml"
 expect_error "runtime config failure keeps diagnostics" "Error: Cannot load configuration" \
   "$bin" check "$missing_configuration"
 expect_error "runtime config failure keeps root recovery guidance" \
-  "Run aerospace-gestures --help for usage and recovery steps." \
+  "Run cafune --help for usage and recovery steps." \
   "$bin" check "$missing_configuration"
 
 if ((failures)); then

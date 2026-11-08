@@ -10,7 +10,7 @@ test:
 # First install only; an existing binary is never replaced or restarted.
 install:
 	swift build -c release
-	@./scripts/install-binary.sh .build/release/aerospace-gestures "$(HOME)/.local/bin"
+	@./scripts/install-binary.sh .build/release/cafune "$(HOME)/.local/bin"
 
 format:
 	xcrun swift-format format --in-place --recursive Sources Tests
