@@ -146,11 +146,10 @@ case .help, .version, .initialize, .check, .service:
   fatalError("Handled CLI request unexpectedly reached device startup")
 }
 let actionPolicy = GestureActionPolicy(mode: executionMode)
-let appGesturePreferenceKey = "appScopedGesturesEnabled"
-let savedAppGestureState = UserDefaults.standard.object(forKey: appGesturePreferenceKey) as? Bool
+let appGesturePreferences = AppGesturePreferenceStore()
 let appGesturePolicy = AppGesturePolicy(
-  enabled: savedAppGestureState ?? true,
-  onChange: { UserDefaults.standard.set($0, forKey: appGesturePreferenceKey) })
+  enabled: appGesturePreferences.load() ?? true,
+  onChange: { appGesturePreferences.save($0) })
 let reloadPolicy = ConfigurationReloadPolicy(
   initialConfiguration: configuration, mode: executionMode)
 let reloadAdapter: ConfigurationReloadAdapter?

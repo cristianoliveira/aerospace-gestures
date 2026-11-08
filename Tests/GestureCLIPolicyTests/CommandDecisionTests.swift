@@ -4,6 +4,32 @@ import XCTest
 @testable import GestureCLIPolicy
 
 final class CommandDecisionTests: XCTestCase {
+  func testAppGesturePreferencePersistsBooleanAcrossPolicyInstances() {
+    let suiteName = "com.aerospace-gestures.tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let firstStore = AppGesturePreferenceStore(defaults: defaults)
+
+    XCTAssertNil(firstStore.load())
+    let firstPolicy = AppGesturePolicy(
+      enabled: firstStore.load() ?? true,
+      onChange: { firstStore.save($0) })
+    XCTAssertTrue(firstPolicy.isEnabled)
+    firstPolicy.setEnabled(false)
+
+    let secondStore = AppGesturePreferenceStore(defaults: UserDefaults(suiteName: suiteName)!)
+    let secondPolicy = AppGesturePolicy(
+      enabled: secondStore.load() ?? true,
+      onChange: { secondStore.save($0) })
+    XCTAssertFalse(secondPolicy.isEnabled)
+    XCTAssertTrue(defaults.object(forKey: "appScopedGesturesEnabled") is Bool)
+    XCTAssertFalse(defaults.bool(forKey: "appScopedGesturesEnabled"))
+
+    secondPolicy.setEnabled(true)
+    let thirdStore = AppGesturePreferenceStore(defaults: UserDefaults(suiteName: suiteName)!)
+    XCTAssertEqual(thirdStore.load(), true)
+  }
+
   func testMatchesSwipeAndPinchBindingsWithExactModifierSets() throws {
     let configuration = try Configuration.load(
       Data(

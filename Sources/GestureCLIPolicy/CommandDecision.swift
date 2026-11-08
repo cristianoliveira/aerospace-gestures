@@ -66,6 +66,25 @@ public struct AppGestureFocusTracker {
   }
 }
 
+/// Stores only the app-scoped gesture toggle in an explicit per-user defaults suite.
+public struct AppGesturePreferenceStore {
+  public static let suiteName = "com.aerospace-gestures"
+  private static let key = "appScopedGesturesEnabled"
+  private let defaults: UserDefaults
+
+  public init(defaults: UserDefaults? = UserDefaults(suiteName: suiteName)) {
+    self.defaults = defaults ?? .standard
+  }
+
+  public func load() -> Bool? {
+    defaults.object(forKey: Self.key) as? Bool
+  }
+
+  public func save(_ enabled: Bool) {
+    defaults.set(enabled, forKey: Self.key)
+  }
+}
+
 /// Independent opt-in switch for app-specific bindings; generic gestures remain active.
 public final class AppGesturePolicy {
   private let lock = NSLock()
