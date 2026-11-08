@@ -41,6 +41,11 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
   private let stateItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
   private let toggleItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
   private let appToggleItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+  private let appFirstItem = NSMenuItem(
+    title: "App-specific bindings first", action: nil, keyEquivalent: "")
+  private let globalFirstItem = NSMenuItem(
+    title: "Global bindings first", action: nil, keyEquivalent: "")
+  private let appSettingsSeparator = NSMenuItem.separator()
   private let reloadItem = NSMenuItem(title: "Reload configuration", action: nil, keyEquivalent: "")
   private let reloadFeedbackItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
 
@@ -69,6 +74,10 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
     toggleItem.action = #selector(toggleActions)
     appToggleItem.target = self
     appToggleItem.action = #selector(toggleAppGestures)
+    appFirstItem.target = self
+    appFirstItem.action = #selector(selectAppFirst)
+    globalFirstItem.target = self
+    globalFirstItem.action = #selector(selectGlobalFirst)
     reloadItem.target = self
     reloadItem.action = #selector(reloadConfiguration)
     reloadFeedbackItem.isEnabled = false
@@ -79,7 +88,9 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
     menu.addItem(.separator())
     menu.addItem(toggleItem)
     menu.addItem(appToggleItem)
-    menu.addItem(.separator())
+    menu.addItem(appFirstItem)
+    menu.addItem(globalFirstItem)
+    menu.addItem(appSettingsSeparator)
     menu.addItem(reloadItem)
     menu.addItem(reloadFeedbackItem)
     menu.addItem(.separator())
@@ -99,6 +110,16 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
 
   @objc private func toggleAppGestures() {
     appGesturePolicy.setEnabled(!appGesturePolicy.isEnabled)
+    updatePresentation()
+  }
+
+  @objc private func selectAppFirst() {
+    appGesturePolicy.setPrecedence(.appFirst)
+    updatePresentation()
+  }
+
+  @objc private func selectGlobalFirst() {
+    appGesturePolicy.setPrecedence(.globalFirst)
     updatePresentation()
   }
 
@@ -145,6 +166,13 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
       ? "Disable app-specific gestures" : "Enable app-specific gestures"
     appToggleItem.state = appGesturePolicy.isEnabled ? .on : .off
     appToggleItem.isHidden = !hasAppBindings
+    let precedencePresentation = AppBindingPrecedencePresentation(
+      hasAppScopedBindings: hasAppBindings, precedence: appGesturePolicy.precedence)
+    appFirstItem.state = precedencePresentation.appFirstIsChecked ? .on : .off
+    globalFirstItem.state = precedencePresentation.globalFirstIsChecked ? .on : .off
+    appFirstItem.isHidden = precedencePresentation.isHidden
+    globalFirstItem.isHidden = precedencePresentation.isHidden
+    appSettingsSeparator.isHidden = precedencePresentation.isHidden
 
     let reloadPresentation = ConfigurationReloadPresentation(
       state: reloadPolicy.state, canReload: reloadPolicy.canReload)
