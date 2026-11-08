@@ -39,7 +39,7 @@ command = ["/bin/echo", "Command-three-finger right"]
 # Experimental app scoping is supported in v0.7.0-alpha.1; v0.6.0 does not support `app`.
 # Optional exact macOS bundle-ID scope. Add a generic binding for fallback.
 # Default menu mode: app-specific matches take precedence over generic matches.
-# Choose Global bindings first in the menu to reverse that precedence.
+# In development builds after v0.7.0-alpha.1, choose Global bindings first in the menu to reverse it.
 # The menu-bar toggle disables only these scoped matches; it never makes them global.
 # App-specific gestures are enabled by default when configured.
 # [[bindings]]

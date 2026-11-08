@@ -2,7 +2,7 @@
 
 Use a TOML file to map trackpad gestures to commands. Start with one harmless binding, validate the file, then test recognition before enabling commands.
 
-This guide covers v0.7.0-alpha.1. App-scoped bindings are experimental in this pre-release; v0.6.0 and earlier do not support `app`. The v0.3.0 release does not support pinch bindings. Check `aerospace-gestures --version` and `type -a aerospace-gestures`. From a checkout, replace `aerospace-gestures` in the commands below with `swift run aerospace-gestures` to use that source.
+This guide covers the current development source. App-scoped bindings are experimental in v0.7.0-alpha.1; the menu-bar precedence choice described below is newer and not in that published alpha. v0.6.0 and earlier do not support `app`. The v0.3.0 release does not support pinch bindings. Check `aerospace-gestures --version` and `type -a aerospace-gestures`. From a checkout, replace `aerospace-gestures` in the commands below with `swift run aerospace-gestures` to use that source.
 
 ## Contents
 
