@@ -50,7 +50,9 @@ public struct AppGestureFocusTracker {
       isActive = true
       pinnedApp = frontmostApp
       appBindingsWereEnabled = appBindingsEnabled
-    } else if let pinnedApp, pinnedApp != frontmostApp {
+    } else if appBindingsWereEnabled, appBindingsEnabled,
+      let pinnedApp, pinnedApp != frontmostApp
+    {
       isInvalidated = true
     }
     if appBindingsWereEnabled && !appBindingsEnabled {

@@ -115,6 +115,23 @@ final class CommandDecisionTests: XCTestCase {
         .mayDispatch)
   }
 
+  func testDisabledAppScopesDoNotCancelGenericGesturesOnFocusChanges() {
+    var tracker = AppGestureFocusTracker()
+    XCTAssertTrue(
+      tracker.observe(
+        contactCount: 2, frontmostApp: nil, appBindingsEnabled: false
+      ).mayDispatch)
+    XCTAssertTrue(
+      tracker.observe(
+        contactCount: 2, frontmostApp: nil, appBindingsEnabled: false
+      ).mayDispatch)
+    XCTAssertNil(
+      tracker.observe(
+        contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: false
+      )
+      .matchingApp)
+  }
+
   func testTurningScopedGesturesBackOnRequiresANewContactSequence() {
     var tracker = AppGestureFocusTracker()
     XCTAssertEqual(
