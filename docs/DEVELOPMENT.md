@@ -72,6 +72,6 @@ When changing `Package.resolved`, regenerate `nix/default.nix` and `nix/workspac
 1. Set `CLIVersion.current` in `Sources/GestureCLIPolicy/CLIVersion.swift` and the version in `flake.nix` to the intended release version.
 2. Run `make check`, build with `swift build -c release`, and verify the binary's `--version` and `--help`.
 3. Perform the [usage smoke test](USAGE.md#run) on supported hardware.
-4. After approval, push a matching `vX.Y.Z` tag. The [release workflow](../.github/workflows/release.yml) builds and publishes arm64 and amd64 archives.
+4. Only after explicit approval, push a matching tag. The [release workflow](../.github/workflows/release.yml) accepts stable `vX.Y.Z` tags and the narrow prerelease form `vX.Y.Z-alpha.N` where `N` is a positive integer. Alpha releases are created with GitHub's prerelease flag and are excluded from the Latest release; stable releases keep the existing behavior. Do not create or push a tag before approval. The workflow builds and publishes arm64 and amd64 archives.
 
 Homebrew tap and Nix package updates are separate manual steps. Do not publish or change an installed service as part of ordinary development.

@@ -146,6 +146,11 @@ case .help, .version, .initialize, .check, .service:
   fatalError("Handled CLI request unexpectedly reached device startup")
 }
 let actionPolicy = GestureActionPolicy(mode: executionMode)
+let appGesturePreferences = AppGesturePreferenceStore()
+let appGesturePolicy = AppGesturePolicy(
+  enabled: appGesturePreferences.load() ?? true,
+  hasAppScopedBindings: configuration?.bindings.contains(where: { $0.app != nil }) == true,
+  onChange: { appGesturePreferences.save($0) })
 let reloadPolicy = ConfigurationReloadPolicy(
   initialConfiguration: configuration, mode: executionMode)
 let reloadAdapter: ConfigurationReloadAdapter?
@@ -216,11 +221,21 @@ let commandOutputHandler: (CommandOutputStream, Data) -> Void = { stream, data i
 let runner = CommandRunner()
 var detectors: [UInt: GestureDetector] = [:]
 var modifierSequenceTracker = ModifierSequenceTracker()
+var appFocusTrackers: [UInt: AppGestureFocusTracker] = [:]
 var receivedFrame = false
 let modifierStateSampler: any ModifierStateSampling = CoreGraphicsModifierStateSampler()
+let frontmostAppSampler: () -> String? = {
+  NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+}
 
 let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
   let modifierSample = contacts.isEmpty ? .unknown : modifierStateSampler.sample()
+  let shouldSampleFrontmostApp =
+    executionMode == .run
+    && appGesturePolicy.hasScopedBindings && appGesturePolicy.isEnabled
+  let callbackFrontmostApp =
+    shouldSampleFrontmostApp && !contacts.isEmpty
+    ? frontmostAppSampler() : nil
   let frameToken = actionPolicy.captureFrame(device: device, contactCount: contacts.count)
   MultitouchInput.recordMainQueueScheduled()
   DispatchQueue.main.async {
@@ -229,6 +244,7 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
     guard actionPolicy.isCurrent(frameToken) else {
       if contacts.isEmpty {
         detectors.removeValue(forKey: device)
+        appFocusTrackers[device]?.reset()
         _ = modifierSequenceTracker.observe(
           device: device, contactCount: 0, sample: .unknown)
       }
@@ -243,6 +259,15 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
       modifierSequenceTracker.observe(
         device: device, contactCount: contacts.count, sample: modifierSample) ?? .unknown
     let activeConfiguration = reloadPolicy.activeConfiguration
+    let hasAppScopedBindings =
+      activeConfiguration?.bindings.contains(where: { $0.app != nil }) == true
+    var appFocusTracker = appFocusTrackers[device] ?? AppGestureFocusTracker()
+    if hasAppScopedBindings {
+      _ = appFocusTracker.observe(
+        contactCount: contacts.count, frontmostApp: callbackFrontmostApp,
+        appBindingsEnabled: appGesturePolicy.isEnabled)
+      appFocusTrackers[device] = appFocusTracker
+    }
     var detector =
       detectors[device]
       ?? GestureDetector(
@@ -257,12 +282,24 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
       GestureOutputFormatter.describe(
         gesture: gesture, modifiers: sequenceModifierSample, actionContext: actionContext))
     fflush(stdout)
-    guard
+    let dispatchObservation: (mayDispatch: Bool, matchingApp: String?)
+    if hasAppScopedBindings {
+      dispatchObservation = appFocusTracker.observe(
+        contactCount: contacts.count,
+        frontmostApp: contacts.isEmpty ? nil : frontmostAppSampler(),
+        appBindingsEnabled: appGesturePolicy.isEnabled)
+      appFocusTrackers[device] = appFocusTracker
+    } else {
+      dispatchObservation = (true, nil)
+    }
+    guard dispatchObservation.mayDispatch,
       let binding = CommandDecision.binding(
         for: gesture,
         in: activeConfiguration?.bindings ?? [],
         modifiers: sequenceModifierSample,
-        dryRun: dryRun),
+        dryRun: dryRun,
+        frontmostApp: dispatchObservation.matchingApp,
+        appBindingsEnabled: appGesturePolicy.isEnabled),
       actionPolicy.mayDispatch(gesture, from: frameToken)
     else { return }
     if !runner.run(
@@ -283,6 +320,7 @@ if let error = MultitouchInput.start(
   onFrame: onFrame,
   onDeviceRemoved: { device in
     detectors.removeValue(forKey: device)
+    appFocusTrackers.removeValue(forKey: device)
     _ = modifierSequenceTracker.observe(device: device, contactCount: 0, sample: .unknown)
     actionPolicy.retireDevice(device)
   })
@@ -384,11 +422,14 @@ withExtendedLifetime(listenerLock) {
       guard let reloadAdapter else { fatalError("Normal run requires a config reload adapter") }
       runMenuBarApplication(
         actionPolicy: actionPolicy,
+        appGesturePolicy: appGesturePolicy,
+        hasAppBindings: configuration?.bindings.contains(where: { $0.app != nil }) == true,
         reloadPolicy: reloadPolicy,
         reloadAdapter: reloadAdapter,
         onSuccessfulReload: {
           actionPolicy.invalidateFramesForConfigurationReload()
           detectors.removeAll()
+          appFocusTrackers.removeAll()
         },
         onQuit: { shutdown.stop { exit(0) } })
     }
@@ -401,6 +442,8 @@ withExtendedLifetime(listenerLock) {
 @MainActor
 func runMenuBarApplication(
   actionPolicy: GestureActionPolicy,
+  appGesturePolicy: AppGesturePolicy,
+  hasAppBindings: Bool,
   reloadPolicy: ConfigurationReloadPolicy,
   reloadAdapter: ConfigurationReloadAdapter,
   onSuccessfulReload: @escaping () -> Void,
@@ -412,6 +455,8 @@ func runMenuBarApplication(
   }
   let menuBarControl = MenuBarControl(
     actionPolicy: actionPolicy,
+    appGesturePolicy: appGesturePolicy,
+    hasAppBindings: hasAppBindings,
     reloadPolicy: reloadPolicy,
     reloadAdapter: reloadAdapter,
     onSuccessfulReload: onSuccessfulReload,

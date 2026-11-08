@@ -6,7 +6,7 @@ debug_command_output = false # Set true temporarily to see echo output; may expo
 
 # Commands are literal argv arrays: absolute executable, then separate arguments.
 # Echo output is discarded by default; normal run logs only the exit status.
-# One binding per finger-count/direction/modifier set. Lift all fingers between gestures.
+# One binding per finger-count/direction/modifier/app set. Lift all fingers between gestures.
 
 [[bindings]]
 fingers = 3
@@ -34,6 +34,17 @@ fingers = 3
 direction = "right"
 modifiers = ["command"]
 command = ["/bin/echo", "Command-three-finger right"]
+
+# Experimental app scoping is supported in v0.7.0-alpha.1; v0.6.0 does not support `app`.
+# Optional exact macOS bundle-ID scope. Add a generic binding for fallback.
+# App-specific matches take precedence over generic matches with the same gesture/modifiers.
+# The menu-bar toggle disables only these scoped matches; it never makes them global.
+# App-specific gestures are enabled by default when configured.
+# [[bindings]]
+# fingers = 3
+# direction = "right"
+# app = "com.example.Editor"
+# command = ["/bin/echo", "Editor-three-finger right"]
 
 # Optional pinches: uncomment a whole table to enable it (v0.6.0 source).
 # Real-trackpad delivery is unverified; native macOS pinch-to-zoom still runs.

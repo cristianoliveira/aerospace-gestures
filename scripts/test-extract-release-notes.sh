@@ -34,6 +34,10 @@ expect_failure() { # description tag changelog
 cat >"$tmp/CHANGELOG.md" <<'EOF'
 # Changelog
 
+## v0.7.0-alpha.1
+
+Experimental app-scoped bindings.
+
 ## v0.1.0
 
 Old section.
@@ -61,6 +65,8 @@ Details line.
 
 - list item'
 
+expect_output "extracts the prerelease section by its exact tag" \
+  v0.7.0-alpha.1 "$tmp/CHANGELOG.md" "Experimental app-scoped bindings."
 expect_output "extracts the matching middle section with subheadings" \
   v0.2.0 "$tmp/CHANGELOG.md" "$expected_v020"
 expect_output "extracts the final section to end of file" \

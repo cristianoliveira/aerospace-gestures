@@ -4,6 +4,41 @@ import XCTest
 @testable import GestureCLIPolicy
 
 final class CommandDecisionTests: XCTestCase {
+  func testAppGesturePolicyTracksScopedBindingPresenceAcrossReloads() {
+    let policy = AppGesturePolicy(hasAppScopedBindings: false)
+    XCTAssertFalse(policy.hasScopedBindings)
+    policy.setHasAppScopedBindings(true)
+    XCTAssertTrue(policy.hasScopedBindings)
+    policy.setHasAppScopedBindings(false)
+    XCTAssertFalse(policy.hasScopedBindings)
+  }
+
+  func testAppGesturePreferencePersistsBooleanAcrossPolicyInstances() {
+    let suiteName = "com.aerospace-gestures.tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let firstStore = AppGesturePreferenceStore(defaults: defaults)
+
+    XCTAssertNil(firstStore.load())
+    let firstPolicy = AppGesturePolicy(
+      enabled: firstStore.load() ?? true,
+      onChange: { firstStore.save($0) })
+    XCTAssertTrue(firstPolicy.isEnabled)
+    firstPolicy.setEnabled(false)
+
+    let secondStore = AppGesturePreferenceStore(defaults: UserDefaults(suiteName: suiteName)!)
+    let secondPolicy = AppGesturePolicy(
+      enabled: secondStore.load() ?? true,
+      onChange: { secondStore.save($0) })
+    XCTAssertFalse(secondPolicy.isEnabled)
+    XCTAssertTrue(defaults.object(forKey: "appScopedGesturesEnabled") is Bool)
+    XCTAssertFalse(defaults.bool(forKey: "appScopedGesturesEnabled"))
+
+    secondPolicy.setEnabled(true)
+    let thirdStore = AppGesturePreferenceStore(defaults: UserDefaults(suiteName: suiteName)!)
+    XCTAssertEqual(thirdStore.load(), true)
+  }
+
   func testMatchesSwipeAndPinchBindingsWithExactModifierSets() throws {
     let configuration = try Configuration.load(
       Data(
@@ -53,6 +88,142 @@ final class CommandDecisionTests: XCTestCase {
         for: .pinchIn, in: configuration.bindings,
         modifiers: .known(ModifierSet([.option, .control])), dryRun: false)?.command,
       ["/bin/echo", "pinch"])
+  }
+
+  func testAppSpecificBindingOverridesGenericAndFallsBackForOtherAppsOrWhenDisabled() throws {
+    let configuration = try Configuration.load(
+      Data(
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        command = ["/bin/echo", "generic"]
+
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        app = "com.example.Editor"
+        command = ["/bin/echo", "editor"]
+        """.utf8))
+    let gesture = Gesture(fingers: 3, direction: .left)
+    func select(_ app: String?, enabled: Bool = true) -> [String]? {
+      CommandDecision.binding(
+        for: gesture, in: configuration.bindings,
+        modifiers: .known(.none), dryRun: false, frontmostApp: app,
+        appBindingsEnabled: enabled)?.command
+    }
+
+    XCTAssertEqual(select("com.example.Editor"), ["/bin/echo", "editor"])
+    XCTAssertEqual(select("com.example.editor"), ["/bin/echo", "generic"])
+    XCTAssertEqual(select(nil), ["/bin/echo", "generic"])
+    XCTAssertEqual(select("com.example.Editor", enabled: false), ["/bin/echo", "generic"])
+  }
+
+  func testUnknownFrontmostAppAtTouchDownCannotBecomeScopedMidGesture() {
+    var tracker = AppGestureFocusTracker()
+    XCTAssertEqual(
+      tracker.observe(contactCount: 2, frontmostApp: nil, appBindingsEnabled: true).matchingApp, nil
+    )
+    XCTAssertEqual(
+      tracker.observe(contactCount: 3, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .matchingApp, nil)
+    _ = tracker.observe(contactCount: 0, frontmostApp: nil, appBindingsEnabled: true)
+    XCTAssertEqual(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .matchingApp, "com.example.Editor")
+  }
+
+  func testFocusChangeInvalidatesScopeUntilFullLift() {
+    var tracker = AppGestureFocusTracker()
+    XCTAssertTrue(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .mayDispatch)
+    XCTAssertFalse(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Other", appBindingsEnabled: true)
+        .mayDispatch)
+    XCTAssertFalse(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .mayDispatch)
+    _ = tracker.observe(contactCount: 0, frontmostApp: nil, appBindingsEnabled: true)
+    XCTAssertTrue(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .mayDispatch)
+  }
+
+  func testDiscardedLiftResetsFocusStateBeforeTheNextContactSequence() {
+    var tracker = AppGestureFocusTracker()
+    XCTAssertFalse(
+      tracker.observe(
+        contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true
+      )
+      .matchingApp == nil)
+    XCTAssertFalse(
+      tracker.observe(
+        contactCount: 2, frontmostApp: "com.example.Other", appBindingsEnabled: true
+      )
+      .mayDispatch)
+
+    // The frame-policy stale path explicitly resets the tracker when it drops a lift frame.
+    tracker.reset()
+
+    XCTAssertEqual(
+      tracker.observe(
+        contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true
+      )
+      .matchingApp,
+      "com.example.Editor")
+  }
+
+  func testDisabledAppScopesDoNotCancelGenericGesturesOnFocusChanges() {
+    var tracker = AppGestureFocusTracker()
+    XCTAssertTrue(
+      tracker.observe(
+        contactCount: 2, frontmostApp: nil, appBindingsEnabled: false
+      ).mayDispatch)
+    XCTAssertTrue(
+      tracker.observe(
+        contactCount: 2, frontmostApp: nil, appBindingsEnabled: false
+      ).mayDispatch)
+    XCTAssertNil(
+      tracker.observe(
+        contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: false
+      )
+      .matchingApp)
+  }
+
+  func testTurningScopedGesturesBackOnRequiresANewContactSequence() {
+    var tracker = AppGestureFocusTracker()
+    XCTAssertEqual(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .matchingApp, "com.example.Editor")
+    XCTAssertNil(
+      tracker.observe(
+        contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: false
+      ).matchingApp)
+    XCTAssertNil(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .matchingApp)
+    _ = tracker.observe(contactCount: 0, frontmostApp: nil, appBindingsEnabled: true)
+    XCTAssertEqual(
+      tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
+        .matchingApp, "com.example.Editor")
+  }
+
+  func testScopedBindingNeverBecomesGlobalWhenAppToggleIsOff() throws {
+    let configuration = try Configuration.load(
+      Data(
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        app = "com.example.Editor"
+        command = ["/bin/echo", "editor"]
+        """.utf8))
+    XCTAssertNil(
+      CommandDecision.binding(
+        for: Gesture(fingers: 3, direction: .left),
+        in: configuration.bindings, modifiers: .known(.none), dryRun: false,
+        frontmostApp: "com.example.Editor", appBindingsEnabled: false))
   }
 
   func testHeldExtraModifierNeverFallsBackToPlainOrPartialBinding() throws {

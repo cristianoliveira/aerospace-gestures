@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v0.7.0-alpha.1
+
+**Pre-release:** App-scoped bindings are experimental. No existing configuration needs migration; app scope is opt-in with the `app` property. The app-specific gesture menu toggle is independent from pausing actions and remembers its Boolean preference across restarts.
+
+- Added optional exact, case-sensitive macOS bundle-ID scoping for gesture bindings. A matching app-specific binding takes precedence over the generic binding for the same gesture and modifiers; generic fallback remains available when there is no app match.
+- Added a separate menu-bar toggle for app-specific gestures. Disabling app-scoped matches never makes those commands global.
+
+**Limitations:** Frontmost-app matching uses the bundle identifier only. Unknown identity does not match an app-scoped binding, and a focus change during a contact sequence cancels dispatch until lift. No Accessibility or Screen Recording permission is requested. Real-trackpad focus changes, AppKit sampling, and application-specific behavior remain unverified on hardware. This pre-release is not a stable compatibility guarantee.
+
 ## v0.6.0
 
 **Compatibility:** Existing valid configurations need no migration. The built-in LaunchAgent does not restart after a successful Quit; use `service start` to resume it. An external service manager may restart it.

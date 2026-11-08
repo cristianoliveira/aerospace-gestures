@@ -40,6 +40,7 @@ Normal `run` adds a menu-bar icon:
 
 - **Disable actions** pauses new commands but keeps listening. A running command is not cancelled.
 - **Enable actions** resumes commands after you lift all fingers. Pause state resets on restart.
+- **Disable app-specific gestures / Enable app-specific gestures** affects only bindings with an `app` bundle ID; generic bindings remain active. This preference is remembered across restarts in the `com.aerospace-gestures` per-user defaults suite. It is separate from pause and applies after you lift all fingers.
 - **Reload configuration** applies edits to the active file. If validation fails, the previous configuration stays active; check the menu for the result.
 - **Quit AeroSpace Gestures** stops input, terminates any active command, writes final diagnostics, and exits.
 

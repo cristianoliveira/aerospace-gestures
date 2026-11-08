@@ -1,3 +1,4 @@
+import Foundation
 import GestureCore
 
 /// Resolves a recognized gesture to an executable binding; listen/dry-run never select one.
@@ -6,11 +7,130 @@ public enum CommandDecision {
     for gesture: Gesture,
     in bindings: [Binding],
     modifiers: ModifierSample,
-    dryRun: Bool
+    dryRun: Bool,
+    frontmostApp: String? = nil,
+    appBindingsEnabled: Bool = true
   ) -> Binding? {
     guard !dryRun, case .known(let currentModifiers) = modifiers else { return nil }
-    return bindings.first {
+    let matching = bindings.filter {
       $0.gesture == gesture && $0.modifiers == currentModifiers
     }
+    if appBindingsEnabled, let frontmostApp,
+      let scoped = matching.first(where: { $0.app == frontmostApp })
+    {
+      return scoped
+    }
+    return matching.first(where: { $0.app == nil })
+  }
+}
+
+/// Pins the frontmost-app sample, including an unknown sample, for one contact sequence.
+public struct AppGestureFocusTracker {
+  private var isActive = false
+  private var pinnedApp: String?
+  private var appBindingsWereEnabled = false
+  private var appScopeSuppressed = false
+  private var isInvalidated = false
+
+  public init() {}
+
+  /// A focus change after a known initial app invalidates all dispatch until full lift.
+  public mutating func reset() {
+    isActive = false
+    pinnedApp = nil
+    appBindingsWereEnabled = false
+    appScopeSuppressed = false
+    isInvalidated = false
+  }
+
+  public mutating func observe(
+    contactCount: Int, frontmostApp: String?, appBindingsEnabled: Bool
+  ) -> (mayDispatch: Bool, matchingApp: String?) {
+    guard contactCount > 0 else {
+      reset()
+      return (false, nil)
+    }
+    if !isActive {
+      isActive = true
+      pinnedApp = frontmostApp
+      appBindingsWereEnabled = appBindingsEnabled
+    } else if appBindingsWereEnabled, appBindingsEnabled,
+      let pinnedApp, pinnedApp != frontmostApp
+    {
+      isInvalidated = true
+    }
+    if appBindingsWereEnabled && !appBindingsEnabled {
+      appScopeSuppressed = true
+    }
+    guard !isInvalidated else { return (false, nil) }
+    let matchingApp =
+      appBindingsWereEnabled && appBindingsEnabled && !appScopeSuppressed
+      ? pinnedApp : nil
+    return (true, matchingApp)
+  }
+}
+
+/// Stores only the app-scoped gesture toggle in an explicit per-user defaults suite.
+public struct AppGesturePreferenceStore {
+  public static let suiteName = "com.aerospace-gestures"
+  private static let key = "appScopedGesturesEnabled"
+  private let defaults: UserDefaults
+
+  public init(defaults: UserDefaults? = UserDefaults(suiteName: suiteName)) {
+    self.defaults = defaults ?? .standard
+  }
+
+  public func load() -> Bool? {
+    defaults.object(forKey: Self.key) as? Bool
+  }
+
+  public func save(_ enabled: Bool) {
+    defaults.set(enabled, forKey: Self.key)
+  }
+}
+
+/// Independent opt-in switch for app-specific bindings; generic gestures remain active.
+public final class AppGesturePolicy {
+  private let lock = NSLock()
+  private var enabled: Bool
+  private var hasAppScopedBindings: Bool
+  private let onChange: (Bool) -> Void
+
+  public init(
+    enabled: Bool = true,
+    hasAppScopedBindings: Bool = false,
+    onChange: @escaping (Bool) -> Void = { _ in }
+  ) {
+    self.enabled = enabled
+    self.hasAppScopedBindings = hasAppScopedBindings
+    self.onChange = onChange
+  }
+
+  public var isEnabled: Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    return enabled
+  }
+
+  public var hasScopedBindings: Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    return hasAppScopedBindings
+  }
+
+  public func setHasAppScopedBindings(_ value: Bool) {
+    lock.lock()
+    hasAppScopedBindings = value
+    lock.unlock()
+  }
+  public func setEnabled(_ value: Bool) {
+    lock.lock()
+    guard enabled != value else {
+      lock.unlock()
+      return
+    }
+    enabled = value
+    lock.unlock()
+    onChange(value)
   }
 }

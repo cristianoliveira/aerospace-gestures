@@ -241,14 +241,15 @@ private struct DynamicCodingKey: CodingKey {
 public struct Binding: Decodable, Sendable {
   public let gesture: Gesture
   public let modifiers: ModifierSet
+  public let app: String?
   public let command: [String]
 
-  enum CodingKeys: String, CodingKey { case fingers, direction, gesture, modifiers, command }
+  enum CodingKeys: String, CodingKey { case fingers, direction, gesture, modifiers, app, command }
 
   public init(from decoder: Decoder) throws {
     let allValues = try decoder.container(keyedBy: DynamicCodingKey.self)
     let supportedProperties: Set<String> = [
-      "fingers", "direction", "gesture", "modifiers", "command",
+      "fingers", "direction", "gesture", "modifiers", "app", "command",
     ]
     if let unknownProperty = allValues.allKeys.map(\.stringValue).sorted().first(where: {
       !supportedProperties.contains($0)
@@ -256,7 +257,7 @@ public struct Binding: Decodable, Sendable {
       let suggestion =
         unknownProperty.hasPrefix("modif")
         ? "; did you mean 'modifiers'?"
-        : "; supported properties are fingers, direction, modifiers, and command"
+        : "; supported properties are fingers, direction, modifiers, app, and command"
       throw ConfigurationError.invalid(
         "unknown binding property '\(unknownProperty)'\(suggestion)")
     }
@@ -294,6 +295,27 @@ public struct Binding: Decodable, Sendable {
       }
     }
     modifiers = ModifierSet(decodedModifiers)
+    if values.contains(.app) {
+      let identifier: String
+      do {
+        identifier = try values.decode(String.self, forKey: .app)
+      } catch {
+        throw ConfigurationError.invalid("app must be a nonempty macOS bundle identifier")
+      }
+      guard !identifier.isEmpty,
+        identifier == identifier.trimmingCharacters(in: .whitespacesAndNewlines),
+        identifier.contains("."),
+        identifier.split(separator: ".", omittingEmptySubsequences: false).allSatisfy({ segment in
+          !segment.isEmpty
+            && segment.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") }
+        })
+      else {
+        throw ConfigurationError.invalid("app must be a nonempty macOS bundle identifier")
+      }
+      app = identifier
+    } else {
+      app = nil
+    }
     command = try values.decode([String].self, forKey: .command)
 
     switch direction {
@@ -315,6 +337,7 @@ public struct Binding: Decodable, Sendable {
 private struct GestureBindingIdentity: Hashable {
   let gesture: Gesture
   let modifiers: ModifierSet
+  let app: String?
 }
 
 public struct Configuration: Decodable, Sendable {
@@ -385,7 +408,8 @@ public struct Configuration: Decodable, Sendable {
         throw ConfigurationError.invalid(
           "command must be an argv array starting with an absolute executable path")
       }
-      let identity = GestureBindingIdentity(gesture: binding.gesture, modifiers: binding.modifiers)
+      let identity = GestureBindingIdentity(
+        gesture: binding.gesture, modifiers: binding.modifiers, app: binding.app)
       guard seen.insert(identity).inserted else {
         throw ConfigurationError.invalid(
           "duplicate gesture binding for the same modifier set")
