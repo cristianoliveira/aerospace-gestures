@@ -106,10 +106,12 @@ final class MenuBarControl: NSObject, NSMenuDelegate {
           guard let self,
             self.reloadPolicy.completeReload(token, with: .success(configuration))
           else { return }
-          self.onSuccessfulReload()
-          self.hasAppBindings =
+          let hasAppBindings =
             self.reloadPolicy.activeConfiguration?.bindings.contains(
               where: { $0.app != nil }) == true
+          self.appGesturePolicy.setHasAppScopedBindings(hasAppBindings)
+          self.onSuccessfulReload()
+          self.hasAppBindings = hasAppBindings
           self.updatePresentation()
         }
       } catch {

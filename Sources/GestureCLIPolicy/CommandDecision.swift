@@ -35,15 +35,19 @@ public struct AppGestureFocusTracker {
   public init() {}
 
   /// A focus change after a known initial app invalidates all dispatch until full lift.
+  public mutating func reset() {
+    isActive = false
+    pinnedApp = nil
+    appBindingsWereEnabled = false
+    appScopeSuppressed = false
+    isInvalidated = false
+  }
+
   public mutating func observe(
     contactCount: Int, frontmostApp: String?, appBindingsEnabled: Bool
   ) -> (mayDispatch: Bool, matchingApp: String?) {
     guard contactCount > 0 else {
-      isActive = false
-      pinnedApp = nil
-      appBindingsWereEnabled = false
-      appScopeSuppressed = false
-      isInvalidated = false
+      reset()
       return (false, nil)
     }
     if !isActive {
@@ -89,16 +93,35 @@ public struct AppGesturePreferenceStore {
 public final class AppGesturePolicy {
   private let lock = NSLock()
   private var enabled: Bool
+  private var hasAppScopedBindings: Bool
   private let onChange: (Bool) -> Void
 
-  public init(enabled: Bool = true, onChange: @escaping (Bool) -> Void = { _ in }) {
+  public init(
+    enabled: Bool = true,
+    hasAppScopedBindings: Bool = false,
+    onChange: @escaping (Bool) -> Void = { _ in }
+  ) {
     self.enabled = enabled
+    self.hasAppScopedBindings = hasAppScopedBindings
     self.onChange = onChange
   }
+
   public var isEnabled: Bool {
     lock.lock()
     defer { lock.unlock() }
     return enabled
+  }
+
+  public var hasScopedBindings: Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    return hasAppScopedBindings
+  }
+
+  public func setHasAppScopedBindings(_ value: Bool) {
+    lock.lock()
+    hasAppScopedBindings = value
+    lock.unlock()
   }
   public func setEnabled(_ value: Bool) {
     lock.lock()

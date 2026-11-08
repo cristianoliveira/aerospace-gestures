@@ -4,6 +4,15 @@ import XCTest
 @testable import GestureCLIPolicy
 
 final class CommandDecisionTests: XCTestCase {
+  func testAppGesturePolicyTracksScopedBindingPresenceAcrossReloads() {
+    let policy = AppGesturePolicy(hasAppScopedBindings: false)
+    XCTAssertFalse(policy.hasScopedBindings)
+    policy.setHasAppScopedBindings(true)
+    XCTAssertTrue(policy.hasScopedBindings)
+    policy.setHasAppScopedBindings(false)
+    XCTAssertFalse(policy.hasScopedBindings)
+  }
+
   func testAppGesturePreferencePersistsBooleanAcrossPolicyInstances() {
     let suiteName = "com.aerospace-gestures.tests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
@@ -139,6 +148,30 @@ final class CommandDecisionTests: XCTestCase {
     XCTAssertTrue(
       tracker.observe(contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true)
         .mayDispatch)
+  }
+
+  func testDiscardedLiftResetsFocusStateBeforeTheNextContactSequence() {
+    var tracker = AppGestureFocusTracker()
+    XCTAssertFalse(
+      tracker.observe(
+        contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true
+      )
+      .matchingApp == nil)
+    XCTAssertFalse(
+      tracker.observe(
+        contactCount: 2, frontmostApp: "com.example.Other", appBindingsEnabled: true
+      )
+      .mayDispatch)
+
+    // The frame-policy stale path explicitly resets the tracker when it drops a lift frame.
+    tracker.reset()
+
+    XCTAssertEqual(
+      tracker.observe(
+        contactCount: 2, frontmostApp: "com.example.Editor", appBindingsEnabled: true
+      )
+      .matchingApp,
+      "com.example.Editor")
   }
 
   func testDisabledAppScopesDoNotCancelGenericGesturesOnFocusChanges() {

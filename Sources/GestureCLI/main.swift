@@ -149,6 +149,7 @@ let actionPolicy = GestureActionPolicy(mode: executionMode)
 let appGesturePreferences = AppGesturePreferenceStore()
 let appGesturePolicy = AppGesturePolicy(
   enabled: appGesturePreferences.load() ?? true,
+  hasAppScopedBindings: configuration?.bindings.contains(where: { $0.app != nil }) == true,
   onChange: { appGesturePreferences.save($0) })
 let reloadPolicy = ConfigurationReloadPolicy(
   initialConfiguration: configuration, mode: executionMode)
@@ -229,11 +230,9 @@ let frontmostAppSampler: () -> String? = {
 
 let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
   let modifierSample = contacts.isEmpty ? .unknown : modifierStateSampler.sample()
-  let frameConfiguration = reloadPolicy.activeConfiguration
-  let hasAppScopedBindings = frameConfiguration?.bindings.contains(where: { $0.app != nil }) == true
   let shouldSampleFrontmostApp =
-    executionMode == .run && hasAppScopedBindings
-    && appGesturePolicy.isEnabled
+    executionMode == .run
+    && appGesturePolicy.hasScopedBindings && appGesturePolicy.isEnabled
   let callbackFrontmostApp =
     shouldSampleFrontmostApp && !contacts.isEmpty
     ? frontmostAppSampler() : nil
@@ -245,6 +244,7 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
     guard actionPolicy.isCurrent(frameToken) else {
       if contacts.isEmpty {
         detectors.removeValue(forKey: device)
+        appFocusTrackers[device]?.reset()
         _ = modifierSequenceTracker.observe(
           device: device, contactCount: 0, sample: .unknown)
       }
