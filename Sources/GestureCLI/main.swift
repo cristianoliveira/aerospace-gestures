@@ -150,7 +150,9 @@ let appGesturePreferences = AppGesturePreferenceStore()
 let appGesturePolicy = AppGesturePolicy(
   enabled: appGesturePreferences.load() ?? true,
   hasAppScopedBindings: configuration?.bindings.contains(where: { $0.app != nil }) == true,
-  onChange: { appGesturePreferences.save($0) })
+  precedence: appGesturePreferences.loadPrecedence() ?? .appFirst,
+  onChange: { appGesturePreferences.save($0) },
+  onPrecedenceChange: { appGesturePreferences.savePrecedence($0) })
 let reloadPolicy = ConfigurationReloadPolicy(
   initialConfiguration: configuration, mode: executionMode)
 let reloadAdapter: ConfigurationReloadAdapter?
@@ -236,6 +238,7 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
   let callbackFrontmostApp =
     shouldSampleFrontmostApp && !contacts.isEmpty
     ? frontmostAppSampler() : nil
+  let callbackPrecedence = appGesturePolicy.precedence
   let frameToken = actionPolicy.captureFrame(device: device, contactCount: contacts.count)
   MultitouchInput.recordMainQueueScheduled()
   DispatchQueue.main.async {
@@ -265,7 +268,8 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
     if hasAppScopedBindings {
       _ = appFocusTracker.observe(
         contactCount: contacts.count, frontmostApp: callbackFrontmostApp,
-        appBindingsEnabled: appGesturePolicy.isEnabled)
+        appBindingsEnabled: appGesturePolicy.isEnabled,
+        precedence: callbackPrecedence)
       appFocusTrackers[device] = appFocusTracker
     }
     var detector =
@@ -282,15 +286,19 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
       GestureOutputFormatter.describe(
         gesture: gesture, modifiers: sequenceModifierSample, actionContext: actionContext))
     fflush(stdout)
-    let dispatchObservation: (mayDispatch: Bool, matchingApp: String?)
+    let dispatchObservation:
+      (
+        mayDispatch: Bool, matchingApp: String?, precedence: AppBindingPrecedence
+      )
     if hasAppScopedBindings {
       dispatchObservation = appFocusTracker.observe(
         contactCount: contacts.count,
         frontmostApp: contacts.isEmpty ? nil : frontmostAppSampler(),
-        appBindingsEnabled: appGesturePolicy.isEnabled)
+        appBindingsEnabled: appGesturePolicy.isEnabled,
+        precedence: appGesturePolicy.precedence)
       appFocusTrackers[device] = appFocusTracker
     } else {
-      dispatchObservation = (true, nil)
+      dispatchObservation = (true, nil, appGesturePolicy.precedence)
     }
     guard dispatchObservation.mayDispatch,
       let binding = CommandDecision.binding(
@@ -299,7 +307,8 @@ let onFrame: (UInt, UInt32, [Contact]) -> Void = { device, _, contacts in
         modifiers: sequenceModifierSample,
         dryRun: dryRun,
         frontmostApp: dispatchObservation.matchingApp,
-        appBindingsEnabled: appGesturePolicy.isEnabled),
+        appBindingsEnabled: appGesturePolicy.isEnabled,
+        precedence: dispatchObservation.precedence),
       actionPolicy.mayDispatch(gesture, from: frameToken)
     else { return }
     if !runner.run(
