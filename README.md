@@ -8,7 +8,7 @@
 
 macOS trackpad gestures do not directly run your [AeroSpace WM](https://github.com/nikitabobko/AeroSpace) commands. AeroSpace Gestures maps three-to-five-finger swipes and opt-in two-to-five-finger pinch-in/spread-out gestures to commands.
 
-Use the menu-bar icon to pause commands or reload your configuration.
+Use the menu-bar icon to pause commands or reload your configuration. The v0.7.0-alpha.1 pre-release also adds experimental app-scoped bindings and a separate persisted toggle.
 
 ## Install
 

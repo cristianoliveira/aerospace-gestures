@@ -40,10 +40,7 @@ jobs:
       - name: Validate release tag
         shell: bash
         run: |
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Expected a semantic version tag like v0.1.0; got $GITHUB_REF_NAME" >&2
-            exit 1
-          fi
+          scripts/classify-release-tag.sh "$GITHUB_REF_NAME"
 
       - name: Select supported Xcode toolchain
         run: |
@@ -172,11 +169,18 @@ jobs:
         env:
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
+          release_kind="$(scripts/classify-release-tag.sh "$GITHUB_REF_NAME")"
+          release_options=()
+          if [[ "$release_kind" == prerelease ]]; then
+            release_options+=(--prerelease)
+          fi
           gh release create "$GITHUB_REF_NAME" \
             dist/aerospace-gestures-*.tar.gz \
             dist/SHA256SUMS \
             --repo "$GH_REPO" \
             --verify-tag \
             --notes "$(cat dist/release-notes.md)" \
-            --generate-notes
+            --generate-notes \
+            "${release_options[@]}"
