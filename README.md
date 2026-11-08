@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/brand/logo.svg" alt="Cafuné — Triple Swipe logo" width="112" height="112">
+  <img src="docs/brand/logo.svg" alt="Cafuné logo: a flowing C gesture with a fingertip accent" width="112" height="112">
 </p>
 
 <h1 align="center">Cafuné</h1>
