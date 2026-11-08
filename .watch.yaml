@@ -58,7 +58,7 @@ jobs:
   - name: quick-format
     change:
       - "**/*.swift"
-    run: "bash scripts/quick-format.sh {{paths}}"
+    run: "bash -c 'for path in \"$@\"; do case \"$path\" in *.swift) xcrun swift-format lint --strict \"$path\" || exit;; esac; done' _ {{paths}}"
 
   # The full canonical gate is explicit so it runs after quick feedback, on demand.
   - name: check
