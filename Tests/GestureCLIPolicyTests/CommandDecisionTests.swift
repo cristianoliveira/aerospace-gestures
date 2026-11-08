@@ -4,6 +4,23 @@ import XCTest
 @testable import GestureCLIPolicy
 
 final class CommandDecisionTests: XCTestCase {
+  func testAppGesturePrecedencePresentationShowsOneCheckedChoiceWhenScopedBindingsExist() {
+    let appFirst = AppBindingPrecedencePresentation(
+      hasAppScopedBindings: true, precedence: .appFirst)
+    XCTAssertFalse(appFirst.isHidden)
+    XCTAssertTrue(appFirst.appFirstIsChecked)
+    XCTAssertFalse(appFirst.globalFirstIsChecked)
+
+    let globalFirst = AppBindingPrecedencePresentation(
+      hasAppScopedBindings: true, precedence: .globalFirst)
+    XCTAssertTrue(globalFirst.globalFirstIsChecked)
+    XCTAssertFalse(globalFirst.appFirstIsChecked)
+
+    let hidden = AppBindingPrecedencePresentation(
+      hasAppScopedBindings: false, precedence: .appFirst)
+    XCTAssertTrue(hidden.isHidden)
+  }
+
   func testAppGesturePolicyTracksScopedBindingPresenceAcrossReloads() {
     let policy = AppGesturePolicy(hasAppScopedBindings: false)
     XCTAssertFalse(policy.hasScopedBindings)
@@ -20,23 +37,32 @@ final class CommandDecisionTests: XCTestCase {
     let firstStore = AppGesturePreferenceStore(defaults: defaults)
 
     XCTAssertNil(firstStore.load())
+    XCTAssertNil(firstStore.loadPrecedence())
     let firstPolicy = AppGesturePolicy(
       enabled: firstStore.load() ?? true,
-      onChange: { firstStore.save($0) })
+      precedence: firstStore.loadPrecedence() ?? .appFirst,
+      onChange: { firstStore.save($0) },
+      onPrecedenceChange: { firstStore.savePrecedence($0) })
     XCTAssertTrue(firstPolicy.isEnabled)
     firstPolicy.setEnabled(false)
+    firstPolicy.setPrecedence(.globalFirst)
 
     let secondStore = AppGesturePreferenceStore(defaults: UserDefaults(suiteName: suiteName)!)
     let secondPolicy = AppGesturePolicy(
       enabled: secondStore.load() ?? true,
-      onChange: { secondStore.save($0) })
+      precedence: secondStore.loadPrecedence() ?? .appFirst,
+      onChange: { secondStore.save($0) },
+      onPrecedenceChange: { secondStore.savePrecedence($0) })
     XCTAssertFalse(secondPolicy.isEnabled)
+    XCTAssertEqual(secondPolicy.precedence, .globalFirst)
     XCTAssertTrue(defaults.object(forKey: "appScopedGesturesEnabled") is Bool)
     XCTAssertFalse(defaults.bool(forKey: "appScopedGesturesEnabled"))
 
     secondPolicy.setEnabled(true)
+    secondPolicy.setPrecedence(.appFirst)
     let thirdStore = AppGesturePreferenceStore(defaults: UserDefaults(suiteName: suiteName)!)
     XCTAssertEqual(thirdStore.load(), true)
+    XCTAssertEqual(thirdStore.loadPrecedence(), .appFirst)
   }
 
   func testMatchesSwipeAndPinchBindingsWithExactModifierSets() throws {
@@ -106,17 +132,68 @@ final class CommandDecisionTests: XCTestCase {
         command = ["/bin/echo", "editor"]
         """.utf8))
     let gesture = Gesture(fingers: 3, direction: .left)
-    func select(_ app: String?, enabled: Bool = true) -> [String]? {
+    func select(
+      _ app: String?, enabled: Bool = true,
+      precedence: AppBindingPrecedence = .appFirst
+    ) -> [String]? {
       CommandDecision.binding(
         for: gesture, in: configuration.bindings,
         modifiers: .known(.none), dryRun: false, frontmostApp: app,
-        appBindingsEnabled: enabled)?.command
+        appBindingsEnabled: enabled, precedence: precedence)?.command
     }
 
     XCTAssertEqual(select("com.example.Editor"), ["/bin/echo", "editor"])
     XCTAssertEqual(select("com.example.editor"), ["/bin/echo", "generic"])
     XCTAssertEqual(select(nil), ["/bin/echo", "generic"])
+    XCTAssertEqual(select(nil, precedence: .globalFirst), ["/bin/echo", "generic"])
     XCTAssertEqual(select("com.example.Editor", enabled: false), ["/bin/echo", "generic"])
+    XCTAssertEqual(
+      select("com.example.Editor", enabled: false, precedence: .globalFirst),
+      ["/bin/echo", "generic"])
+    XCTAssertEqual(
+      select("com.example.Editor", precedence: .globalFirst), ["/bin/echo", "generic"])
+  }
+
+  func testGlobalFirstUsesScopedBindingWhenNoGenericExistsAndToggleOffUsesOnlyGeneric() throws {
+    let config = try Configuration.load(
+      Data(
+        """
+        [[bindings]]
+        fingers = 3
+        direction = "left"
+        app = "com.example.Editor"
+        command = ["/bin/echo", "editor"]
+        """.utf8))
+    let selection = CommandDecision.binding(
+      for: Gesture(fingers: 3, direction: .left), in: config.bindings,
+      modifiers: .known(.none), dryRun: false,
+      frontmostApp: "com.example.Editor", precedence: .globalFirst)
+    XCTAssertEqual(selection?.command, ["/bin/echo", "editor"])
+    XCTAssertNil(
+      CommandDecision.binding(
+        for: Gesture(fingers: 3, direction: .left), in: config.bindings,
+        modifiers: .known(.none), dryRun: false,
+        frontmostApp: "com.example.Editor", appBindingsEnabled: false,
+        precedence: .globalFirst))
+  }
+
+  func testPrecedenceChangeAppliesOnlyAfterContactSequenceEnds() {
+    var tracker = AppGestureFocusTracker()
+    let initial = tracker.observe(
+      contactCount: 2, frontmostApp: "com.example.Editor",
+      appBindingsEnabled: true, precedence: .appFirst)
+    XCTAssertEqual(initial.precedence, .appFirst)
+    let changedMidContact = tracker.observe(
+      contactCount: 2, frontmostApp: "com.example.Editor",
+      appBindingsEnabled: true, precedence: .globalFirst)
+    XCTAssertEqual(changedMidContact.precedence, .appFirst)
+    _ = tracker.observe(
+      contactCount: 0, frontmostApp: nil,
+      appBindingsEnabled: true, precedence: .globalFirst)
+    let nextSequence = tracker.observe(
+      contactCount: 2, frontmostApp: "com.example.Editor",
+      appBindingsEnabled: true, precedence: .globalFirst)
+    XCTAssertEqual(nextSequence.precedence, .globalFirst)
   }
 
   func testUnknownFrontmostAppAtTouchDownCannotBecomeScopedMidGesture() {
