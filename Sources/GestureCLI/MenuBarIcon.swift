@@ -1,6 +1,6 @@
 import AppKit
 
-/// Cafuné's fingertip-and-motion mark, drawn in the binary so CLI installs need no resource bundle.
+/// Triple Swipe, drawn into the binary so CLI installs need no resource bundle.
 enum MenuBarIcon {
   static func image(isPaused: Bool, accessibilityDescription: String) -> NSImage {
     let size = NSSize(width: 22, height: 22)
@@ -10,31 +10,31 @@ enum MenuBarIcon {
       defer { context.restoreGState() }
       context.scaleBy(x: size.width / 256, y: size.height / 256)
       context.setStrokeColor(NSColor.black.cgColor)
-      context.setLineWidth(24)
+      context.setLineWidth(17)
       context.setLineCap(.round)
       context.setLineJoin(.round)
 
-      // The same 256-point flowing C and fingertip accent as docs/brand/logo.svg.
-      context.move(to: CGPoint(x: 180, y: 70))
-      context.addCurve(
-        to: CGPoint(x: 113, y: 39), control1: CGPoint(x: 159, y: 40),
-        control2: CGPoint(x: 134, y: 34))
-      context.addCurve(
-        to: CGPoint(x: 39, y: 119), control1: CGPoint(x: 68, y: 45),
-        control2: CGPoint(x: 39, y: 76))
-      context.addCurve(
-        to: CGPoint(x: 117, y: 218), control1: CGPoint(x: 39, y: 165),
-        control2: CGPoint(x: 73, y: 214))
-      context.addCurve(
-        to: CGPoint(x: 188, y: 174), control1: CGPoint(x: 159, y: 222),
-        control2: CGPoint(x: 184, y: 199))
+      // Same 256-point geometry as docs/brand/triple-swipe.svg.
+      context.move(to: CGPoint(x: 55, y: 83))
+      context.addLine(to: CGPoint(x: 105, y: 83))
+      context.addQuadCurve(to: CGPoint(x: 161, y: 59), control: CGPoint(x: 141, y: 83))
+      context.addLine(to: CGPoint(x: 181, y: 39))
+
+      context.move(to: CGPoint(x: 55, y: 136))
+      context.addLine(to: CGPoint(x: 111, y: 136))
+      context.addQuadCurve(to: CGPoint(x: 171, y: 112), control: CGPoint(x: 147, y: 136))
+      context.addLine(to: CGPoint(x: 214, y: 69))
+      context.move(to: CGPoint(x: 179, y: 69))
+      context.addLine(to: CGPoint(x: 214, y: 69))
+      context.addLine(to: CGPoint(x: 214, y: 104))
+
+      context.move(to: CGPoint(x: 55, y: 189))
+      context.addLine(to: CGPoint(x: 115, y: 189))
+      context.addQuadCurve(to: CGPoint(x: 176, y: 164), control: CGPoint(x: 151, y: 189))
+      context.addLine(to: CGPoint(x: 199, y: 141))
       context.strokePath()
 
-      context.setFillColor(NSColor.black.cgColor)
-      context.fillEllipse(in: CGRect(x: 187, y: 45, width: 22, height: 22))
-
       if isPaused {
-        context.setLineWidth(17)
         context.move(to: CGPoint(x: 182, y: 204))
         context.addLine(to: CGPoint(x: 182, y: 237))
         context.move(to: CGPoint(x: 218, y: 204))
