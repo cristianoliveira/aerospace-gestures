@@ -35,6 +35,7 @@ direction = "right"
 modifiers = ["command"]
 command = ["/bin/echo", "Command-three-finger right"]
 
+# Experimental app scoping requires a source build; v0.6.0 does not support `app`.
 # Optional exact macOS bundle-ID scope. Add a generic binding for fallback.
 # App-specific matches take precedence over generic matches with the same gesture/modifiers.
 # The menu-bar toggle disables only these scoped matches; it never makes them global.
