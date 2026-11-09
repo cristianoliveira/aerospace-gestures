@@ -31,7 +31,7 @@ final class CommandDecisionTests: XCTestCase {
   }
 
   func testAppGesturePreferencePersistsBooleanAcrossPolicyInstances() {
-    let suiteName = "com.aerospace-gestures.tests.\(UUID().uuidString)"
+    let suiteName = "com.cafune.tests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
     defer { defaults.removePersistentDomain(forName: suiteName) }
     let firstStore = AppGesturePreferenceStore(defaults: defaults)

@@ -140,10 +140,10 @@ public enum CLIHelp {
           uninstall   Remove only the managed plist; preserves binary/config
         """
       description = """
-        Manages the per-user GUI LaunchAgent at ~/Library/LaunchAgents/com.aerospace-gestures.plist.
+        Manages the per-user GUI LaunchAgent at ~/Library/LaunchAgents/com.cafune.plist.
         install requires a prebuilt executable at ~/.local/bin/cafune and a valid config.
-        install migrates an owned plist still pointing to ~/.local/bin/aerospace-gestures.
-        Run install before start or restart when migrating an existing service.
+        When upgrading from aerospace-gestures, stop and unload its LaunchAgent and archive its plist manually before installing.
+        The new service never rewrites or removes old service files.
         install never builds software or changes Input Monitoring/TCC permissions.
         stop retains the plist; uninstall removes only the owned plist and preserves binary/config.
         Persistent logs are disabled; launchd stdout/stderr are /dev/null (zero retained bytes).
@@ -365,7 +365,7 @@ public enum ConfigurationPath {
     }
     return
       configRoot
-      .appendingPathComponent("aerospace-gestures", isDirectory: true)
+      .appendingPathComponent("cafune", isDirectory: true)
       .appendingPathComponent("config.toml")
       .standardizedFileURL
   }

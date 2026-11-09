@@ -21,7 +21,7 @@ public final class InputDiagnosticsLog {
     writeToStderr: @escaping (String) -> Void
   ) {
     fileURL = homeDirectory.appendingPathComponent(
-      "Library/Logs/aerospace-gestures/input-diagnostics.log")
+      "Library/Logs/cafune/input-diagnostics.log")
     file = CommandOutputLog(
       fileURL: fileURL,
       rootURL: homeDirectory,

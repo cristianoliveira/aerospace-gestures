@@ -123,7 +123,7 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
   func testExecutableMismatchAndUntrustedStoreTargetAreRejected() throws {
     let fixture = try Fixture()
     defer { fixture.remove() }
-    try fixture.installManagedPlist(executablePath: "/tmp/other-aerospace-gestures")
+    try fixture.installManagedPlist(executablePath: "/tmp/other-cafune")
     try fixture.pointStableConfiguration(to: fixture.writeStoreConfiguration("first"))
 
     XCTAssertThrowsError(try fixture.resolver(nixManaged: true).resolve()) { error in
@@ -143,7 +143,7 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
     let fixture = try Fixture()
     defer { fixture.remove() }
     let invalidTOML = fixture.storeDirectoryURL.appendingPathComponent(
-      "invalid-aerospace-gestures.toml")
+      "invalid-cafune.toml")
     try Data("[[bindings]".utf8).write(to: invalidTOML)
     try FileManager.default.setAttributes(
       [.posixPermissions: 0o444], ofItemAtPath: invalidTOML.path)
@@ -185,9 +185,9 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
     let storeDirectoryURL: URL
 
     init() throws {
-      executableURL = root.appendingPathComponent("bin/aerospace-gestures")
-      plistURL = root.appendingPathComponent("Library/LaunchAgents/com.aerospace-gestures.plist")
-      managedConfigurationURL = root.appendingPathComponent("etc/aerospace-gestures/config.toml")
+      executableURL = root.appendingPathComponent("bin/cafune")
+      plistURL = root.appendingPathComponent("Library/LaunchAgents/com.cafune.plist")
+      managedConfigurationURL = root.appendingPathComponent("etc/cafune/config.toml")
       storeDirectoryURL = root.appendingPathComponent("nix/store", isDirectory: true)
       try FileManager.default.createDirectory(
         at: executableURL.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -228,7 +228,7 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
     }
 
     func installManagedPlist(
-      label: String = "com.aerospace-gestures", executablePath: String? = nil,
+      label: String = "com.cafune", executablePath: String? = nil,
       nixManagedMarker: String? = "1", programArguments: [String]? = nil,
       permissions: Int = 0o444
     ) throws {
@@ -252,7 +252,7 @@ final class ConfigurationReloadAdapterTests: XCTestCase {
     }
 
     func writeStoreConfiguration(_ argument: String, permissions: Int = 0o444) throws -> URL {
-      let url = storeDirectoryURL.appendingPathComponent("test-aerospace-gestures.toml")
+      let url = storeDirectoryURL.appendingPathComponent("test-cafune.toml")
       let data = Data(
         """
         [[bindings]]

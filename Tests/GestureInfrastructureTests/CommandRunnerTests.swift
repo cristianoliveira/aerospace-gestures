@@ -102,7 +102,7 @@ final class CommandRunnerTests: XCTestCase {
   func testLaunchFailureAllowsNextCommand() {
     let runner = CommandRunner()
     var error = ""
-    XCTAssertFalse(runner.run(["/nonexistent/aerospace-gestures-test"]) { error = $0 })
+    XCTAssertFalse(runner.run(["/nonexistent/cafune-test"]) { error = $0 })
     XCTAssertTrue(error.hasPrefix("Cannot launch command:"))
 
     let completed = expectation(description: "next command completes")

@@ -44,7 +44,7 @@ final class CLIConfigurationTests: XCTestCase {
 
     XCTAssertEqual(
       ConfigurationPath.resolve(explicitPath: nil, in: environment),
-      URL(fileURLWithPath: "/tmp/config root/aerospace-gestures/config.toml"))
+      URL(fileURLWithPath: "/tmp/config root/cafune/config.toml"))
   }
 
   func testEmptyOrRelativeXDGDirectoryFallsBackToHomeConfigDirectory() {
@@ -56,7 +56,7 @@ final class CLIConfigurationTests: XCTestCase {
       XCTAssertEqual(
         ConfigurationPath.resolve(explicitPath: nil, in: environment),
         URL(
-          fileURLWithPath: ".config/aerospace-gestures/config.toml", relativeTo: home
+          fileURLWithPath: ".config/cafune/config.toml", relativeTo: home
         )
         .standardizedFileURL)
     }
@@ -210,7 +210,7 @@ final class CLIConfigurationTests: XCTestCase {
     let xdg = directory.appendingPathComponent("xdg", isDirectory: true)
     let defaultPath =
       xdg
-      .appendingPathComponent("aerospace-gestures", isDirectory: true)
+      .appendingPathComponent("cafune", isDirectory: true)
       .appendingPathComponent("config.toml")
     let explicitPath = directory.appendingPathComponent("missing config.toml")
     try FileManager.default.createDirectory(

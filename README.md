@@ -8,7 +8,7 @@
 
 Cafuné maps three-to-five-finger swipes and opt-in two-to-five-finger pinch-in/spread-out gestures to macOS commands. Use it with [AeroSpace WM](https://github.com/nikitabobko/AeroSpace) or run scripts, apps, and other tools.
 
-`cafune` is the executable and canonical CLI. Configuration and existing per-user service identifiers retain `aerospace-gestures` for compatibility; see the [migration notes](docs/USAGE.md#upgrading-from-aerospace-gestures).
+`cafune` is the executable and canonical CLI. Cafuné uses new local configuration, preference, service, and state identities; upgrades from `aerospace-gestures` require a manual transition. See the [upgrade notes](docs/USAGE.md#upgrading-from-aerospace-gestures).
 
 Use the menu-bar icon to pause commands or reload your configuration. The v0.7.0-alpha.1 pre-release also adds experimental app-scoped bindings and a separate persisted toggle.
 

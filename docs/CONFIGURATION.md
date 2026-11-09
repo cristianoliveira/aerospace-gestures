@@ -2,7 +2,7 @@
 
 Use a TOML file to map trackpad gestures to commands. Start with one harmless binding, validate the file, then test recognition before enabling commands.
 
-This guide covers the current development source. The executable and CLI are named `cafune`; the default configuration path intentionally retains its legacy `aerospace-gestures` directory. App-scoped bindings are experimental in v0.7.0-alpha.1; the menu-bar precedence choice described below is newer and not in that published alpha. v0.6.0 and earlier do not support `app`. The v0.3.0 release does not support pinch bindings. Check `cafune --version` and `type -a cafune`. From a checkout, replace `cafune` in the commands below with `swift run cafune` to use that source.
+This guide covers the current development source. The executable and CLI are named `cafune`; its default configuration path uses the new `cafune` directory. App-scoped bindings are experimental in v0.7.0-alpha.1; the menu-bar precedence choice described below is newer and not in that published alpha. v0.6.0 and earlier do not support `app`. The v0.3.0 release does not support pinch bindings. Check `cafune --version` and `type -a cafune`. From a checkout, replace `cafune` in the commands below with `swift run cafune` to use that source.
 
 ## Contents
 
@@ -29,8 +29,8 @@ cafune check ./config.toml
 
 Without a path, `cafune init` writes to:
 
-- `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` when `XDG_CONFIG_HOME` is nonempty and absolute.
-- Otherwise, `~/.config/aerospace-gestures/config.toml`.
+- `$XDG_CONFIG_HOME/cafune/config.toml` when `XDG_CONFIG_HOME` is nonempty and absolute.
+- Otherwise, `~/.config/cafune/config.toml`.
 
 `check` and `run` require an explicit path. Relative paths resolve from your current directory. Neither `run` nor `listen start` creates a file. For an installed service, use the config path shown by `cafune service status`; do not assume it uses the file in your current directory. See [service setup](USAGE.md#optional-per-user-service).
 
@@ -121,7 +121,7 @@ After updating the declarative config, list available binaries and set `BIN` to 
 type -a cafune
 BIN="/absolute/path/to/cafune"
 "$BIN" --version # Must report v0.5.1 or later.
-"$BIN" check /etc/aerospace-gestures/config.toml
+"$BIN" check /etc/cafune/config.toml
 ```
 
 `check` reads and validates the file; it does not start the listener or run binding commands. Do not rely on whichever `cafune` binary a bare command finds first on `PATH`.
@@ -258,7 +258,7 @@ For a safe edit cycle, choose **Disable actions**, edit the active file, run `ch
 
 Successful reload preserves pause state and running commands, discards queued old-config frames, and requires active fingers to lift before dispatch resumes. Failed reload keeps the previous configuration and shows an error in the menu. Output-debugging changes affect future commands; a running command keeps its original output destination. Listen and dry-run have no reload control.
 
-Foreground/manual runs reload their original config path. A Nix-managed LaunchAgent marked with `AEROSPACE_GESTURES_NIX_MANAGED=1` rereads its trusted root-owned plist and stable `/etc/aerospace-gestures/config.toml` symlink on each reload. Update and rebuild your Nix declaration, then reload; do not edit the store file. Changed-config hot reload has deterministic test coverage but remains unverified on real hardware.
+Foreground/manual runs reload their original config path. A Nix-managed LaunchAgent marked with `CAFUNE_NIX_MANAGED=1` rereads its trusted root-owned plist and stable `/etc/cafune/config.toml` symlink on each reload. Update and rebuild your Nix declaration, then reload; do not edit the store file. Changed-config hot reload has deterministic test coverage but remains unverified on real hardware.
 
 ## Debug command output
 
@@ -267,7 +267,7 @@ Set `debug_command_output = true` before all `[[bindings]]` tables, validate, an
 Managed LaunchAgents, including Nix-managed ones, append tagged output to a private log:
 
 ```sh
-tail -f "$HOME/Library/Application Support/aerospace-gestures/command-output.log"
+tail -f "$HOME/Library/Application Support/cafune/command-output.log"
 ```
 
 The file is mode `0600` and capped at 1 MiB. Raw output is capped at 64 KiB per command, plus small stream labels. Further output is drained and discarded so the child does not block. If the managed log path is unsafe or unavailable, capture is disabled and a warning goes to the macOS unified log; commands still run.
@@ -275,7 +275,7 @@ The file is mode `0600` and capped at 1 MiB. Raw output is capped at 64 KiB per 
 **Output can contain credentials or other sensitive data.** Disable debugging when done and reload. The log persists; to delete it:
 
 ```sh
-rm "$HOME/Library/Application Support/aerospace-gestures/command-output.log"
+rm "$HOME/Library/Application Support/cafune/command-output.log"
 ```
 
 ## Troubleshooting

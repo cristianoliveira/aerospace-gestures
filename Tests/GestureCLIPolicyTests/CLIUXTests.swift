@@ -196,7 +196,8 @@ final class CLIUXTests: XCTestCase {
       XCTAssertTrue(text.contains(action), "service help must document \(action)")
     }
     XCTAssertTrue(text.contains("~/.local/bin/cafune"))
-    XCTAssertTrue(text.contains("migrates an owned plist"))
+    XCTAssertTrue(text.contains("com.cafune.plist"))
+    XCTAssertTrue(text.contains("stop and unload its LaunchAgent"))
     XCTAssertTrue(text.contains("aerospace-gestures"))
   }
 

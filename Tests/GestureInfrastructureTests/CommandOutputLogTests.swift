@@ -111,7 +111,7 @@ final class CommandOutputLogTests: XCTestCase {
     XCTAssertFalse(
       FileManager.default.fileExists(
         atPath: external.appendingPathComponent(
-          "Application Support/aerospace-gestures/command-output.log"
+          "Application Support/cafune/command-output.log"
         ).path))
   }
 
@@ -125,6 +125,6 @@ final class CommandOutputLogTests: XCTestCase {
 
   private func logURL(under root: URL) -> URL {
     root.appendingPathComponent(
-      "Library/Application Support/aerospace-gestures/command-output.log")
+      "Library/Application Support/cafune/command-output.log")
   }
 }

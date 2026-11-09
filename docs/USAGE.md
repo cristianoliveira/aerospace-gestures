@@ -2,7 +2,7 @@
 
 For installation, see [README](../README.md#install). For bindings and sensitivity, see [Configuration](CONFIGURATION.md).
 
-The executable and CLI are named `cafune`. Commands below use an installed binary. From a checkout, use `swift run cafune` instead. Configuration, preferences, service labels, and state paths intentionally retain legacy `aerospace-gestures` identifiers.
+The executable and CLI are named `cafune`. Commands below use an installed binary. From a checkout, use `swift run cafune` instead. Cafuné uses new configuration, preferences, service, and state identities; it does not migrate or remove the previous product's files.
 
 ## Run
 
@@ -40,7 +40,7 @@ Normal `run` adds a menu-bar icon:
 
 - **Disable actions** pauses new commands but keeps listening. A running command is not cancelled.
 - **Enable actions** resumes commands after you lift all fingers. Pause state resets on restart.
-- **Disable app-specific gestures / Enable app-specific gestures** affects only bindings with an `app` bundle ID; generic bindings remain active. This preference is remembered across restarts in the `com.aerospace-gestures` per-user defaults suite. It is separate from pause.
+- **Disable app-specific gestures / Enable app-specific gestures** affects only bindings with an `app` bundle ID; generic bindings remain active. This preference is remembered across restarts in the `com.cafune` per-user defaults suite. It is separate from pause.
 - **App-specific bindings first / Global bindings first** (development source after v0.7.0-alpha.1) selects which matching binding wins when both exist for the same gesture and modifiers. App-specific-first is the default; global-first falls back to the app-specific binding when no generic binding exists. This runtime menu choice is persisted separately from the enable toggle and does not change TOML or Nix settings. The choices appear only when app-scoped bindings are configured. Both choices apply on the next contact sequence; lift all fingers after selecting.
 - **Reload configuration** applies edits to the active file. If validation fails, the previous configuration stays active; check the menu for the result.
 - **Quit Cafuné** stops input, terminates any active command, writes final diagnostics, and exits.
@@ -49,27 +49,35 @@ Listen and dry-run modes never execute commands and have no menu-bar status item
 
 ## Upgrading from aerospace-gestures
 
-Install the new `cafune` binary first. `make install` writes `~/.local/bin/cafune` and leaves the old executable untouched. Do not remove the old binary until the service migration is complete.
+Cafuné is a clean break. It does not copy, rewrite, or delete the old configuration, LaunchAgent, preferences, or state. The old and new binaries use separate state paths. Stop the old listener before starting Cafuné.
 
-For an existing built-in per-user service, run `cafune service install`. It recognizes the exact owned legacy plist, unloads the old listener, updates the same plist to launch `cafune`, then checks the shared legacy instance lock before bootstrapping. If migration fails, it restores the prior plist. The LaunchAgent label and configuration path stay unchanged. `cafune service status` reports when migration is required; `start` and `restart` refuse to relaunch the old executable until you run `cafune service install`. `stop` and `uninstall` can still manage the recognized legacy plist.
+For an old foreground listener, press Ctrl-C. If the previous per-user LaunchAgent is loaded, unload it explicitly:
 
-For a foreground listener, stop the old process with Ctrl-C before starting `cafune`. Both versions use the same legacy instance lock, so a second listener cannot take over while the old one is active.
+```sh
+launchctl bootout "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.aerospace-gestures.plist"
+```
 
-Nix-managed LaunchAgents are root-owned and separate from the built-in per-user service. Rebuild and deploy the managed plist so `ProgramArguments[0]` points to the new Nix-store `cafune` executable, then reload it through your Nix deployment. Keep the existing label, managed marker, `/etc/aerospace-gestures/config.toml` symlink, and trusted `*-aerospace-gestures.toml` target naming. Do not edit the root-owned plist or symlink by hand.
+If the old plist exists, archive it after confirming the job is unloaded so it cannot relaunch. Keep it and the old data until you have verified the new service:
 
-### Legacy identifiers retained for compatibility
+```sh
+mkdir -p "$HOME/Library/LaunchAgents/previous-aerospace-gestures"
+mv "$HOME/Library/LaunchAgents/com.aerospace-gestures.plist" \
+  "$HOME/Library/LaunchAgents/previous-aerospace-gestures/"
+```
 
-These names are intentional data and service contracts, not the executable name. Keep them when upgrading:
+If you want to keep your old configuration, copy it to Cafuné's new default path and validate it before installing the service. For a custom config path or `XDG_CONFIG_HOME`, copy the file manually to the equivalent `cafune` path instead; Cafuné does not relocate it.
 
-| Purpose | Retained identity |
-| --- | --- |
-| Default config | `~/.config/aerospace-gestures/config.toml` or `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` |
-| User LaunchAgent | `com.aerospace-gestures` label and `~/Library/LaunchAgents/com.aerospace-gestures.plist` |
-| User state and logs | `~/Library/Application Support/aerospace-gestures/` and `~/Library/Logs/aerospace-gestures/` |
-| Persisted menu preferences | `com.aerospace-gestures` defaults suite |
-| Nix-managed service | `/Library/LaunchAgents/com.aerospace-gestures.plist`, `/etc/aerospace-gestures/config.toml`, and the existing managed marker/trusted-store checks |
+```sh
+mkdir -p "$HOME/.config/cafune"
+cp "$HOME/.config/aerospace-gestures/config.toml" "$HOME/.config/cafune/config.toml"
+cafune check "$HOME/.config/cafune/config.toml"
+```
 
-The executable and command are `cafune`; do not rename or delete these existing user data locations during the binary migration.
+Then install the new binary and service. The installer refuses to modify the previous LaunchAgent; its bootout, archive, and data-copy steps are manual. Cafuné does not migrate menu preferences or logs. The old files remain available for your own cleanup after verification.
+
+Nix-managed LaunchAgents are root-owned and separate from the built-in per-user service. Update the Nix declaration and deployment to use `com.cafune`, the `CAFUNE_NIX_MANAGED` marker, `/etc/cafune/config.toml`, and a trusted store target ending in `-cafune.toml`. Unload the previous Nix-managed job through your Nix deployment before starting the new one. Do not edit the root-owned plist or symlink by hand.
+
+The repository URL and historical release records retain their original `aerospace-gestures` names; this does not affect the Cafuné executable or its local identities.
 
 ## Optional per-user service
 
@@ -98,18 +106,18 @@ Only one listener can run at a time. Stop the service before running a foregroun
 
 ### Input diagnostics
 
-The listener emits the existing aggregate input summary every 60 seconds to Unified Logging (`com.aerospace-gestures`, category `input`). Set `AEROSPACE_INPUT_DIAGNOSTICS=1` for an expanded, timestamped summary at startup, every 10 seconds, and at shutdown. It prints the exact persistent log path at startup and writes only diagnostic lines to `~/Library/Logs/aerospace-gestures/input-diagnostics.log` (0600 permissions, bounded to 1 MiB; old contents are cleared when the limit is reached). Stdout diagnostics continue if the file is unavailable:
+The listener emits the aggregate input summary every 60 seconds to Unified Logging (`com.cafune`, category `input`). Set `CAFUNE_INPUT_DIAGNOSTICS=1` for an expanded, timestamped summary at startup, every 10 seconds, and at shutdown. It prints the exact persistent log path at startup and writes only diagnostic lines to `~/Library/Logs/cafune/input-diagnostics.log` (0600 permissions, bounded to 1 MiB; old contents are cleared when the limit is reached). Stdout diagnostics continue if the file is unavailable:
 
 Stop any existing listener first, including the service if it is running; restart it after the foreground capture. `listen start` observes input without loading gesture commands or executing actions.
 
 ```sh
-AEROSPACE_INPUT_DIAGNOSTICS=1 .build/release/cafune listen start
+CAFUNE_INPUT_DIAGNOSTICS=1 .build/release/cafune listen start
 ```
 
 After stopping with Ctrl-C, retrieve the persistent diagnostics without copying other process output:
 
 ```sh
-tail -n 20 ~/Library/Logs/aerospace-gestures/input-diagnostics.log
+tail -n 20 ~/Library/Logs/cafune/input-diagnostics.log
 ```
 
 The persistent file contains only fixed aggregate diagnostic lines—not gesture output, configured commands, or configuration contents. The existing Unified Logging summary and the opt-in expansion contain only fixed aggregate fields; the expansion adds raw HID publish/termination counts, Touch Pad filter match/nonmatch/invalid counts, tracked Touch Pad terminations, snapshot successes/last device count, and rebind attempts by reason. `snapshot_last_count=0` means the last successful snapshot was empty; `none` means no snapshot succeeded yet. Counters are cumulative for the process. No device IDs, GUIDs, addresses, product names, contact data, configuration contents, or command data are emitted. LaunchAgent stdout/stderr remain discarded; use Unified Logging for the existing summary in service runs.

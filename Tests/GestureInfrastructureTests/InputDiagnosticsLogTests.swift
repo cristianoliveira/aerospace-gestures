@@ -21,7 +21,7 @@ final class InputDiagnosticsLogTests: XCTestCase {
 
     XCTAssertEqual(
       log.fileURL.path,
-      home.appendingPathComponent("Library/Logs/aerospace-gestures/input-diagnostics.log").path)
+      home.appendingPathComponent("Library/Logs/cafune/input-diagnostics.log").path)
     XCTAssertEqual(try String(contentsOf: log.fileURL, encoding: .utf8), "\(line)\n")
     XCTAssertEqual(stdout, ["\(line)\n"])
     XCTAssertTrue(stderr.isEmpty)
@@ -64,7 +64,7 @@ final class InputDiagnosticsLogTests: XCTestCase {
   func testRejectsSymlinkAndKeepsStdoutDiagnosticsAvailable() throws {
     let home = try temporaryHome()
     defer { try? FileManager.default.removeItem(at: home) }
-    let path = home.appendingPathComponent("Library/Logs/aerospace-gestures", isDirectory: true)
+    let path = home.appendingPathComponent("Library/Logs/cafune", isDirectory: true)
     try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
     let target = home.appendingPathComponent("outside.log")
     try Data("keep".utf8).write(to: target)
