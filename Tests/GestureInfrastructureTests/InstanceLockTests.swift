@@ -25,6 +25,43 @@ final class InstanceLockTests: XCTestCase {
     XCTAssertEqual((attributes[.posixPermissions] as? NSNumber)?.intValue, 0o600)
   }
 
+  func testAcquireIfPresentDoesNotCreateLegacyLockDirectoriesOrFile() throws {
+    let directory = FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let legacyLockURL =
+      directory
+      .appendingPathComponent("Library/Application Support/aerospace-gestures/listener.lock")
+
+    XCTAssertNil(try InstanceLock.acquireIfPresent(at: legacyLockURL, under: directory))
+    XCTAssertFalse(
+      FileManager.default.fileExists(atPath: legacyLockURL.deletingLastPathComponent().path))
+  }
+
+  func testAcquireIfPresentDetectsAndExcludesAnActiveLegacyListener() throws {
+    let directory = FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let legacyLockURL = directory.appendingPathComponent("legacy/listener.lock")
+    let oldListener = try InstanceLock.acquire(at: legacyLockURL, under: directory)
+
+    XCTAssertThrowsError(
+      try InstanceLock.acquireIfPresent(at: legacyLockURL, under: directory)
+    ) { error in
+      XCTAssertTrue(String(describing: error).contains("already holds"))
+    }
+
+    oldListener.release()
+    let transitionGuard = try XCTUnwrap(
+      InstanceLock.acquireIfPresent(at: legacyLockURL, under: directory))
+    XCTAssertThrowsError(try InstanceLock.acquire(at: legacyLockURL, under: directory))
+    transitionGuard.release()
+    let released = try InstanceLock.acquire(at: legacyLockURL, under: directory)
+    released.release()
+  }
+
   func testManagedListenerCanWaitForAnExistingListenerToReleaseLock() throws {
     let directory = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString, isDirectory: true)

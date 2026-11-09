@@ -14,7 +14,9 @@ final class LaunchAgentServiceTests: XCTestCase {
       PropertyListSerialization.propertyList(
         from: Data(contentsOf: fixture.paths.plistURL), options: [], format: nil)
         as? [String: Any])
-    XCTAssertEqual(plist["Label"] as? String, LaunchAgentPaths.label)
+    XCTAssertEqual(plist["Label"] as? String, "com.cafune")
+    XCTAssertEqual(fixture.paths.plistURL.lastPathComponent, "com.cafune.plist")
+    XCTAssertTrue(fixture.paths.instanceLockURL.path.contains("/Application Support/cafune/"))
     XCTAssertEqual(
       plist["ProgramArguments"] as? [String],
       [fixture.paths.executableURL.path, "run", fixture.paths.configurationURL.path])
@@ -26,7 +28,7 @@ final class LaunchAgentServiceTests: XCTestCase {
     XCTAssertEqual(plist["StandardOutPath"] as? String, "/dev/null")
     XCTAssertEqual(plist["StandardErrorPath"] as? String, "/dev/null")
     XCTAssertEqual(
-      (plist["EnvironmentVariables"] as? [String: String])?["AEROSPACE_GESTURES_MANAGED"], "1")
+      (plist["EnvironmentVariables"] as? [String: String])?["CAFUNE_MANAGED"], "1")
     XCTAssertEqual(
       fixture.runner.calls.last,
       ["bootstrap", fixture.paths.domain, fixture.paths.plistURL.path])
@@ -59,81 +61,56 @@ final class LaunchAgentServiceTests: XCTestCase {
     XCTAssertEqual(fixture.runner.calls.last?.first, "kickstart")
   }
 
-  func testInstallMigratesOwnedLegacyExecutablePlistToCafune() throws {
+  func testInstallRequiresManualCleanupOfPreviousLaunchAgentWithoutChangingIt() throws {
     let fixture = try ServiceFixture()
     defer { fixture.remove() }
-    XCTAssertEqual(try fixture.service.install(), .installed)
-
-    let customConfigurationURL = fixture.paths.homeDirectory
-      .appendingPathComponent("Configs/alternate config.toml")
-    try fixture.writeConfiguration(at: customConfigurationURL)
-    let legacyPlist = try plistData(
-      from: fixture.paths.plistURL,
-      executablePath: fixture.paths.legacyExecutableURL.path,
-      configurationPath: customConfigurationURL.path)
-    try legacyPlist.write(to: fixture.paths.plistURL, options: .atomic)
-    let status = try fixture.service.status()
-    XCTAssertEqual(status.installation, .owned)
-    XCTAssertTrue(status.description.contains("cafune service install"))
-    XCTAssertTrue(status.requiresMigration)
-
-    XCTAssertEqual(try fixture.service.install(), .updated)
-
-    let migratedPlist =
-      try PropertyListSerialization.propertyList(
-        from: Data(contentsOf: fixture.paths.plistURL), options: [], format: nil) as? [String: Any]
-    XCTAssertEqual(migratedPlist?["Label"] as? String, "com.aerospace-gestures")
-    XCTAssertEqual(
-      migratedPlist?["ProgramArguments"] as? [String],
-      [fixture.paths.executableURL.path, "run", customConfigurationURL.path])
-    XCTAssertTrue(fixture.runner.calls.contains { $0.first == "bootout" })
-    XCTAssertEqual(fixture.runner.calls.last?.first, "bootstrap")
-    XCTAssertTrue(fixture.runner.isRunning)
-    XCTAssertTrue(
-      fixture.paths.instanceLockURL.path.contains("Application Support/aerospace-gestures"))
-  }
-
-  func testInstallRollsBackLegacyPlistWhenOldListenerStillHoldsTheLock() throws {
-    let fixture = try ServiceFixture()
-    defer { fixture.remove() }
-    XCTAssertEqual(try fixture.service.install(), .installed)
-    let legacyPlist = try plistData(
-      from: fixture.paths.plistURL,
-      executablePath: fixture.paths.legacyExecutableURL.path)
-    try legacyPlist.write(to: fixture.paths.plistURL, options: .atomic)
-    let lock = try InstanceLock.acquire(
-      at: fixture.paths.instanceLockURL, under: fixture.paths.homeDirectory)
-    defer { lock.release() }
+    try FileManager.default.createDirectory(
+      at: fixture.paths.launchAgentsDirectory, withIntermediateDirectories: true)
+    let legacyPlistURL = fixture.paths.launchAgentsDirectory
+      .appendingPathComponent("com.aerospace-gestures.plist")
+    let original = Data("legacy service plist".utf8)
+    try original.write(to: legacyPlistURL)
 
     XCTAssertThrowsError(try fixture.service.install()) { error in
-      XCTAssertTrue(String(describing: error).contains("instance lock"))
+      XCTAssertTrue(String(describing: error).contains("Stop and unload it first"))
+      XCTAssertTrue(String(describing: error).contains("launchctl bootout gui/2403"))
+      XCTAssertTrue(String(describing: error).contains("com.aerospace-gestures.plist"))
     }
 
-    XCTAssertEqual(try Data(contentsOf: fixture.paths.plistURL), legacyPlist)
-    XCTAssertTrue(fixture.runner.isRunning)
-    XCTAssertEqual(fixture.runner.calls.last?.first, "bootstrap")
+    XCTAssertEqual(try Data(contentsOf: legacyPlistURL), original)
+    XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.paths.plistURL.path))
+    XCTAssertTrue(fixture.runner.calls.isEmpty)
   }
 
-  func testStartRejectsLegacyPlistUntilExplicitInstallMigratesIt() throws {
+  func testStartRefusesPreviousLaunchAgentWithoutCallingLaunchctl() throws {
     let fixture = try ServiceFixture()
     defer { fixture.remove() }
     XCTAssertEqual(try fixture.service.install(), .installed)
-    let legacyPlist = try plistData(
-      from: fixture.paths.plistURL,
-      executablePath: fixture.paths.legacyExecutableURL.path)
-    try legacyPlist.write(to: fixture.paths.plistURL, options: .atomic)
-    let callsBefore = fixture.runner.calls
+
+    let previousPlistURL = fixture.paths.previousProductPlistURL
+    try Data("previous service plist".utf8).write(to: previousPlistURL)
+    let callsBeforeStart = fixture.runner.calls.count
 
     XCTAssertThrowsError(try fixture.service.start()) { error in
-      XCTAssertTrue(String(describing: error).contains("cafune service install"))
+      XCTAssertTrue(String(describing: error).contains("Stop and unload it first"))
     }
+    XCTAssertEqual(fixture.runner.calls.count, callsBeforeStart)
+  }
 
-    XCTAssertThrowsError(try fixture.service.restart()) { error in
-      XCTAssertTrue(String(describing: error).contains("cafune service install"))
+  func testInstallRejectsActivePreviousProductListenerWithoutBootstrapping() throws {
+    let fixture = try ServiceFixture()
+    defer { fixture.remove() }
+    let previousLock = try InstanceLock.acquire(
+      at: fixture.paths.previousProductInstanceLockURL,
+      under: fixture.paths.homeDirectory,
+      ownerUID: fixture.paths.filesystemUID)
+    defer { previousLock.release() }
+
+    XCTAssertThrowsError(try fixture.service.install()) { error in
+      XCTAssertTrue(String(describing: error).contains("previous-product listener"))
     }
-
-    XCTAssertEqual(fixture.runner.calls, callsBefore)
-    XCTAssertTrue(fixture.runner.isRunning)
+    XCTAssertFalse(fixture.runner.calls.contains { $0.first == "bootstrap" })
+    XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.paths.plistURL.path))
   }
 
   func testRepeatedInstallIsAnIdempotentNoOp() throws {
@@ -569,7 +546,7 @@ final class LaunchAgentServiceTests: XCTestCase {
         "ThrottleInterval": 30,
         "StandardOutPath": "/dev/null",
         "StandardErrorPath": "/dev/null",
-        "EnvironmentVariables": ["AEROSPACE_GESTURES_MANAGED": "1"],
+        "EnvironmentVariables": ["CAFUNE_MANAGED": "1"],
         "MachServices": ["unexpected": true],
       ], format: .xml, options: 0)
     try unexpected.write(to: fixture.paths.plistURL)
@@ -626,7 +603,7 @@ final class LaunchAgentServiceTests: XCTestCase {
     let foreignExecutablePlist = try PropertyListSerialization.data(
       fromPropertyList: [
         "Label": LaunchAgentPaths.label,
-        "EnvironmentVariables": ["AEROSPACE_GESTURES_MANAGED": "1"],
+        "EnvironmentVariables": ["CAFUNE_MANAGED": "1"],
         "ProgramArguments": ["/tmp/other-listener", "run", fixture.paths.configurationURL.path],
       ], format: .xml, options: 0)
     try foreignExecutablePlist.write(to: fixture.paths.plistURL)
@@ -635,20 +612,6 @@ final class LaunchAgentServiceTests: XCTestCase {
     XCTAssertEqual(try Data(contentsOf: fixture.paths.plistURL), foreignExecutablePlist)
     XCTAssertTrue(fixture.runner.calls.isEmpty)
   }
-}
-
-private func plistData(
-  from url: URL, executablePath: String, configurationPath: String? = nil
-) throws -> Data {
-  var properties = try XCTUnwrap(
-    PropertyListSerialization.propertyList(
-      from: Data(contentsOf: url), options: [], format: nil) as? [String: Any])
-  var arguments = try XCTUnwrap(properties["ProgramArguments"] as? [String])
-  arguments[0] = executablePath
-  if let configurationPath { arguments[2] = configurationPath }
-  properties["ProgramArguments"] = arguments
-  return try PropertyListSerialization.data(
-    fromPropertyList: properties, format: .xml, options: 0)
 }
 
 private func foreignPlist() throws -> Data {

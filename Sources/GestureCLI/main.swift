@@ -59,10 +59,10 @@ do {
   fail("\(error)")
 }
 let managedStartupDiagnostics: StartupDiagnosticStore? =
-  ProcessInfo.processInfo.environment["AEROSPACE_GESTURES_MANAGED"] == "1"
+  ProcessInfo.processInfo.environment["CAFUNE_MANAGED"] == "1"
   ? StartupDiagnosticStore(
     fileURL: environment.homeDirectory
-      .appendingPathComponent("Library/Application Support/aerospace-gestures", isDirectory: true)
+      .appendingPathComponent("Library/Application Support/cafune", isDirectory: true)
       .appendingPathComponent("startup-diagnostic.log"),
     rootURL: environment.homeDirectory)
   : nil
@@ -174,34 +174,48 @@ if executionMode == .run, let configurationURL {
   reloadAdapter = nil
 }
 
+let previousProductLockURL = LaunchAgentPaths.previousProductInstanceLockURL(
+  in: environment.homeDirectory)
+let previousProductLock: InstanceLock?
+do {
+  previousProductLock = try InstanceLock.acquireIfPresent(
+    at: previousProductLockURL, under: environment.homeDirectory)
+} catch InstanceLockError.alreadyHeld {
+  fail(
+    "An older aerospace-gestures listener is active. Stop and unload the old agent first with `launchctl bootout gui/\(getuid()) ~/Library/LaunchAgents/\(LaunchAgentPaths.previousProductLabel).plist`; press Ctrl-C for a foreground listener."
+  )
+} catch {
+  fail("Cannot safely check the previous listener lock: \(error)")
+}
+
 let lockURL = environment.homeDirectory
-  .appendingPathComponent("Library/Application Support/aerospace-gestures", isDirectory: true)
+  .appendingPathComponent("Library/Application Support/cafune", isDirectory: true)
   .appendingPathComponent("listener.lock")
 let listenerLock: InstanceLock
 do {
   listenerLock = try InstanceLock.acquire(
     at: lockURL,
     under: environment.homeDirectory,
-    waitForContention: ProcessInfo.processInfo.environment["AEROSPACE_GESTURES_MANAGED"] == "1")
+    waitForContention: ProcessInfo.processInfo.environment["CAFUNE_MANAGED"] == "1")
 } catch {
   try? managedStartupDiagnostics?.record(.listenerLockUnavailable)
   fail(String(describing: error))
 }
 
 let isManagedService =
-  environment.values["AEROSPACE_GESTURES_MANAGED"] == "1"
+  environment.values["CAFUNE_MANAGED"] == "1"
   || environment.values[ConfigurationReloadSourceResolver.nixManagedEnvironmentKey] == "1"
 let commandOutputLog =
   isManagedService
   ? CommandOutputLog(
     fileURL: environment.homeDirectory
-      .appendingPathComponent("Library/Application Support/aerospace-gestures", isDirectory: true)
+      .appendingPathComponent("Library/Application Support/cafune", isDirectory: true)
       .appendingPathComponent("command-output.log"),
     rootURL: environment.homeDirectory)
   : nil
 let commandOutputWarningLock = NSLock()
 let commandOutputLogger = Logger(
-  subsystem: "com.aerospace-gestures", category: "command-output")
+  subsystem: "com.cafune", category: "command-output")
 var commandOutputWriteWarningShown = false
 let commandOutputHandler: (CommandOutputStream, Data) -> Void = { stream, data in
   if let commandOutputLog {
@@ -339,9 +353,9 @@ if let error = MultitouchInput.start(
   fail(error)
 }
 try? managedStartupDiagnostics?.clear()
-let inputDiagnosticsLogger = Logger(subsystem: "com.aerospace-gestures", category: "input")
+let inputDiagnosticsLogger = Logger(subsystem: "com.cafune", category: "input")
 let inputDiagnosticsEnabled =
-  ProcessInfo.processInfo.environment["AEROSPACE_INPUT_DIAGNOSTICS"] == "1"
+  ProcessInfo.processInfo.environment["CAFUNE_INPUT_DIAGNOSTICS"] == "1"
 let inputDiagnosticsLog: InputDiagnosticsLog?
 if inputDiagnosticsEnabled {
   let log = InputDiagnosticsLog(
@@ -425,7 +439,7 @@ for number in [SIGINT, SIGTERM] {
   source.resume()
   signals.append(source)
 }
-withExtendedLifetime(listenerLock) {
+withExtendedLifetime((listenerLock, previousProductLock)) {
   if actionPolicy.showsMenuBarControl {
     MainActor.assumeIsolated {
       guard let reloadAdapter else { fatalError("Normal run requires a config reload adapter") }

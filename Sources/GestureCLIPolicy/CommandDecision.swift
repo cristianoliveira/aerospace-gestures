@@ -83,7 +83,7 @@ public struct AppGestureFocusTracker {
 
 /// Stores only the app-scoped gesture toggle in an explicit per-user defaults suite.
 public struct AppGesturePreferenceStore {
-  public static let suiteName = "com.aerospace-gestures"
+  public static let suiteName = "com.cafune"
   private static let key = "appScopedGesturesEnabled"
   private static let precedenceKey = "appBindingPrecedence"
   private let defaults: UserDefaults

@@ -48,7 +48,6 @@
         in {
           default = package;
           cafune = package;
-          aerospace-gestures = package;
         });
 
       checks = forAllSystems (system: {

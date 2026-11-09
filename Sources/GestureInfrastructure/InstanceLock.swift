@@ -23,17 +23,34 @@ public final class InstanceLock {
   ) throws -> InstanceLock {
     while true {
       do {
-        return try acquireOnce(at: url, under: rootURL, ownerUID: ownerUID)
+        guard
+          let lock = try acquireOnce(
+            at: url, under: rootURL, ownerUID: ownerUID, createIfMissing: true)
+        else {
+          throw InstanceLockError.cannotOpen(url, "lock file disappeared during acquisition")
+        }
+        return lock
       } catch InstanceLockError.alreadyHeld {
-        guard waitForContention else { throw InstanceLockError.alreadyHeld(url) }
-        sleep(pollInterval)
+        guard !waitForContention else {
+          sleep(pollInterval)
+          continue
+        }
+        throw InstanceLockError.alreadyHeld(url)
       }
     }
   }
 
-  private static func acquireOnce(at url: URL, under rootURL: URL, ownerUID: uid_t) throws
-    -> InstanceLock
-  {
+  public static func acquireIfPresent(
+    at url: URL,
+    under rootURL: URL,
+    ownerUID: uid_t = getuid()
+  ) throws -> InstanceLock? {
+    try acquireOnce(at: url, under: rootURL, ownerUID: ownerUID, createIfMissing: false)
+  }
+
+  private static func acquireOnce(
+    at url: URL, under rootURL: URL, ownerUID: uid_t, createIfMissing: Bool
+  ) throws -> InstanceLock? {
     let parentURL = url.deletingLastPathComponent().standardizedFileURL
     let lexicalRoot = rootURL.standardizedFileURL.path
     let rootPrefix = lexicalRoot.hasSuffix("/") ? lexicalRoot : lexicalRoot + "/"
@@ -69,6 +86,10 @@ public final class InstanceLock {
       var child = openat(
         directoryDescriptor, component, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
       if child < 0, errno == ENOENT {
+        guard createIfMissing else {
+          _ = Darwin.close(directoryDescriptor)
+          return nil
+        }
         guard mkdirat(directoryDescriptor, component, mode_t(S_IRWXU)) == 0 || errno == EEXIST
         else {
           let reason = String(cString: strerror(errno))
@@ -96,10 +117,11 @@ public final class InstanceLock {
     defer { _ = Darwin.close(directoryDescriptor) }
 
     let lockName = url.lastPathComponent
+    let lockFlags = createIfMissing ? O_CREAT | O_RDWR | O_NOFOLLOW : O_RDWR | O_NOFOLLOW
     let descriptor = openat(
-      directoryDescriptor, lockName, O_CREAT | O_RDWR | O_NOFOLLOW,
-      mode_t(S_IRUSR | S_IWUSR))
+      directoryDescriptor, lockName, lockFlags, mode_t(S_IRUSR | S_IWUSR))
     guard descriptor >= 0 else {
+      if !createIfMissing, errno == ENOENT { return nil }
       throw InstanceLockError.cannotOpen(url, String(cString: strerror(errno)))
     }
     var information = stat()

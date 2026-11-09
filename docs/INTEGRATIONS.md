@@ -89,15 +89,13 @@ front window and wraps at either end. It does not read page content or send
 keyboard shortcuts. It does nothing when Brave is closed, not frontmost,
 has no windows, or the front window has fewer than two tabs.
 
-From this repository's root, copy the reviewed helper to a stable location. Its
-`~/.local/share/aerospace-gestures/` directory is user data and intentionally
-keeps its legacy name after the executable is renamed to `cafune`:
+From this repository's root, copy the reviewed helper to Cafuné's stable user-data location. Existing files under `~/.local/share/aerospace-gestures/` are not moved automatically; copy them manually if needed:
 
 ```sh
-install -d "$HOME/.local/share/aerospace-gestures"
+install -d "$HOME/.local/share/cafune"
 install -m 644 examples/brave-tabs.applescript \
-  "$HOME/.local/share/aerospace-gestures/brave-tabs.applescript"
-printf '%s\n' "$HOME/.local/share/aerospace-gestures/brave-tabs.applescript"
+  "$HOME/.local/share/cafune/brave-tabs.applescript"
+printf '%s\n' "$HOME/.local/share/cafune/brave-tabs.applescript"
 ```
 
 The helper is passed to `/usr/bin/osascript`, so it does not need executable
@@ -110,13 +108,13 @@ them alone as a complete configuration:
 fingers = 4
 direction = "left"
 app = "com.brave.Browser"
-command = ["/usr/bin/osascript", "/Users/YOUR_NAME/.local/share/aerospace-gestures/brave-tabs.applescript", "next"]
+command = ["/usr/bin/osascript", "/Users/YOUR_NAME/.local/share/cafune/brave-tabs.applescript", "next"]
 
 [[bindings]]
 fingers = 4
 direction = "right"
 app = "com.brave.Browser"
-command = ["/usr/bin/osascript", "/Users/YOUR_NAME/.local/share/aerospace-gestures/brave-tabs.applescript", "prev"]
+command = ["/usr/bin/osascript", "/Users/YOUR_NAME/.local/share/cafune/brave-tabs.applescript", "prev"]
 ```
 
 macOS may request **Automation** permission when the command first controls

@@ -9,9 +9,9 @@ public struct ConfigurationReloadSourcePaths: Sendable {
 
   public init(
     launchAgentPlistURL: URL = URL(
-      fileURLWithPath: "/Library/LaunchAgents/com.aerospace-gestures.plist"),
+      fileURLWithPath: "/Library/LaunchAgents/com.cafune.plist"),
     managedConfigurationURL: URL = URL(
-      fileURLWithPath: "/etc/aerospace-gestures/config.toml"),
+      fileURLWithPath: "/etc/cafune/config.toml"),
     storeDirectoryURL: URL = URL(fileURLWithPath: "/nix/store", isDirectory: true)
   ) {
     self.launchAgentPlistURL = launchAgentPlistURL.standardizedFileURL
@@ -22,8 +22,8 @@ public struct ConfigurationReloadSourcePaths: Sendable {
 
 /// Resolves the file afresh on each reload, so Nix-managed runs follow the current /etc symlink.
 public struct ConfigurationReloadSourceResolver: Sendable {
-  public static let nixManagedEnvironmentKey = "AEROSPACE_GESTURES_NIX_MANAGED"
-  public static let launchAgentLabel = "com.aerospace-gestures"
+  public static let nixManagedEnvironmentKey = "CAFUNE_NIX_MANAGED"
+  public static let launchAgentLabel = "com.cafune"
 
   private let nixManaged: Bool
   private let fallbackURL: URL
@@ -114,11 +114,11 @@ public struct ConfigurationReloadSourceResolver: Sendable {
       ? paths.storeDirectoryURL.path : paths.storeDirectoryURL.path + "/"
     guard
       resolvedURL.path.hasPrefix(storePath),
-      resolvedURL.lastPathComponent.hasSuffix("-aerospace-gestures.toml")
+      resolvedURL.lastPathComponent.hasSuffix("-cafune.toml")
     else {
       throw ConfigurationReloadSourceError.unsafeConfigurationPath(
         configurationURL,
-        "target must be a Cafuné TOML file with the trusted `-aerospace-gestures.toml` suffix under the Nix store"
+        "target must be a Cafuné TOML file with the trusted `-cafune.toml` suffix under the Nix store"
       )
     }
     try validateRegularFile(resolvedURL, requireNonWritable: true)
