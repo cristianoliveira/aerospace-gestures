@@ -60,17 +60,27 @@ launchctl bootout "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.aerospace-gestu
 If the old plist exists, archive it after confirming the job is unloaded so it cannot relaunch. Keep it and the old data until you have verified the new service:
 
 ```sh
-mkdir -p "$HOME/Library/LaunchAgents/previous-aerospace-gestures"
-mv "$HOME/Library/LaunchAgents/com.aerospace-gestures.plist" \
-  "$HOME/Library/LaunchAgents/previous-aerospace-gestures/"
+archive_dir="$HOME/Library/LaunchAgents/previous-aerospace-gestures"
+archive_plist="$archive_dir/com.aerospace-gestures.plist"
+mkdir -p "$archive_dir"
+if [ -e "$archive_plist" ] || [ -L "$archive_plist" ]; then
+  printf 'Refusing to overwrite existing archive: %s\n' "$archive_plist" >&2
+  exit 1
+fi
+mv "$HOME/Library/LaunchAgents/com.aerospace-gestures.plist" "$archive_plist"
 ```
 
 If you want to keep your old configuration, copy it to Cafuné's new default path and validate it before installing the service. For a custom config path or `XDG_CONFIG_HOME`, copy the file manually to the equivalent `cafune` path instead; Cafuné does not relocate it.
 
 ```sh
-mkdir -p "$HOME/.config/cafune"
-cp "$HOME/.config/aerospace-gestures/config.toml" "$HOME/.config/cafune/config.toml"
-cafune check "$HOME/.config/cafune/config.toml"
+new_config="$HOME/.config/cafune/config.toml"
+mkdir -p "$(dirname "$new_config")"
+if [ -e "$new_config" ] || [ -L "$new_config" ]; then
+  printf 'Refusing to overwrite existing config: %s\n' "$new_config" >&2
+  exit 1
+fi
+cp "$HOME/.config/aerospace-gestures/config.toml" "$new_config"
+cafune check "$new_config"
 ```
 
 Then install the new binary and service. The installer refuses to modify the previous LaunchAgent; its bootout, archive, and data-copy steps are manual. Cafuné does not migrate menu preferences or logs. The old files remain available for your own cleanup after verification.
