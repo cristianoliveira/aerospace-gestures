@@ -6,16 +6,16 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 
 source="$tmp/release/cafune"
-legacy="$tmp/home/.local/bin/aerospace-gestures"
-mkdir -p "$(dirname "$source")" "$(dirname "$legacy")"
+preexisting="$tmp/home/.local/bin/existing-tool"
+mkdir -p "$(dirname "$source")" "$(dirname "$preexisting")"
 printf 'first build\n' > "$source"
 chmod 755 "$source"
-printf 'legacy build\n' > "$legacy"
-chmod 755 "$legacy"
+printf 'existing build\n' > "$preexisting"
+chmod 755 "$preexisting"
 
 "$root/scripts/install-binary.sh" "$source" "$tmp/home/.local/bin"
 target="$tmp/home/.local/bin/cafune"
-test "$(cat "$legacy")" = 'legacy build'
+test "$(cat "$preexisting")" = 'existing build'
 test -x "$target"
 test "$(cat "$target")" = 'first build'
 

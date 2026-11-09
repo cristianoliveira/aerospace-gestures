@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-tmp="$(mktemp -d "${TMPDIR:-/tmp}/aerospace-guardrails.XXXXXX")"
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/cafune-guardrails.XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT
 export GIT_CONFIG_GLOBAL="$tmp/global-config"
 export GIT_CONFIG_NOSYSTEM=1

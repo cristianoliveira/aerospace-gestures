@@ -8,7 +8,7 @@
 
 Cafuné maps three-to-five-finger swipes and opt-in two-to-five-finger pinch-in/spread-out gestures to macOS commands. Use it with [AeroSpace WM](https://github.com/nikitabobko/AeroSpace) or run scripts, apps, and other tools.
 
-`cafune` is the executable and canonical CLI. Cafuné uses new local configuration, preference, service, and state identities; upgrades from `aerospace-gestures` require a manual transition. See the [upgrade notes](docs/USAGE.md#upgrading-from-aerospace-gestures).
+`cafune` is the executable and canonical CLI. It uses Cafuné-specific configuration, preference, service, and state identities.
 
 Use the menu-bar icon to pause commands or reload your configuration. The v0.7.0-alpha.1 pre-release also adds experimental app-scoped bindings and a separate persisted toggle.
 
@@ -16,7 +16,7 @@ Use the menu-bar icon to pause commands or reload your configuration. The v0.7.0
 
 Requires macOS 13+ and a multitouch trackpad. Choose one method:
 
-- Homebrew: the `cafune` formula is not published yet. The existing `aerospace-gestures` formula installs the older product; use a source or Nix build below to try Cafuné.
+- Homebrew: the `cafune` formula is not published yet. Use a source or Nix build below to try Cafuné.
 - Nix, from a checkout with flakes enabled: `nix profile install .`
 - Build from a checkout with Swift 5.9+: `make install` (installs to `~/.local/bin`; add it to your `PATH`).
 

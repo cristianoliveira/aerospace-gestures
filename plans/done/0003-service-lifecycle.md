@@ -13,7 +13,7 @@ Users need login startup and predictable start/stop/update behavior without hand
 
 ## Interface
 
-| Command prefix: `aerospace-gestures service` | Behavior |
+| Command prefix: `cafune service` | Behavior |
 | --- | --- |
 | install | Validate, register, and start; enable login startup. Repeated install safely updates only our registration. |
 | status | Report installed/loaded/running state, PID and last exit status when available, config/log paths. No mutation. |
@@ -24,15 +24,15 @@ Users need login startup and predictable start/stop/update behavior without hand
 
 ## Decisions
 
-- Per-user GUI LaunchAgent; label `com.aerospace-gestures`; plist `~/Library/LaunchAgents/com.aerospace-gestures.plist`.
-- Stable executable `~/.local/bin/aerospace-gestures`. Install validates it and the config before mutation; does not build software or grant permissions.
+- Per-user GUI LaunchAgent; label `com.cafune`; plist `~/Library/LaunchAgents/com.cafune.plist`.
+- Stable executable `~/.local/bin/cafune`. Install validates it and the config before mutation; does not build software or grant permissions.
 - Encode plist through Foundation, not XML/string interpolation. ProgramArguments contains absolute executable and resolved config paths.
 - Capture install-time XDG choice; launchd does not inherit terminal environment. Reinstall to change config location. Working directory is user home; commands must not rely on interactive shell startup/PATH.
 - Login startup and restart on unexpected failure, with throttling. Explicit stop unloads rather than triggering restart.
 - Use `launchctl bootstrap`, `bootout`, and `print` through argv. Capture stderr; distinguish absent/already-loaded states from real failures.
 - Reject foreign/malformed existing plists rather than silently replacing them. Preserve or roll back a working installation on update/bootstrap failure.
 - Add a per-user single-instance lock shared by manual/service listeners. Avoid stale PID-file assumptions and arbitrary PID killing.
-- Proposed logs: `~/Library/Logs/aerospace-gestures/`. Define a bounded retention strategy before enabling persistent logging; never record arguments or raw coordinates.
+- Proposed logs: `~/Library/Logs/cafune/`. Define a bounded retention strategy before enabling persistent logging; never record arguments or raw coordinates.
 
 ## Acceptance criteria
 

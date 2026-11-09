@@ -142,8 +142,6 @@ public enum CLIHelp {
       description = """
         Manages the per-user GUI LaunchAgent at ~/Library/LaunchAgents/com.cafune.plist.
         install requires a prebuilt executable at ~/.local/bin/cafune and a valid config.
-        When upgrading from aerospace-gestures, stop and unload its LaunchAgent and archive its plist manually before installing.
-        The new service never rewrites or removes old service files.
         install never builds software or changes Input Monitoring/TCC permissions.
         stop retains the plist; uninstall removes only the owned plist and preserves binary/config.
         Persistent logs are disabled; launchd stdout/stderr are /dev/null (zero retained bytes).

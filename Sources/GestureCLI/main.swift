@@ -174,20 +174,6 @@ if executionMode == .run, let configurationURL {
   reloadAdapter = nil
 }
 
-let previousProductLockURL = LaunchAgentPaths.previousProductInstanceLockURL(
-  in: environment.homeDirectory)
-let previousProductLock: InstanceLock?
-do {
-  previousProductLock = try InstanceLock.acquireIfPresent(
-    at: previousProductLockURL, under: environment.homeDirectory)
-} catch InstanceLockError.alreadyHeld {
-  fail(
-    "An older aerospace-gestures listener is active. Stop and unload the old agent first with `launchctl bootout gui/\(getuid()) ~/Library/LaunchAgents/\(LaunchAgentPaths.previousProductLabel).plist`; press Ctrl-C for a foreground listener."
-  )
-} catch {
-  fail("Cannot safely check the previous listener lock: \(error)")
-}
-
 let lockURL = environment.homeDirectory
   .appendingPathComponent("Library/Application Support/cafune", isDirectory: true)
   .appendingPathComponent("listener.lock")
@@ -439,7 +425,7 @@ for number in [SIGINT, SIGTERM] {
   source.resume()
   signals.append(source)
 }
-withExtendedLifetime((listenerLock, previousProductLock)) {
+withExtendedLifetime(listenerLock) {
   if actionPolicy.showsMenuBarControl {
     MainActor.assumeIsolated {
       guard let reloadAdapter else { fatalError("Normal run requires a config reload adapter") }

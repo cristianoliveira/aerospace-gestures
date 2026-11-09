@@ -89,7 +89,7 @@ front window and wraps at either end. It does not read page content or send
 keyboard shortcuts. It does nothing when Brave is closed, not frontmost,
 has no windows, or the front window has fewer than two tabs.
 
-From this repository's root, copy the reviewed helper to Cafuné's stable user-data location. Existing files under `~/.local/share/aerospace-gestures/` are not moved automatically; copy them manually if needed:
+From this repository's root, copy the reviewed helper to Cafuné's stable user-data location:
 
 ```sh
 install -d "$HOME/.local/share/cafune"

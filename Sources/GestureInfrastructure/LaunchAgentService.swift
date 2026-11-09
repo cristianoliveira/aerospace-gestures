@@ -4,7 +4,6 @@ import GestureCore
 
 public struct LaunchAgentPaths {
   public static let label = "com.cafune"
-  public static let previousProductLabel = "com.aerospace-gestures"
 
   public let homeDirectory: URL
   public let executableURL: URL
@@ -29,10 +28,6 @@ public struct LaunchAgentPaths {
     self.launchctlURL = launchctlURL.standardizedFileURL
   }
 
-  public var previousProductPlistURL: URL {
-    launchAgentsDirectory.appendingPathComponent("\(Self.previousProductLabel).plist")
-  }
-
   public var domain: String { "gui/\(uid)" }
   public var serviceTarget: String { "\(domain)/\(Self.label)" }
   public var launchAgentsDirectory: URL {
@@ -44,14 +39,6 @@ public struct LaunchAgentPaths {
   public var instanceLockURL: URL {
     homeDirectory
       .appendingPathComponent("Library/Application Support/cafune", isDirectory: true)
-      .appendingPathComponent("listener.lock")
-  }
-  public var previousProductInstanceLockURL: URL {
-    Self.previousProductInstanceLockURL(in: homeDirectory)
-  }
-  public static func previousProductInstanceLockURL(in homeDirectory: URL) -> URL {
-    homeDirectory
-      .appendingPathComponent("Library/Application Support/aerospace-gestures", isDirectory: true)
       .appendingPathComponent("listener.lock")
   }
   public var operationLockURL: URL {
@@ -246,7 +233,6 @@ public enum LaunchAgentServiceError: Error, CustomStringConvertible {
   case launchctl(String)
   case rollback(String)
   case alreadyRunningConflict
-  case previousServiceRequiresManualStop(URL, UInt32)
 
   public var description: String {
     switch self {
@@ -264,10 +250,7 @@ public enum LaunchAgentServiceError: Error, CustomStringConvertible {
     case .rollback(let reason):
       return "LaunchAgent operation failed and rollback was incomplete: \(reason)"
     case .alreadyRunningConflict:
-      return "Another Cafuné or previous-product listener already holds an instance lock"
-    case .previousServiceRequiresManualStop(let url, let uid):
-      return
-        "The previous service still exists at \(url.path). Stop and unload it first with `launchctl bootout gui/\(uid) ~/Library/LaunchAgents/\(LaunchAgentPaths.previousProductLabel).plist`, then archive or remove that plist manually before installing Cafuné."
+      return "Another Cafuné listener already holds the instance lock"
     }
   }
 }
@@ -292,7 +275,6 @@ public final class LaunchAgentService {
 
   @discardableResult
   public func install() throws -> ServiceOperationResult {
-    try rejectPreviousService()
     try validate(executableURL: paths.executableURL, configurationURL: paths.configurationURL)
     guard try readInstallation().state != .foreign else {
       throw LaunchAgentServiceError.foreignPlist(paths.plistURL)
@@ -301,7 +283,6 @@ public final class LaunchAgentService {
   }
 
   private func installWhileLocked() throws -> ServiceOperationResult {
-    try rejectPreviousService()
     try validate(executableURL: paths.executableURL, configurationURL: paths.configurationURL)
     let newData = try makePlist(configurationURL: paths.configurationURL)
     let existing = try readInstallation()
@@ -356,7 +337,6 @@ public final class LaunchAgentService {
 
   @discardableResult
   public func start() throws -> ServiceOperationResult {
-    try rejectPreviousService()
     let data = try requireOwnedInstallation()
     try validate(
       executableURL: paths.executableURL, configurationURL: try configurationURL(from: data))
@@ -364,7 +344,6 @@ public final class LaunchAgentService {
   }
 
   private func startWhileLocked() throws -> ServiceOperationResult {
-    try rejectPreviousService()
     let installationData = try requireOwnedInstallation()
     let configurationURL = try configurationURL(from: installationData)
     try validate(executableURL: paths.executableURL, configurationURL: configurationURL)
@@ -411,7 +390,6 @@ public final class LaunchAgentService {
 
   @discardableResult
   public func restart() throws -> ServiceOperationResult {
-    try rejectPreviousService()
     let data = try requireOwnedInstallation()
     try validate(
       executableURL: paths.executableURL, configurationURL: try configurationURL(from: data))
@@ -419,7 +397,6 @@ public final class LaunchAgentService {
   }
 
   private func restartWhileLocked() throws -> ServiceOperationResult {
-    try rejectPreviousService()
     let installationData = try requireOwnedInstallation()
     let configurationURL = try configurationURL(from: installationData)
     try validate(executableURL: paths.executableURL, configurationURL: configurationURL)
@@ -600,19 +577,6 @@ public final class LaunchAgentService {
     return URL(fileURLWithPath: arguments[2]).standardizedFileURL
   }
 
-  private func rejectPreviousService() throws {
-    var information = stat()
-    guard lstat(paths.previousProductPlistURL.path, &information) == 0 else {
-      guard errno == ENOENT else {
-        throw LaunchAgentServiceError.plistRead(
-          paths.previousProductPlistURL, String(cString: strerror(errno)))
-      }
-      return
-    }
-    throw LaunchAgentServiceError.previousServiceRequiresManualStop(
-      paths.previousProductPlistURL, paths.uid)
-  }
-
   private func requireOwnedInstallation() throws -> Data {
     let installation = try readInstallation()
     guard installation.state == .owned, let data = installation.data else {
@@ -665,11 +629,6 @@ public final class LaunchAgentService {
 
   private func ensureNoListener() throws {
     do {
-      let previousLock = try InstanceLock.acquireIfPresent(
-        at: paths.previousProductInstanceLockURL,
-        under: paths.homeDirectory, ownerUID: paths.filesystemUID)
-      previousLock?.release()
-
       let lock = try InstanceLock.acquire(
         at: paths.instanceLockURL, under: paths.homeDirectory, ownerUID: paths.filesystemUID)
       lock.release()

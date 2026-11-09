@@ -197,8 +197,7 @@ final class CLIUXTests: XCTestCase {
     }
     XCTAssertTrue(text.contains("~/.local/bin/cafune"))
     XCTAssertTrue(text.contains("com.cafune.plist"))
-    XCTAssertTrue(text.contains("stop and unload its LaunchAgent"))
-    XCTAssertTrue(text.contains("aerospace-gestures"))
+    XCTAssertTrue(text.contains("Manages the per-user GUI LaunchAgent"))
   }
 
   func testRootHelpKeepsRecoveryAndSafetyGuidance() {

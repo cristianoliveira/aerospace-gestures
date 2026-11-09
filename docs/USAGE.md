@@ -47,48 +47,6 @@ Normal `run` adds a menu-bar icon:
 
 Listen and dry-run modes never execute commands and have no menu-bar status item. Quitting a listener started by the built-in LaunchAgent leaves it stopped for this login because the agent does not restart successful exits. An external service manager may restart it.
 
-## Upgrading from aerospace-gestures
-
-Cafuné is a clean break. It does not copy, rewrite, or delete the old configuration, LaunchAgent, preferences, or state. The old and new binaries use separate state paths. Stop the old listener before starting Cafuné.
-
-For an old foreground listener, press Ctrl-C. If the previous per-user LaunchAgent is loaded, unload it explicitly:
-
-```sh
-launchctl bootout "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.aerospace-gestures.plist"
-```
-
-If the old plist exists, archive it after confirming the job is unloaded so it cannot relaunch. Keep it and the old data until you have verified the new service:
-
-```sh
-archive_dir="$HOME/Library/LaunchAgents/previous-aerospace-gestures"
-archive_plist="$archive_dir/com.aerospace-gestures.plist"
-mkdir -p "$archive_dir"
-if [ -e "$archive_plist" ] || [ -L "$archive_plist" ]; then
-  printf 'Refusing to overwrite existing archive: %s\n' "$archive_plist" >&2
-  exit 1
-fi
-mv "$HOME/Library/LaunchAgents/com.aerospace-gestures.plist" "$archive_plist"
-```
-
-If you want to keep your old configuration, copy it to Cafuné's new default path and validate it before installing the service. For a custom config path or `XDG_CONFIG_HOME`, copy the file manually to the equivalent `cafune` path instead; Cafuné does not relocate it.
-
-```sh
-new_config="$HOME/.config/cafune/config.toml"
-mkdir -p "$(dirname "$new_config")"
-if [ -e "$new_config" ] || [ -L "$new_config" ]; then
-  printf 'Refusing to overwrite existing config: %s\n' "$new_config" >&2
-  exit 1
-fi
-cp "$HOME/.config/aerospace-gestures/config.toml" "$new_config"
-cafune check "$new_config"
-```
-
-Then install the new binary and service. The installer refuses to modify the previous LaunchAgent; its bootout, archive, and data-copy steps are manual. Cafuné does not migrate menu preferences or logs. The old files remain available for your own cleanup after verification.
-
-Nix-managed LaunchAgents are root-owned and separate from the built-in per-user service. Update the Nix declaration and deployment to use `com.cafune`, the `CAFUNE_NIX_MANAGED` marker, `/etc/cafune/config.toml`, and a trusted store target ending in `-cafune.toml`. Unload the previous Nix-managed job through your Nix deployment before starting the new one. Do not edit the root-owned plist or symlink by hand.
-
-The repository URL and historical release records retain their original `aerospace-gestures` names; this does not affect the Cafuné executable or its local identities.
-
 ## Optional per-user service
 
 The built-in service expects the binary at `~/.local/bin/cafune`. From a checkout, `make install` creates it and refuses to overwrite an existing installation.
