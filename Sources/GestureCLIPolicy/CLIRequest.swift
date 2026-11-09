@@ -42,7 +42,7 @@ public enum CLIHelpTopic: Equatable {
 
 public enum CLIHelp {
   public static func text(for topic: CLIHelpTopic, defaultConfigurationURL: URL) -> String {
-    let command = "aerospace-gestures"
+    let command = "cafune"
     let name = """
       Name:
         \(command) v\(CLIVersion.current) — map macOS trackpad gestures to commands
@@ -141,7 +141,9 @@ public enum CLIHelp {
         """
       description = """
         Manages the per-user GUI LaunchAgent at ~/Library/LaunchAgents/com.aerospace-gestures.plist.
-        install requires a prebuilt executable at ~/.local/bin/aerospace-gestures and a valid config.
+        install requires a prebuilt executable at ~/.local/bin/cafune and a valid config.
+        install migrates an owned plist still pointing to ~/.local/bin/aerospace-gestures.
+        Run install before start or restart when migrating an existing service.
         install never builds software or changes Input Monitoring/TCC permissions.
         stop retains the plist; uninstall removes only the owned plist and preserves binary/config.
         Persistent logs are disabled; launchd stdout/stderr are /dev/null (zero retained bytes).
@@ -371,7 +373,7 @@ public enum ConfigurationPath {
 
 public enum CLIConfigurationFailure {
   public static func missing(at url: URL) -> String {
-    "Cannot load configuration at \(url.path): file does not exist. Create the default with `aerospace-gestures init` or create this path with `aerospace-gestures init \(shellQuoted(url.path))`."
+    "Cannot load configuration at \(url.path): file does not exist. Create the default with `cafune init` or create this path with `cafune init \(shellQuoted(url.path))`."
   }
 
   public static func invalid(at url: URL, reason: Error) -> String {

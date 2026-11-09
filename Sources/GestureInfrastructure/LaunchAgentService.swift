@@ -4,6 +4,7 @@ import GestureCore
 
 public struct LaunchAgentPaths {
   public static let label = "com.aerospace-gestures"
+  public static let legacyExecutableName = "aerospace-gestures"
 
   public let homeDirectory: URL
   public let executableURL: URL
@@ -26,6 +27,10 @@ public struct LaunchAgentPaths {
     self.uid = uid
     self.filesystemUID = filesystemUID
     self.launchctlURL = launchctlURL.standardizedFileURL
+  }
+
+  public var legacyExecutableURL: URL {
+    homeDirectory.appendingPathComponent(".local/bin/\(Self.legacyExecutableName)")
   }
 
   public var domain: String { "gui/\(uid)" }
@@ -142,19 +147,22 @@ public struct ServiceStatus: Equatable, CustomStringConvertible {
   public let configurationURL: URL
   public let managedPlistURL: URL
   public let startupDiagnostic: StartupDiagnosticState
+  public let requiresMigration: Bool
 
   public init(
     installation: ServiceInstallationState,
     launchd: ServiceLaunchState,
     configurationURL: URL,
     managedPlistURL: URL,
-    startupDiagnostic: StartupDiagnosticState = .none
+    startupDiagnostic: StartupDiagnosticState = .none,
+    requiresMigration: Bool = false
   ) {
     self.installation = installation
     self.launchd = launchd
     self.configurationURL = configurationURL
     self.managedPlistURL = managedPlistURL
     self.startupDiagnostic = startupDiagnostic
+    self.requiresMigration = requiresMigration
   }
 
   public var description: String {
@@ -203,13 +211,18 @@ public struct ServiceStatus: Equatable, CustomStringConvertible {
       diagnosticDescription = "unavailable (invalid or inaccessible; details withheld)"
     }
 
+    let migrationNotice =
+      requiresMigration
+      ? "\nMigration required: run `cafune service install` to replace the legacy executable path."
+      : ""
+
     return """
       Installation: \(installationDescription)
       LaunchAgent: \(launchdDescription)\(ownershipWarning)
       Managed plist: \(managedPlistURL.path)
       Configuration: \(configurationURL.path)
       Logs: stdout/stderr discarded (/dev/null; retained bytes: 0)
-      Last startup diagnostic: \(diagnosticDescription) (one private record, max \(StartupDiagnosticStore.maximumBytes) bytes)
+      Last startup diagnostic: \(diagnosticDescription) (one private record, max \(StartupDiagnosticStore.maximumBytes) bytes)\(migrationNotice)
       Trackpad responsiveness: unverified; process state does not prove frame delivery.
       """
   }
@@ -233,6 +246,7 @@ public enum LaunchAgentServiceError: Error, CustomStringConvertible {
   case launchctl(String)
   case rollback(String)
   case alreadyRunningConflict
+  case legacyServiceRequiresInstall
 
   public var description: String {
     switch self {
@@ -250,7 +264,10 @@ public enum LaunchAgentServiceError: Error, CustomStringConvertible {
     case .rollback(let reason):
       return "LaunchAgent operation failed and rollback was incomplete: \(reason)"
     case .alreadyRunningConflict:
-      return "Another aerospace-gestures listener already holds the instance lock"
+      return "Another Cafuné listener already holds the instance lock"
+    case .legacyServiceRequiresInstall:
+      return
+        "The LaunchAgent still points to aerospace-gestures; run `cafune service install` to migrate it before starting or restarting."
     }
   }
 }
@@ -275,20 +292,24 @@ public final class LaunchAgentService {
 
   @discardableResult
   public func install() throws -> ServiceOperationResult {
-    try validate(executableURL: paths.executableURL, configurationURL: paths.configurationURL)
-    guard try readInstallation().state != .foreign else {
-      throw LaunchAgentServiceError.foreignPlist(paths.plistURL)
-    }
-    return try withOperationLock { try installWhileLocked() }
-  }
-
-  private func installWhileLocked() throws -> ServiceOperationResult {
-    try validate(executableURL: paths.executableURL, configurationURL: paths.configurationURL)
-    let newData = try makePlist(configurationURL: paths.configurationURL)
     let existing = try readInstallation()
     guard existing.state != .foreign else {
       throw LaunchAgentServiceError.foreignPlist(paths.plistURL)
     }
+    try validate(
+      executableURL: paths.executableURL,
+      configurationURL: try configurationURLForInstall(existing))
+    return try withOperationLock { try installWhileLocked() }
+  }
+
+  private func installWhileLocked() throws -> ServiceOperationResult {
+    let existing = try readInstallation()
+    guard existing.state != .foreign else {
+      throw LaunchAgentServiceError.foreignPlist(paths.plistURL)
+    }
+    let configurationURL = try configurationURLForInstall(existing)
+    try validate(executableURL: paths.executableURL, configurationURL: configurationURL)
+    let newData = try makePlist(configurationURL: configurationURL)
 
     let loaded = try launchdState()
     let wasLoaded = try isLoaded(loaded)
@@ -338,6 +359,7 @@ public final class LaunchAgentService {
   @discardableResult
   public func start() throws -> ServiceOperationResult {
     let data = try requireOwnedInstallation()
+    try rejectLegacyExecutable(in: data)
     try validate(
       executableURL: paths.executableURL, configurationURL: try configurationURL(from: data))
     return try withOperationLock { try startWhileLocked() }
@@ -345,6 +367,7 @@ public final class LaunchAgentService {
 
   private func startWhileLocked() throws -> ServiceOperationResult {
     let installationData = try requireOwnedInstallation()
+    try rejectLegacyExecutable(in: installationData)
     let configurationURL = try configurationURL(from: installationData)
     try validate(executableURL: paths.executableURL, configurationURL: configurationURL)
     let state = try launchdState()
@@ -391,6 +414,7 @@ public final class LaunchAgentService {
   @discardableResult
   public func restart() throws -> ServiceOperationResult {
     let data = try requireOwnedInstallation()
+    try rejectLegacyExecutable(in: data)
     try validate(
       executableURL: paths.executableURL, configurationURL: try configurationURL(from: data))
     return try withOperationLock { try restartWhileLocked() }
@@ -398,6 +422,7 @@ public final class LaunchAgentService {
 
   private func restartWhileLocked() throws -> ServiceOperationResult {
     let installationData = try requireOwnedInstallation()
+    try rejectLegacyExecutable(in: installationData)
     let configurationURL = try configurationURL(from: installationData)
     try validate(executableURL: paths.executableURL, configurationURL: configurationURL)
     let wasLoaded = try isLoaded(launchdState())
@@ -471,7 +496,8 @@ public final class LaunchAgentService {
     }
     return ServiceStatus(
       installation: installation.state, launchd: state, configurationURL: configuration,
-      managedPlistURL: paths.plistURL, startupDiagnostic: startupDiagnostic)
+      managedPlistURL: paths.plistURL, startupDiagnostic: startupDiagnostic,
+      requiresMigration: installation.data.map(isLegacyExecutable) ?? false)
   }
 
   private func withOperationLock<T>(_ operation: () throws -> T) throws -> T {
@@ -554,7 +580,8 @@ public final class LaunchAgentService {
         "AEROSPACE_GESTURES_MANAGED": "1"
       ],
       let arguments = properties["ProgramArguments"] as? [String], arguments.count == 3,
-      arguments[0] == paths.executableURL.path, arguments[1] == "run",
+      [paths.executableURL.path, paths.legacyExecutableURL.path].contains(arguments[0]),
+      arguments[1] == "run",
       arguments[2].hasPrefix("/"),
       properties["WorkingDirectory"] as? String == paths.homeDirectory.path,
       properties["RunAtLoad"] as? Bool == true,
@@ -566,6 +593,13 @@ public final class LaunchAgentService {
     return true
   }
 
+  private func configurationURLForInstall(_ installation: Installation) throws -> URL {
+    guard installation.state == .owned, let data = installation.data,
+      isLegacyExecutable(data)
+    else { return paths.configurationURL }
+    return try configurationURL(from: data)
+  }
+
   private func configurationURL(from data: Data) throws -> URL {
     guard
       let properties = try? PropertyListSerialization.propertyList(
@@ -574,6 +608,20 @@ public final class LaunchAgentService {
       arguments[2].hasPrefix("/")
     else { throw LaunchAgentServiceError.foreignPlist(paths.plistURL) }
     return URL(fileURLWithPath: arguments[2]).standardizedFileURL
+  }
+
+  private func rejectLegacyExecutable(in data: Data) throws {
+    guard isLegacyExecutable(data) else { return }
+    throw LaunchAgentServiceError.legacyServiceRequiresInstall
+  }
+
+  private func isLegacyExecutable(_ data: Data) -> Bool {
+    guard
+      let properties = try? PropertyListSerialization.propertyList(
+        from: data, options: [], format: nil) as? [String: Any],
+      let arguments = properties["ProgramArguments"] as? [String]
+    else { return false }
+    return arguments.first == paths.legacyExecutableURL.path
   }
 
   private func requireOwnedInstallation() throws -> Data {

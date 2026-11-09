@@ -13,7 +13,7 @@
           pkgs = import nixpkgs { inherit system; };
           generated = pkgs.swiftpm2nix.helpers ./nix;
           package = pkgs.swiftPackages.stdenv.mkDerivation {
-            pname = "aerospace-gestures";
+            pname = "cafune";
             version = "0.7.0-alpha.1";
             src = self;
 
@@ -32,8 +32,8 @@
 
             installPhase = ''
               runHook preInstall
-              install -Dm755 "$(swiftpmBinPath)/aerospace-gestures" \
-                "$out/bin/aerospace-gestures"
+              install -Dm755 "$(swiftpmBinPath)/cafune" \
+                "$out/bin/cafune"
               runHook postInstall
             '';
 
@@ -41,12 +41,13 @@
               description = "Cafuné maps macOS trackpad gestures to commands";
               homepage = "https://github.com/cristianoliveira/aerospace-gestures";
               license = pkgs.lib.licenses.mit;
-              mainProgram = "aerospace-gestures";
+              mainProgram = "cafune";
               platforms = pkgs.lib.platforms.darwin;
             };
           };
         in {
           default = package;
+          cafune = package;
           aerospace-gestures = package;
         });
 

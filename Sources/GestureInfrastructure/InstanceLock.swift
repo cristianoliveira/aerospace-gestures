@@ -158,7 +158,7 @@ public enum InstanceLockError: Error, CustomStringConvertible {
   public var description: String {
     switch self {
     case .alreadyHeld(let url):
-      return "Another aerospace-gestures process already holds the lock at \(url.path)"
+      return "Another Cafuné listener already holds the shared instance lock at \(url.path)"
     case .cannotPrepareDirectory(let url, let error):
       return "Cannot prepare instance lock directory at \(url.path): \(error)"
     case .cannotOpen(let url, let reason):

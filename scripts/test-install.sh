@@ -5,13 +5,17 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 
-source="$tmp/release/aerospace-gestures"
-mkdir -p "$(dirname "$source")"
+source="$tmp/release/cafune"
+legacy="$tmp/home/.local/bin/aerospace-gestures"
+mkdir -p "$(dirname "$source")" "$(dirname "$legacy")"
 printf 'first build\n' > "$source"
 chmod 755 "$source"
+printf 'legacy build\n' > "$legacy"
+chmod 755 "$legacy"
 
 "$root/scripts/install-binary.sh" "$source" "$tmp/home/.local/bin"
-target="$tmp/home/.local/bin/aerospace-gestures"
+target="$tmp/home/.local/bin/cafune"
+test "$(cat "$legacy")" = 'legacy build'
 test -x "$target"
 test "$(cat "$target")" = 'first build'
 
@@ -34,6 +38,6 @@ if "$root/scripts/install-binary.sh" "$tmp/missing" "$tmp/other/bin" > "$tmp/out
   echo 'install unexpectedly accepted a missing build' >&2
   exit 1
 fi
-test ! -e "$tmp/other/bin/aerospace-gestures"
+test ! -e "$tmp/other/bin/cafune"
 
 printf 'install tests passed\n'

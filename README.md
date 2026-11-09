@@ -8,7 +8,7 @@
 
 Cafuné maps three-to-five-finger swipes and opt-in two-to-five-finger pinch-in/spread-out gestures to macOS commands. Use it with [AeroSpace WM](https://github.com/nikitabobko/AeroSpace) or run scripts, apps, and other tools.
 
-Cafuné is the product name; `aerospace-gestures` remains the CLI command for compatibility.
+`cafune` is the executable and canonical CLI. Configuration and existing per-user service identifiers retain `aerospace-gestures` for compatibility; see the [migration notes](docs/USAGE.md#upgrading-from-aerospace-gestures).
 
 Use the menu-bar icon to pause commands or reload your configuration. The v0.7.0-alpha.1 pre-release also adds experimental app-scoped bindings and a separate persisted toggle.
 
@@ -16,21 +16,21 @@ Use the menu-bar icon to pause commands or reload your configuration. The v0.7.0
 
 Requires macOS 13+ and a multitouch trackpad. Choose one method:
 
-- Homebrew: `brew install cristianoliveira/tap/aerospace-gestures`
+- Homebrew: `brew install cristianoliveira/tap/aerospace-gestures` (the tap formula keeps its existing name and must be updated separately for Cafuné releases).
 - Nix, from a checkout with flakes enabled: `nix profile install .`
 - Build from a checkout with Swift 5.9+: `make install` (installs to `~/.local/bin`; add it to your `PATH`).
 
-`make install` will not replace an existing binary; see the [update steps](docs/USAGE.md#service-troubleshooting-and-updates) if you use the built-in service. If several versions are installed, use `type -a aerospace-gestures` to see which one runs.
+`make install` will not replace an existing binary; see the [update steps](docs/USAGE.md#service-troubleshooting-and-updates) if you use the built-in service. If several versions are installed, use `type -a cafune` to see which one runs.
 
 ## Try it
 
 ```sh
-aerospace-gestures init ./config.toml   # once; does not overwrite an existing config
-aerospace-gestures check ./config.toml
-aerospace-gestures run ./config.toml
+cafune init ./config.toml   # once; does not overwrite an existing config
+cafune check ./config.toml
+cafune run ./config.toml
 ```
 
-Swipe **three fingers down** to show the example popup. Press Ctrl-C to stop. To observe gestures without running commands, use `aerospace-gestures listen start`.
+Swipe **three fingers down** to show the example popup. Press Ctrl-C to stop. To observe gestures without running commands, use `cafune listen start`.
 
 ## Example config
 

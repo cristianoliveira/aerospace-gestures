@@ -179,12 +179,12 @@ final class CLIUXTests: XCTestCase {
     }
 
     let checkHelp = CLIHelp.text(for: .check, defaultConfigurationURL: defaultURL)
-    XCTAssertTrue(checkHelp.contains("Usage: aerospace-gestures check <config.toml>"))
+    XCTAssertTrue(checkHelp.contains("Usage: cafune check <config.toml>"))
     let runHelp = CLIHelp.text(for: .run, defaultConfigurationURL: defaultURL)
-    XCTAssertTrue(runHelp.contains("Usage: aerospace-gestures run <config.toml> [--dry-run]"))
+    XCTAssertTrue(runHelp.contains("Usage: cafune run <config.toml> [--dry-run]"))
     XCTAssertTrue(runHelp.contains("run /path/to/config.toml --dry-run"))
     let listenHelp = CLIHelp.text(for: .listen, defaultConfigurationURL: defaultURL)
-    XCTAssertTrue(listenHelp.contains("Usage: aerospace-gestures listen <start>"))
+    XCTAssertTrue(listenHelp.contains("Usage: cafune listen <start>"))
     XCTAssertTrue(listenHelp.contains("listen start"))
   }
 
@@ -195,14 +195,17 @@ final class CLIUXTests: XCTestCase {
     for action in ["install", "status", "start", "stop", "restart", "uninstall"] {
       XCTAssertTrue(text.contains(action), "service help must document \(action)")
     }
+    XCTAssertTrue(text.contains("~/.local/bin/cafune"))
+    XCTAssertTrue(text.contains("migrates an owned plist"))
+    XCTAssertTrue(text.contains("aerospace-gestures"))
   }
 
   func testRootHelpKeepsRecoveryAndSafetyGuidance() {
     let text = CLIHelp.text(
       for: .root,
       defaultConfigurationURL: URL(fileURLWithPath: "/tmp/default/config.toml"))
-    XCTAssertTrue(text.contains("aerospace-gestures check <config.toml>"))
-    XCTAssertTrue(text.contains("aerospace-gestures init"))
+    XCTAssertTrue(text.contains("cafune check <config.toml>"))
+    XCTAssertTrue(text.contains("cafune init"))
     XCTAssertTrue(text.contains("Private MultitouchSupport API is experimental"))
   }
 

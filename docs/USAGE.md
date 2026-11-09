@@ -2,16 +2,16 @@
 
 For installation, see [README](../README.md#install). For bindings and sensitivity, see [Configuration](CONFIGURATION.md).
 
-Cafuné is the product name; `aerospace-gestures` remains the CLI command for compatibility. Commands below use an installed binary. From a checkout, use `swift run aerospace-gestures` instead.
+The executable and CLI are named `cafune`. Commands below use an installed binary. From a checkout, use `swift run cafune` instead. Configuration, preferences, service labels, and state paths intentionally retain legacy `aerospace-gestures` identifiers.
 
 ## Run
 
 Requires macOS 13+ and a multitouch trackpad.
 
 ```sh
-aerospace-gestures init ./config.toml # once; does not overwrite an existing file
-aerospace-gestures check ./config.toml
-aerospace-gestures run ./config.toml
+cafune init ./config.toml # once; does not overwrite an existing file
+cafune check ./config.toml
+cafune run ./config.toml
 ```
 
 Swipe **three fingers down** to show the default “It's hooked!” popup. Lift all fingers before another gesture. Press Ctrl-C to stop.
@@ -21,13 +21,13 @@ Swipe **three fingers down** to show the default “It's hooked!” popup. Lift 
 Observe gestures without running commands:
 
 ```sh
-aerospace-gestures listen start
+cafune listen start
 ```
 
 To test your configuration's sensitivity without executing commands:
 
 ```sh
-aerospace-gestures run ./config.toml --dry-run
+cafune run ./config.toml --dry-run
 ```
 
 Press Ctrl-C before starting another listener. If no events appear, grant your terminal **System Settings → Privacy & Security → Input Monitoring** permission, then restart the listener. Do not use sudo.
@@ -47,12 +47,36 @@ Normal `run` adds a menu-bar icon:
 
 Listen and dry-run modes never execute commands and have no menu-bar status item. Quitting a listener started by the built-in LaunchAgent leaves it stopped for this login because the agent does not restart successful exits. An external service manager may restart it.
 
+## Upgrading from aerospace-gestures
+
+Install the new `cafune` binary first. `make install` writes `~/.local/bin/cafune` and leaves the old executable untouched. Do not remove the old binary until the service migration is complete.
+
+For an existing built-in per-user service, run `cafune service install`. It recognizes the exact owned legacy plist, unloads the old listener, updates the same plist to launch `cafune`, then checks the shared legacy instance lock before bootstrapping. If migration fails, it restores the prior plist. The LaunchAgent label and configuration path stay unchanged. `cafune service status` reports when migration is required; `start` and `restart` refuse to relaunch the old executable until you run `cafune service install`. `stop` and `uninstall` can still manage the recognized legacy plist.
+
+For a foreground listener, stop the old process with Ctrl-C before starting `cafune`. Both versions use the same legacy instance lock, so a second listener cannot take over while the old one is active.
+
+Nix-managed LaunchAgents are root-owned and separate from the built-in per-user service. Rebuild and deploy the managed plist so `ProgramArguments[0]` points to the new Nix-store `cafune` executable, then reload it through your Nix deployment. Keep the existing label, managed marker, `/etc/aerospace-gestures/config.toml` symlink, and trusted `*-aerospace-gestures.toml` target naming. Do not edit the root-owned plist or symlink by hand.
+
+### Legacy identifiers retained for compatibility
+
+These names are intentional data and service contracts, not the executable name. Keep them when upgrading:
+
+| Purpose | Retained identity |
+| --- | --- |
+| Default config | `~/.config/aerospace-gestures/config.toml` or `$XDG_CONFIG_HOME/aerospace-gestures/config.toml` |
+| User LaunchAgent | `com.aerospace-gestures` label and `~/Library/LaunchAgents/com.aerospace-gestures.plist` |
+| User state and logs | `~/Library/Application Support/aerospace-gestures/` and `~/Library/Logs/aerospace-gestures/` |
+| Persisted menu preferences | `com.aerospace-gestures` defaults suite |
+| Nix-managed service | `/Library/LaunchAgents/com.aerospace-gestures.plist`, `/etc/aerospace-gestures/config.toml`, and the existing managed marker/trusted-store checks |
+
+The executable and command are `cafune`; do not rename or delete these existing user data locations during the binary migration.
+
 ## Optional per-user service
 
-The built-in service expects the binary at `~/.local/bin/aerospace-gestures`. From a checkout, `make install` creates it but refuses to overwrite an existing installation.
+The built-in service expects the binary at `~/.local/bin/cafune`. From a checkout, `make install` creates it and refuses to overwrite an existing installation.
 
 ```sh
-BIN="$HOME/.local/bin/aerospace-gestures"
+BIN="$HOME/.local/bin/cafune"
 "$BIN" init # skip if your default config already exists
 # Use the full configuration path printed by init:
 "$BIN" check "/full/path/from/init"
@@ -79,7 +103,7 @@ The listener emits the existing aggregate input summary every 60 seconds to Unif
 Stop any existing listener first, including the service if it is running; restart it after the foreground capture. `listen start` observes input without loading gesture commands or executing actions.
 
 ```sh
-AEROSPACE_INPUT_DIAGNOSTICS=1 .build/release/aerospace-gestures listen start
+AEROSPACE_INPUT_DIAGNOSTICS=1 .build/release/cafune listen start
 ```
 
 After stopping with Ctrl-C, retrieve the persistent diagnostics without copying other process output:
@@ -105,7 +129,7 @@ For configuration errors or missing command output, see [configuration troublesh
 ## Command help
 
 ```sh
-aerospace-gestures --help
-aerospace-gestures help service
-aerospace-gestures --version
+cafune --help
+cafune help service
+cafune --version
 ```
