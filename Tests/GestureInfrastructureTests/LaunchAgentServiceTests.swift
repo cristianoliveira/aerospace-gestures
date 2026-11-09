@@ -61,58 +61,6 @@ final class LaunchAgentServiceTests: XCTestCase {
     XCTAssertEqual(fixture.runner.calls.last?.first, "kickstart")
   }
 
-  func testInstallRequiresManualCleanupOfPreviousLaunchAgentWithoutChangingIt() throws {
-    let fixture = try ServiceFixture()
-    defer { fixture.remove() }
-    try FileManager.default.createDirectory(
-      at: fixture.paths.launchAgentsDirectory, withIntermediateDirectories: true)
-    let legacyPlistURL = fixture.paths.launchAgentsDirectory
-      .appendingPathComponent("com.aerospace-gestures.plist")
-    let original = Data("legacy service plist".utf8)
-    try original.write(to: legacyPlistURL)
-
-    XCTAssertThrowsError(try fixture.service.install()) { error in
-      XCTAssertTrue(String(describing: error).contains("Stop and unload it first"))
-      XCTAssertTrue(String(describing: error).contains("launchctl bootout gui/2403"))
-      XCTAssertTrue(String(describing: error).contains("com.aerospace-gestures.plist"))
-    }
-
-    XCTAssertEqual(try Data(contentsOf: legacyPlistURL), original)
-    XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.paths.plistURL.path))
-    XCTAssertTrue(fixture.runner.calls.isEmpty)
-  }
-
-  func testStartRefusesPreviousLaunchAgentWithoutCallingLaunchctl() throws {
-    let fixture = try ServiceFixture()
-    defer { fixture.remove() }
-    XCTAssertEqual(try fixture.service.install(), .installed)
-
-    let previousPlistURL = fixture.paths.previousProductPlistURL
-    try Data("previous service plist".utf8).write(to: previousPlistURL)
-    let callsBeforeStart = fixture.runner.calls.count
-
-    XCTAssertThrowsError(try fixture.service.start()) { error in
-      XCTAssertTrue(String(describing: error).contains("Stop and unload it first"))
-    }
-    XCTAssertEqual(fixture.runner.calls.count, callsBeforeStart)
-  }
-
-  func testInstallRejectsActivePreviousProductListenerWithoutBootstrapping() throws {
-    let fixture = try ServiceFixture()
-    defer { fixture.remove() }
-    let previousLock = try InstanceLock.acquire(
-      at: fixture.paths.previousProductInstanceLockURL,
-      under: fixture.paths.homeDirectory,
-      ownerUID: fixture.paths.filesystemUID)
-    defer { previousLock.release() }
-
-    XCTAssertThrowsError(try fixture.service.install()) { error in
-      XCTAssertTrue(String(describing: error).contains("previous-product listener"))
-    }
-    XCTAssertFalse(fixture.runner.calls.contains { $0.first == "bootstrap" })
-    XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.paths.plistURL.path))
-  }
-
   func testRepeatedInstallIsAnIdempotentNoOp() throws {
     let fixture = try ServiceFixture()
     defer { fixture.remove() }

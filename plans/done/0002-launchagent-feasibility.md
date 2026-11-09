@@ -13,7 +13,7 @@ The user confirmed three-finger down shows a popup on an external trackpad, but 
 
 ## Approach
 
-- Explicitly build/copy a release binary to `~/.local/bin/aerospace-gestures`; never register `.build/debug` or another temporary executable.
+- Explicitly build/copy a release binary to `~/.local/bin/cafune`; never register `.build/debug` or another temporary executable.
 - Use a temporary per-user LaunchAgent in `gui/<uid>` and the default popup config. No sudo, system daemon, or automatic permission changes.
 - Stop the earlier ad-hoc listener before testing to prevent duplicate actions; identify it rather than killing arbitrary matching PIDs.
 - Verify the popup with the terminal closed. Record OS version, architecture, required permissions, and whether binary replacement preserves permission identity.

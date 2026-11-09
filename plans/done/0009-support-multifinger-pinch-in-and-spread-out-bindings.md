@@ -33,4 +33,4 @@ People can bind commands to three-to-five-finger directional swipes, but the ope
 
 ## Completion evidence
 - Previous two-finger implementation: `32e47fc`; consistent config naming: `c61f372`. Both iterations passed local checks and GitHub CI.
-- Scope extended before merge to 2–5 fingers in the same PR: https://github.com/cristianoliveira/aerospace-gestures/pull/2. Implementation `866c31d`, adversarial regression tests `52551a0`; 175 local tests and independent QA passed, as did both initial updated PR checks. Physical-trackpad validation remains outstanding.
+- Scope extended before merge to 2–5 fingers in the same PR: https://github.com/cristianoliveira/cafune/pull/2. Implementation `866c31d`, adversarial regression tests `52551a0`; 175 local tests and independent QA passed, as did both initial updated PR checks. Physical-trackpad validation remains outstanding.

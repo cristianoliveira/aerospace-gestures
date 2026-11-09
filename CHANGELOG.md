@@ -16,8 +16,8 @@
 **Compatibility:** Existing valid configurations need no migration. The built-in LaunchAgent does not restart after a successful Quit; use `service start` to resume it. An external service manager may restart it.
 
 - Improved recovery after HID topology changes, including USB-to-Bluetooth trackpad reconnects. A single delayed Multitouch snapshot count check catches publication lag without adding idle device-list enumeration.
-- Added opt-in aggregate reconnect diagnostics, including persistent output when `AEROSPACE_INPUT_DIAGNOSTICS=1` is set.
-- Added **Quit AeroSpace Gestures** to the normal run menu. It stops input, terminates an active command, writes final diagnostics, then exits. Listen and dry-run modes still have no menu-bar status item.
+- Added opt-in aggregate reconnect diagnostics, including persistent output when `CAFUNE_INPUT_DIAGNOSTICS=1` is set.
+- Added **Quit Cafuné** to the normal run menu. It stops input, terminates an active command, writes final diagnostics, then exits. Listen and dry-run modes still have no menu-bar status item.
 
 **Limitations:** Recovery still depends on the experimental public IOHID observer and private Multitouch API. If the observer is unavailable, the count-only watchdog may miss a same-count device swap; hardware support varies by device and macOS version.
 
@@ -43,10 +43,10 @@
 
 ## v0.3.0
 
-**Breaking CLI invocation:** `check` and `run` now require an explicit `<config.toml>` path; use `listen start` instead of bare `listen`. Existing TOML config files need no migration; LaunchAgents installed by `aerospace-gestures service` already pass an explicit config path.
+**Breaking CLI invocation:** `check` and `run` now require an explicit `<config.toml>` path; use `listen start` instead of bare `listen`. Existing TOML config files need no migration; LaunchAgents installed by `cafune service` already pass an explicit config path.
 
-- Redesigned CLI help with discoverable commands, focused examples and service actions (`aerospace-gestures help <command>` or `<command> -h` / `<command> --help`).
-- Added `aerospace-gestures -v` / `--version` and `aerospace-gestures version`.
+- Redesigned CLI help with discoverable commands, focused examples and service actions (`cafune help <command>` or `<command> -h` / `<command> --help`).
+- Added `cafune -v` / `--version` and `cafune version`.
 - Added source-built default Nix flake packages for Apple silicon and Intel macOS (`nix profile install .`).
 - CLI syntax errors now print the relevant structured help on stderr and exit nonzero; option-like arguments are no longer mistaken for config paths.
 - Bare `check`, `run`, and `listen` now print focused command usage instead of implicitly using a default path or starting the listener.
@@ -54,7 +54,7 @@
 
 ## v0.2.0
 
-**Breaking: configuration is TOML-only.** JSON configuration files are rejected; there is no migration or automatic conversion. Re-create your config from `aerospace-gestures init` (TOML popup example) or convert it by hand — see the [v0.2.0 usage guide](https://github.com/cristianoliveira/aerospace-gestures/blob/v0.2.0/docs/USAGE.md) for the schema.
+**Breaking: configuration is TOML-only.** JSON configuration files are rejected; there is no migration or automatic conversion. Re-create your config from `cafune init` (TOML popup example) or convert it by hand — see the [v0.2.0 usage guide](https://github.com/cristianoliveira/cafune/blob/v0.2.0/docs/USAGE.md) for the schema.
 
 - TOML configuration with the same schema (`threshold`, `[[bindings]]`); parse errors report line/column; all prior validation rules retained.
 - New pinned dependency: TOMLKit 0.6.0 (MIT), which vendors the MIT-licensed toml++ 3.4.0 parser; no runtime network access. See `Package.resolved`.

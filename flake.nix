@@ -39,7 +39,7 @@
 
             meta = {
               description = "Cafuné maps macOS trackpad gestures to commands";
-              homepage = "https://github.com/cristianoliveira/aerospace-gestures";
+              homepage = "https://github.com/cristianoliveira/cafune";
               license = pkgs.lib.licenses.mit;
               mainProgram = "cafune";
               platforms = pkgs.lib.platforms.darwin;

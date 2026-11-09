@@ -13,7 +13,7 @@ Every run requires an explicit config path. Users need a predictable location an
 
 ## Approach
 
-- Default to `$XDG_CONFIG_HOME/aerospace-gestures/config.json` when XDG_CONFIG_HOME is nonempty and absolute; otherwise `~/.config/aerospace-gestures/config.json`.
+- Default to `$XDG_CONFIG_HOME/cafune/config.json` when XDG_CONFIG_HOME is nonempty and absolute; otherwise `~/.config/cafune/config.json`.
 - Explicit paths take precedence; relative explicit paths resolve against the caller's working directory. Inject home/environment/current-directory providers for tests.
 - Add `init`, default-path `check`, `run`, and `run --dry-run`. Preserve `listen`, `check <path>`, and `run <path> [--dry-run]`.
 - Preserve JSON schema: optional threshold and bindings containing finger count, direction, executable/arguments array.
