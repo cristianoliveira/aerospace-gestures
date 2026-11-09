@@ -16,7 +16,7 @@ Use the menu-bar icon to pause commands or reload your configuration. The v0.7.0
 
 Requires macOS 13+ and a multitouch trackpad. Choose one method:
 
-- Homebrew: `brew install cristianoliveira/tap/aerospace-gestures` (the tap formula keeps its existing name and must be updated separately for Cafuné releases).
+- Homebrew: the `cafune` formula is not published yet. The existing `aerospace-gestures` formula installs the older product; use a source or Nix build below to try Cafuné.
 - Nix, from a checkout with flakes enabled: `nix profile install .`
 - Build from a checkout with Swift 5.9+: `make install` (installs to `~/.local/bin`; add it to your `PATH`).
 
